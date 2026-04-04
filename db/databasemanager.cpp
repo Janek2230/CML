@@ -21,8 +21,8 @@ void DatabaseManager::closeConnection() {
     db.close();
 }
 
-QList<Ksiazka*> DatabaseManager::getBooks() {
-    QList<Ksiazka*> list;
+QList<std::shared_ptr<Ksiazka>> DatabaseManager::getBooks() {
+    QList<std::shared_ptr<Ksiazka>> list;
 
     QSqlQuery query("SELECT m.id, m.tytul, m.typ_medium, m.status, m.id_platformy, "
                     "p.przeczytane_strony, p.wszystkie_strony "
@@ -30,8 +30,7 @@ QList<Ksiazka*> DatabaseManager::getBooks() {
                     "JOIN postepy_ksiazki p ON m.id = p.id_medium");
 
     while (query.next()) {
-
-        list.append(new Ksiazka(
+        list.append(std::make_shared<Ksiazka>(
             query.value(0).toInt(),     // id
             query.value(1).toString(),  // tytul
             query.value(2).toString(),  // typ

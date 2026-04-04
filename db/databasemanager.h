@@ -19,7 +19,7 @@ public:
     bool openConnection();
     void closeConnection();
 
-    QList<Ksiazka*> getBooks();
+    QList<std::shared_ptr<Ksiazka>> getBooks();
 };
 
 #endif

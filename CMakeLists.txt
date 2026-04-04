@@ -8,14 +8,21 @@ qt_standard_project_setup()
 qt_add_executable(CML
     WIN32 MACOSX_BUNDLE
     main.cpp
-    mainwindow.cpp
-    mainwindow.h
-    mainwindow.ui
-    multimedia.h
-    platformy.h
-    postep_ksiazki.h
-    databasemanager.h
-    databasemanager.cpp
+    ui/mainwindow.cpp
+    ui/mainwindow.h
+    ui/mainwindow.ui
+    models/multimedia.h
+    models/platformy.h
+    models/postep_ksiazki.h
+    db/databasemanager.h
+    db/databasemanager.cpp
+)
+
+target_include_directories(CML
+    PRIVATE
+        ui
+        db
+        models
 )
 
 target_link_libraries(CML
