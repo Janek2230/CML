@@ -48,3 +48,16 @@ _deps
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Konkretny folder build z Twojego screena
+build/
+.qtcreator/
+
+# Dane wrażliwe (na przyszłość, jak już naprawisz kod)
+.env
+config.ini
+secrets.h
+
+# Inne śmieci
+.vscode/
+.idea/
