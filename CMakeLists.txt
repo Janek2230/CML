@@ -13,7 +13,7 @@ qt_add_executable(CML
     ui/mainwindow.ui
     models/multimedia.h
     models/platformy.h
-    models/postep_ksiazki.h
+    models/postep.h
     db/databasemanager.h
     db/databasemanager.cpp
 )

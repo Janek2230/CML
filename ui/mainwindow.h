@@ -22,15 +22,25 @@ public:
 private:
     Ui::MainWindow *ui;
     DatabaseManager dbManager;
-    QList<std::shared_ptr<Ksiazka>> listaKsiazek;
+    QList<std::shared_ptr<Multimedia>> listaMultimediow;
 
     void zaladujDaneDoDrzewa();
+    void odswiezStatystykiGlowne();
+
+    void otworzFormularzDodawania(int domyslneIdKategorii);
+    void usunWybraneMedium(int id);
+
+    void uzupelnijComboBoxy();
 
 private slots:
     // Ten slot odpali się, gdy klikniesz coś w drzewie
     void onWybieranieElementuDrzewa(QTreeWidgetItem *item, int column);
 
     // Ten slot przyda Ci się za chwilę do paska wyszukiwania
-    void onWyszukiwanieZmienione(const QString &text);
+    void onWyszukiwanie(const QString &text);
+
+    void pokazMenuDrzewa(const QPoint &pos);
+
+
 };
 #endif // MAINWINDOW_H
