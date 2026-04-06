@@ -25,11 +25,29 @@ public:
     bool aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa);
     bool zacznijOdNowa(int idMedium);
 
-    bool dodajNoweMedium(const QString &tytul, int idKat, const QString &typ, int cel);
+    bool dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel);
+    bool aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel);
     bool usunMedium(int id);
 
+    int dodajKategorie(const QString &nazwa, const QString &jednostka);
+    int dodajPlatforme(const QString &nazwa);
+    QStringList pobierzUnikalneJednostki();
+
     QList<QPair<int, QString>> pobierzKategorie();
-    QStringList pobierzPlatformy();
+    QList<QPair<int, QString>> pobierzPlatformy();
+
+    bool aktualizujKategorie(int id, const QString &nazwa, const QString &jednostka);
+    bool aktualizujPlatforme(int id, const QString &nazwa);
+
+    bool usunKategorie(int idKat, bool usunPowiazane);
+    bool usunPlatforme(int idPlat, bool usunPowiazane);
+
+    bool zmienKategorieWielu(const QList<int>& idMultimediow, int nowaKategoriaId);
+    bool usunWieleMultimediow(const QList<int>& idList);
+
+    QMap<int, QString> pobierzSlownikJednostek();
+
+    QList<int> pobierzOstatnioEdytowane(int limit);
 };
 
 #endif

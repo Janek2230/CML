@@ -27,8 +27,11 @@ private:
     void zaladujDaneDoDrzewa();
     void odswiezStatystykiGlowne();
 
-    void otworzFormularzDodawania(int domyslneIdKategorii);
+    bool czyTrybEdycji = false;
+    int idEdytowanegoMedium = -1;
+    void przygotujFormularz(int idMedium = -1, int idDomyslnejKategorii = 0, int idDomyslnejPlatformy = 0);
     void usunWybraneMedium(int id);
+    void pokazSzczegolyMedium(int idMedium);
 
     void uzupelnijComboBoxy();
 

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 project(CML LANGUAGES CXX)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Sql)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Sql Charts)
 
 qt_standard_project_setup()
 
@@ -30,6 +30,7 @@ target_link_libraries(CML
         Qt::Core
         Qt::Widgets
         Qt6::Sql
+        Qt6::Charts
 )
 
 install(TARGETS CML

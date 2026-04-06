@@ -19,6 +19,7 @@ CREATE TABLE multimedia (
     status typ_statusu NOT NULL, 
     id_platformy INTEGER REFERENCES platformy(id) ON DELETE RESTRICT,
     data_dodania TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_ostatniej_edycji TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ocena INTEGER CHECK (ocena >= 1 AND ocena <= 10),
     sciezka_okladki VARCHAR(500)                      
 );
