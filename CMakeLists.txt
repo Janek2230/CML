@@ -16,6 +16,9 @@ qt_add_executable(CML
     models/postep.h
     db/databasemanager.h
     db/databasemanager.cpp
+    ui/kategoriedialog.h ui/kategoriedialog.cpp
+    ui/platformydialog.h ui/platformydialog.cpp
+
 )
 
 target_include_directories(CML

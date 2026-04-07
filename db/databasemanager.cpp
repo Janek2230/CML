@@ -31,13 +31,12 @@ QMap<int, QString> DatabaseManager::getCategories() {
     return kategorie;
 }
 
-
-// Zaktualizuj też SELECT, żeby pobierał id_platformy:
 QList<std::shared_ptr<Multimedia>> DatabaseManager::getAllMultimedia() {
     QList<std::shared_ptr<Multimedia>> list;
     QSqlQuery query(
         "SELECT m.id, m.tytul, m.status, k.id, k.jednostka, "
-        "p.wartosc_aktualna, p.wartosc_docelowa, m.data_dodania, m.id_platformy "
+        "p.wartosc_aktualna, p.wartosc_docelowa, m.data_dodania, m.id_platformy, "
+        "m.ocena, m.data_ostatniej_edycji, p.liczba_powtorek " // DODANE POLA
         "FROM multimedia m "
         "LEFT JOIN kategorie k ON m.id_kategorii = k.id "
         "LEFT JOIN postepy p ON m.id = p.id_medium"
@@ -45,19 +44,19 @@ QList<std::shared_ptr<Multimedia>> DatabaseManager::getAllMultimedia() {
 
     while (query.next()) {
         Postep postep;
-        postep.aktualna = query.value(5).isNull() ? 0 : query.value(5).toInt();
-        postep.docelowa = query.value(6).isNull() ? 0 : query.value(6).toInt();
+        postep.aktualna = query.value(5).toInt();
+        postep.docelowa = query.value(6).toInt();
         postep.jednostka = query.value(4).toString();
+        postep.liczba_powtorek = query.value(11).toInt(); // POBIERANIE POWTÓREK
 
         auto medium = std::make_shared<Multimedia>(
-            query.value(0).toInt(),
-            query.value(1).toString(),
-            query.value(3).toInt(),
-            query.value(8).toInt(), // id_platformy
-            query.value(2).toString(),
-            postep
+            query.value(0).toInt(), query.value(1).toString(),
+            query.value(3).toInt(), query.value(8).toInt(),
+            query.value(2).toString(), postep
             );
         medium->setDataDodania(query.value(7).toDateTime());
+        medium->setOcena(query.value(9).toInt()); // POBIERANIE OCENY
+        medium->setDataOstatniejEdycji(query.value(10).toDateTime()); // POBIERANIE DATY EDYCJI
         list.append(medium);
     }
     return list;
@@ -81,20 +80,25 @@ QMap<QString, int> DatabaseManager::getGlobalStats() {
     return stats;
 }
 
-bool DatabaseManager::aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa) {
-    QSqlQuery query;
-    // 1. Aktualizujemy wartości liczbowe
-    query.prepare("UPDATE postepy SET wartosc_aktualna = :akt, wartosc_docelowa = :doc WHERE id_medium = :id");
-    query.bindValue(":akt", aktualna);
-    query.bindValue(":doc", docelowa);
-    query.bindValue(":id", idMedium);
-    if (!query.exec()) return false;
+bool DatabaseManager::aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa, int ocena) {
+    db.transaction();
+    QSqlQuery qP(db);
+    qP.prepare("UPDATE postepy SET wartosc_aktualna = :akt, wartosc_docelowa = :doc WHERE id_medium = :id");
+    qP.bindValue(":akt", aktualna);
+    qP.bindValue(":doc", docelowa);
+    qP.bindValue(":id", idMedium);
+    if (!qP.exec()) { db.rollback(); return false; }
 
-    // 2. Aktualizujemy status tekstem ("W trakcie", "Ukończone" itd.)
-    query.prepare("UPDATE multimedia SET status = :status WHERE id = :id");
-    query.bindValue(":status", status);
-    query.bindValue(":id", idMedium);
-    return query.exec();
+    QSqlQuery qM(db);
+    // Ważne: aktualizujemy status, ocenę i wymuszamy NOWĄ datę edycji
+    qM.prepare("UPDATE multimedia SET status = :status, ocena = :ocena, data_ostatniej_edycji = CURRENT_TIMESTAMP WHERE id = :id");
+    qM.bindValue(":status", status);
+    qM.bindValue(":ocena", ocena > 0 ? ocena : QVariant(QVariant::Int));
+    qM.bindValue(":id", idMedium);
+
+    if (!qM.exec()) { db.rollback(); return false; }
+    db.commit();
+    return true;
 }
 
 bool DatabaseManager::zacznijOdNowa(int idMedium) {
@@ -121,7 +125,7 @@ bool DatabaseManager::dodajNoweMedium(const QString &tytul, int idKat, int idPla
     query1.prepare("INSERT INTO multimedia (tytul, id_kategorii, id_platformy, status) VALUES (:tytul, :idKat, :idPlat, 'Planowane') RETURNING id");
     query1.bindValue(":tytul", tytul);
     query1.bindValue(":idKat", idKat);
-    query1.bindValue(":idPlat", idPlatformy > 0 ? QVariant(idPlatformy) : QVariant(QVariant::Int)); // Obsługa braku platformy (NULL)
+    query1.bindValue(":idKat", idKat > 0 ? QVariant(idKat) : QVariant(QVariant::Int)); // Obsługa braku platformy (NULL)
 
     if (!query1.exec() || !query1.next()) {
         qDebug() << "BŁĄD INSERT MULTIMEDIA:" << query1.lastError().text();

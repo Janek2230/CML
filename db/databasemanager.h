@@ -22,7 +22,7 @@ public:
     QList<std::shared_ptr<Multimedia>> getAllMultimedia();
     QMap<QString, int> getGlobalStats();
 
-    bool aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa);
+    bool aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa, int ocena);
     bool zacznijOdNowa(int idMedium);
 
     bool dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel);

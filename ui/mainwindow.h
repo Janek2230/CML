@@ -36,14 +36,18 @@ private:
     void uzupelnijComboBoxy();
 
 private slots:
-    // Ten slot odpali się, gdy klikniesz coś w drzewie
     void onWybieranieElementuDrzewa(QTreeWidgetItem *item, int column);
-
-    // Ten slot przyda Ci się za chwilę do paska wyszukiwania
     void onWyszukiwanie(const QString &text);
-
     void pokazMenuDrzewa(const QPoint &pos);
 
+    // Wyciągnięte z konstruktora: Logika detali i formularza
+    void onBtnDetaleZapiszClicked();
+    void onBtnZacznijOdNowaClicked();
+    void onBtnPotwierdzDodajClicked();
 
+    // NOWE: Wyciągnięte z lambd konstruktora
+    void onBtnSzybkaPlatformaClicked();
+    void onBtnSzybkaKategoriaClicked();
+    void onBtnLosujClicked();
 };
 #endif // MAINWINDOW_H
