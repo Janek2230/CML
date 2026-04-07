@@ -432,3 +432,52 @@ bool DatabaseManager::usunPlatforme(int idPlat, bool usunPowiazane) {
     db.commit();
     return true;
 }
+
+// Zwraca listę struktur lub wariantów, np: Data (jako string), Nazwa Kategorii, Wartość
+QList<QVariantMap> DatabaseManager::pobierzDaneDoWykresu(int zakresDni, const QString& metryka) {
+    QList<QVariantMap> wyniki;
+    QSqlQuery query(db);
+
+    // Bezpieczny wybór funkcji agregującej
+    QString funkcjaAgregujaca;
+    if (metryka == "czas") {
+        funkcjaAgregujaca = "SUM(d.czas_trwania_sekundy) / 3600.0"; // Konwersja na godziny
+    } else if (metryka == "sesje") {
+        funkcjaAgregujaca = "COUNT(d.id)";
+    } else if (metryka == "jednostki") {
+        funkcjaAgregujaca = "SUM(d.przyrost_jednostek)";
+    } else {
+        return wyniki;
+    }
+
+    // Dynamiczny format daty. Dla > 60 dni grupujemy po miesiącach, inaczej po dniach.
+    QString formatDaty = (zakresDni > 60) ? "'YYYY-MM'" : "'MM-DD'";
+
+    // Grupujemy po tytule medium!
+    QString sql = QString(R"(
+        SELECT
+            TO_CHAR(d.data_wpisu, %1) as kategoria_czasu,
+            m.tytul as nazwa_serii,
+            %2 as wartosc
+        FROM dziennik_aktywnosci d
+        JOIN podejscia p ON d.id_podejscia = p.id
+        JOIN multimedia m ON p.id_medium = m.id
+        WHERE d.data_wpisu >= CURRENT_DATE - INTERVAL '%3 days'
+        GROUP BY kategoria_czasu, m.tytul
+        ORDER BY kategoria_czasu ASC
+    )").arg(formatDaty).arg(funkcjaAgregujaca).arg(zakresDni);
+
+    if (!query.exec(sql)) {
+        qDebug() << "Błąd pobierania danych do wykresu:" << query.lastError().text();
+        return wyniki;
+    }
+
+    while (query.next()) {
+        QVariantMap rzad;
+        rzad["data"] = query.value(0).toString();
+        rzad["seria"] = query.value(1).toString(); // Zmieniono z kategoria na seria
+        rzad["wartosc"] = query.value(2).toDouble();
+        wyniki.append(rzad);
+    }
+    return wyniki;
+}

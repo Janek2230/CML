@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include <qtreewidget.h>
+#include <QLabel>
+#include <QMouseEvent>
 #include "databasemanager.h"
 
 QT_BEGIN_NAMESPACE
@@ -34,6 +36,9 @@ private:
     void pokazSzczegolyMedium(int idMedium);
 
     void uzupelnijComboBoxy();
+    void odswiezWykresAktywnosci();
+    QLabel *etykietaTooltip;
+    bool eventFilter(QObject *watched, QEvent *event);
 
 private slots:
     void onWybieranieElementuDrzewa(QTreeWidgetItem *item, int column);

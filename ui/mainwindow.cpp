@@ -22,6 +22,12 @@
 #include <QPieSeries>
 #include <QChart>
 #include <QRandomGenerator>
+#include <QStackedBarSeries>
+#include <QBarSet>
+#include <QBarCategoryAxis>
+#include <QValueAxis>
+#include <QToolTip>
+#include <algorithm>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -34,6 +40,14 @@ MainWindow::MainWindow(QWidget *parent)
     ui->comboDetaleStatus->addItem("W trakcie");
     ui->comboDetaleStatus->addItem("Porzucone");
     ui->comboGrupowanie->addItems({"Kategoria", "Status", "Platforma", "Data dodania"});
+    ui->wykresSlupkowyAktywnosci->setMouseTracking(true);
+    ui->wykresSlupkowyAktywnosci->viewport()->setMouseTracking(true);
+    ui->wykresSlupkowyAktywnosci->viewport()->installEventFilter(this);
+
+    etykietaTooltip = new QLabel(ui->wykresSlupkowyAktywnosci->viewport());
+    etykietaTooltip->setStyleSheet("background-color: rgba(30, 30, 30, 220); color: white; border: 1px solid #555; border-radius: 4px; padding: 5px;");
+    etykietaTooltip->setAttribute(Qt::WA_TransparentForMouseEvents); // MAGIA: kursor 'przenika' przez dymek
+    etykietaTooltip->hide(); // Domyślnie ukryty
 
     ui->kategorie->setContextMenuPolicy(Qt::CustomContextMenu);
     ui->kategorie->setSelectionMode(QAbstractItemView::ExtendedSelection);
@@ -84,6 +98,8 @@ MainWindow::MainWindow(QWidget *parent)
         }
     });
 
+
+
     // --- STANDARDOWE POŁĄCZENIA SLOTÓW ---
     connect(ui->kategorie, &QTreeWidget::itemClicked, this, &MainWindow::onWybieranieElementuDrzewa);
     connect(ui->wyszukiwarka, &QLineEdit::textChanged, this, &MainWindow::onWyszukiwanie);
@@ -115,6 +131,24 @@ MainWindow::MainWindow(QWidget *parent)
         uzupelnijComboBoxy();
     });
 
+    connect(ui->actionStronaGlowna, &QAction::triggered, this, [this]() {
+            ui->panelKategorii->show();
+            ui->daneSzczegolowe->setCurrentWidget(ui->page);
+            ui->comboWidokStatystyk->hide();
+    });
+
+    connect(ui->actionStatystyki, &QAction::triggered, this, [this]() {
+            ui->panelKategorii->hide();
+            ui->daneSzczegolowe->setCurrentWidget(ui->page_4);
+            ui->comboWidokStatystyk->show();
+            odswiezWykresAktywnosci(); // Ładujemy wykres przy wejściu!
+    });
+
+    connect(ui->comboZakresCzasu, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::odswiezWykresAktywnosci);
+    connect(ui->comboMetryka, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::odswiezWykresAktywnosci);
+
+    // Ukrywamy na starcie, dopóki nie wejdziemy w statystyki
+    ui->comboWidokStatystyk->hide();
     // --- START APLIKACJI ---
     if (dbManager.openConnection()) {
         zaladujDaneDoDrzewa();
@@ -969,4 +1003,187 @@ void MainWindow::pokazMenuDrzewa(const QPoint &pos) {
 
     // Wyświetlamy menu w miejscu kursora myszy
     menu.exec(ui->kategorie->mapToGlobal(pos));
+}
+
+void MainWindow::odswiezWykresAktywnosci() {
+    if (!ui->comboZakresCzasu || !ui->comboMetryka) return;
+
+    int zakres = 30;
+    int indexZakresu = ui->comboZakresCzasu->currentIndex();
+    if (indexZakresu == 0) zakres = 7;
+    else if (indexZakresu == 1) zakres = 30;
+    else if (indexZakresu == 2) zakres = 365;
+
+    QString metryka = "czas";
+    QString jednostkaWykresu = "[h]";
+    int indexMetryki = ui->comboMetryka->currentIndex();
+    if (indexMetryki == 1) { metryka = "sesje"; jednostkaWykresu = "sesji"; }
+    else if (indexMetryki == 2) { metryka = "jednostki"; jednostkaWykresu = "jednostek"; }
+
+    auto dane = dbManager.pobierzDaneDoWykresu(zakres, metryka);
+
+    QStringList unikalneDaty;
+    QMap<QString, QMap<QString, double>> mapaSerii;
+    QMap<QString, double> sumySerii;
+    double sumaGlobalna = 0.0;
+
+    for (const auto& wiersz : dane) {
+        QString data = wiersz["data"].toString();
+        QString seria = wiersz["seria"].toString();
+        double wartosc = wiersz["wartosc"].toDouble();
+
+        if (!unikalneDaty.contains(data)) unikalneDaty.append(data);
+        mapaSerii[seria][data] = wartosc;
+        sumySerii[seria] += wartosc;
+        sumaGlobalna += wartosc;
+    }
+
+    // --- NOWA LOGIKA: FILTROWANIE LOKALNE (DZIENNE) ---
+    // Koniec z patrzeniem na cały miesiąc. Oceniamy przydatność wartości w danym dniu.
+
+    // Zdefiniuj, co to jest "drobnostka" w skali jednego słupka (dnia).
+    // Jeżeli grasz np. 20 minut i uważasz to za odpadek, daj tu np. 0.5.
+    double progDzienny = 0.5;
+
+    QSet<QString> samodzielneSerie;
+    QMap<QString, double> pozostaleWartosciDzien;
+    QMap<QString, QStringList> pozostaleDetaleDzien;
+
+    // Krok 1: Przesiewamy dane dzień po dniu
+    for (const QString& d : unikalneDaty) {
+        for (auto it = mapaSerii.begin(); it != mapaSerii.end(); ++it) {
+            QString nazwa = it.key();
+            double val = it.value().value(d, 0.0);
+
+            if (val == 0.0) continue;
+
+            if (val >= progDzienny) {
+                // Wartość jest na tyle duża, że dany tytuł zasługuje na własny kolor w legendzie
+                samodzielneSerie.insert(nazwa);
+            } else {
+                // Wartość to drobnostka (np. 0.2h). Wrzucamy do szarego worka DLA TEGO KONKRETNEGO DNIA
+                pozostaleWartosciDzien[d] += val;
+                pozostaleDetaleDzien[d].append(QString("- %1: %2 %3").arg(nazwa).arg(QString::number(val, 'f', 1)).arg(jednostkaWykresu));
+            }
+        }
+    }
+
+    // --- BUDOWANIE WYKRESU ---
+    QStackedBarSeries *series = new QStackedBarSeries();
+    QMap<QString, QStringList> tekstyTooltipow;
+
+    // 1. Generujemy normalne słupki dla tytułów, które chociaż raz w miesiącu przebiły próg
+    for (const QString& nazwaSerii : samodzielneSerie) {
+        QBarSet *set = new QBarSet(nazwaSerii);
+        QStringList tooltipyDlaTejGry;
+
+        for (const QString& d : unikalneDaty) {
+            double val = mapaSerii[nazwaSerii].value(d, 0.0);
+
+            // ZABEZPIECZENIE: Jeżeli w dany wtorek grałeś w ten tytuł poniżej progu,
+            // to jego czas trafił do "Pozostałych". Zatem tutaj musimy wyzerować jego własny słupek,
+            // żeby nie wyświetlał się dwa razy!
+            if (val < progDzienny) {
+                val = 0.0;
+            }
+
+            *set << val;
+            if (val > 0) {
+                tooltipyDlaTejGry.append(QString("<b>%1</b><br>Wartość: %2 %3")
+                                             .arg(nazwaSerii).arg(QString::number(val, 'f', 1)).arg(jednostkaWykresu));
+            } else {
+                tooltipyDlaTejGry.append("");
+            }
+        }
+        series->append(set);
+        tekstyTooltipow.insert(nazwaSerii, tooltipyDlaTejGry);
+    }
+
+    // 2. Dodajemy jeden zbiorczy worek na śmieci, jeśli cokolwiek się w nim znalazło
+    if (!pozostaleWartosciDzien.isEmpty()) {
+        QBarSet *setPozostale = new QBarSet("Pozostałe drobnostki");
+        setPozostale->setColor(QColor("#95a5a6")); // Zgniły szary na zgniłe dane
+        QStringList tooltipyDlaPozostalych;
+
+        for (const QString& d : unikalneDaty) {
+            double val = pozostaleWartosciDzien.value(d, 0.0);
+            *setPozostale << val;
+
+            if (val > 0) {
+                QString detale = pozostaleDetaleDzien.value(d).join("<br>");
+                tooltipyDlaPozostalych.append(QString("<b>Pozostałe drobnostki</b><br>Łącznie: %1 %2<br>W tym:<br>%3")
+                                                  .arg(QString::number(val, 'f', 1)).arg(jednostkaWykresu).arg(detale));
+            } else {
+                tooltipyDlaPozostalych.append("");
+            }
+        }
+        series->append(setPozostale);
+        tekstyTooltipow.insert("Pozostałe drobnostki", tooltipyDlaPozostalych);
+    }
+
+    // Tworzymy sam wykres...
+    QChart *chart = new QChart();
+    chart->addSeries(series);
+    chart->setAnimationOptions(QChart::SeriesAnimations);
+    chart->legend()->hide();
+
+    QBarCategoryAxis *axisX = new QBarCategoryAxis();
+    axisX->append(unikalneDaty);
+
+    // NOWOŚĆ: Rotacja etykiet o 45 stopni
+    axisX->setLabelsAngle(-45);
+
+    chart->addAxis(axisX, Qt::AlignBottom);
+    series->attachAxis(axisX);
+
+    QValueAxis *axisY = new QValueAxis();
+    axisY->setTitleText(metryka == "czas" ? "Godziny [h]" : "Ilość");
+    chart->addAxis(axisY, Qt::AlignLeft);
+    series->attachAxis(axisY);
+
+    connect(series, &QStackedBarSeries::hovered, this, [this, tekstyTooltipow](bool status, int index, QBarSet *barset) {
+        if (status && index >= 0) {
+            QString nazwa = barset->label();
+            QString tekst = tekstyTooltipow.value(nazwa).value(index);
+
+            if (!tekst.isEmpty()) {
+                etykietaTooltip->setText(tekst);
+                etykietaTooltip->adjustSize();
+                etykietaTooltip->show();
+            }
+        } else {
+            etykietaTooltip->hide();
+        }
+    });
+
+    QChart *staryWykres = ui->wykresSlupkowyAktywnosci->chart();
+    ui->wykresSlupkowyAktywnosci->setChart(chart);
+    ui->wykresSlupkowyAktywnosci->setRenderHint(QPainter::Antialiasing);
+
+    if (staryWykres) delete staryWykres;
+}
+
+bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
+    if (watched == ui->wykresSlupkowyAktywnosci->viewport() && event->type() == QEvent::MouseMove) {
+        if (!etykietaTooltip->isHidden()) {
+            QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
+
+            // Przesunięcie o 15px w dół i w prawo, żeby kursor nie zasłaniał tekstu
+            int x = mouseEvent->pos().x() + 15;
+            int y = mouseEvent->pos().y() + 15;
+
+            // Zabezpieczenie przed ucięciem dymka z prawej strony
+            if (x + etykietaTooltip->width() > ui->wykresSlupkowyAktywnosci->viewport()->width()) {
+                x = mouseEvent->pos().x() - etykietaTooltip->width() - 15;
+            }
+            // Zabezpieczenie przed ucięciem na dole
+            if (y + etykietaTooltip->height() > ui->wykresSlupkowyAktywnosci->viewport()->height()) {
+                y = mouseEvent->pos().y() - etykietaTooltip->height() - 15;
+            }
+
+            etykietaTooltip->move(x, y);
+            etykietaTooltip->raise(); // Wymusza rysowanie nad wykresem
+        }
+    }
+    return QMainWindow::eventFilter(watched, event);
 }
