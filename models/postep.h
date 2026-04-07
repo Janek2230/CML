@@ -7,7 +7,7 @@ struct Postep {
     int aktualna;
     int docelowa;
     QString jednostka;
-    int liczba_powtorek;
+    int numer_podejscia;
 
     double getProcent() const {
         return (docelowa > 0) ? (static_cast<double>(aktualna) / docelowa * 100.0) : 0.0;

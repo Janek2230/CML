@@ -55,6 +55,25 @@
           </item>
          </layout>
         </item>
+        <item row="3" column="0">
+         <widget class="QPushButton" name="btnPowrot">
+          <property name="text">
+           <string>Strona Główna</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QTreeWidget" name="kategorie">
+          <property name="headerHidden">
+           <bool>true</bool>
+          </property>
+          <column>
+           <property name="text">
+            <string notr="true">1</string>
+           </property>
+          </column>
+         </widget>
+        </item>
         <item row="1" column="0">
          <layout class="QHBoxLayout" name="horizontalLayout_6">
           <item>
@@ -82,25 +101,6 @@
           </item>
          </layout>
         </item>
-        <item row="2" column="0">
-         <widget class="QTreeWidget" name="kategorie">
-          <property name="headerHidden">
-           <bool>true</bool>
-          </property>
-          <column>
-           <property name="text">
-            <string notr="true">1</string>
-           </property>
-          </column>
-         </widget>
-        </item>
-        <item row="3" column="0">
-         <widget class="QPushButton" name="btnPowrot">
-          <property name="text">
-           <string>Strona Główna</string>
-          </property>
-         </widget>
-        </item>
        </layout>
       </widget>
       <widget class="QStackedWidget" name="daneSzczegolowe">
@@ -111,7 +111,7 @@
         </sizepolicy>
        </property>
        <property name="currentIndex">
-        <number>1</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="page">
         <layout class="QGridLayout" name="gridLayout_2">
@@ -123,7 +123,10 @@
            <item>
             <widget class="QLabel" name="label">
              <property name="text">
-              <string>Ostatnio dodane/aktualizowane</string>
+              <string>Ostatnia aktywność</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
              </property>
             </widget>
            </item>
@@ -472,7 +475,7 @@
            <item>
             <widget class="QLabel" name="lblDetaleDaty">
              <property name="text">
-              <string>TextLabel</string>
+              <string>Ostatnio aktywne</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTop|Qt::AlignmentFlag::AlignTrailing</set>

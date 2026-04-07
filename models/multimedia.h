@@ -13,7 +13,7 @@ private:
     QString status;
     Postep postep;
     QDateTime dataDodania;
-    QDateTime dataOstatniejEdycji;
+    QDateTime dataOstatniejAktywnosci;
     int ocena;
 
     int idPlatformy;
@@ -32,8 +32,8 @@ public:
 
     int getOcena() const { return ocena; }
     void setOcena(int o) { ocena = o; }
-    QDateTime getDataOstatniejEdycji() const { return dataOstatniejEdycji; }
-    void setDataOstatniejEdycji(const QDateTime &d) { dataOstatniejEdycji = d; }
+    QDateTime getDataOstatniejAktywnosci() const { return dataOstatniejAktywnosci; }
+    void setDataOstatniejAktywnosci(const QDateTime &d) { dataOstatniejAktywnosci = d; }
 
     void setDataDodania(const QDateTime &data) { dataDodania = data; }
     void setPostep(Postep nowyPostep) {postep = nowyPostep;}

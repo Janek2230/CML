@@ -47,7 +47,7 @@ public:
 
     QMap<int, QString> pobierzSlownikJednostek();
 
-    QList<int> pobierzOstatnioEdytowane(int limit);
+    QList<int> pobierzOstatnioAktywne(int limit);
 };
 
 #endif

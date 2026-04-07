@@ -253,7 +253,7 @@ void MainWindow::onBtnZacznijOdNowaClicked() {
                 medium->setStatus("W trakcie");
                 Postep p = medium->getPostep();
                 p.aktualna = 0;
-                p.liczba_powtorek++;
+                p.numer_podejscia++;
                 medium->setPostep(p);
                 break;
             }
@@ -462,7 +462,7 @@ void MainWindow::odswiezStatystykiGlowne() {
         delete child;
     }
 
-    QList<int> ostatnieId = dbManager.pobierzOstatnioEdytowane(6);
+    QList<int> ostatnieId = dbManager.pobierzOstatnioAktywne(6);
     int wiersz = 0, kolumna = 0;
 
     for (int id : ostatnieId) {
@@ -569,8 +569,8 @@ void MainWindow::pokazSzczegolyMedium(int idMedium) {
             ui->labNazwaPlatformy->setText(nazwaPlat);
 
             if (medium->getStatus() == "Ukończone") {
-                int powtorki = medium->getPostep().liczba_powtorek;
-                QString tekstUkonczenia = (powtorki > 0) ? QString("UKOŃCZONO (x%1)").arg(powtorki + 1) : "UKOŃCZONO";
+                int nr = medium->getPostep().numer_podejscia;
+                QString tekstUkonczenia = (nr > 1) ? QString("UKOŃCZONO (x%1)").arg(nr) : "UKOŃCZONO";
                 ui->lblWielkiStatus->setText(tekstUkonczenia);
                 ui->lblWielkiStatus->show();
                 ui->btnZacznijOdNowa->show();
@@ -596,7 +596,7 @@ void MainWindow::pokazSzczegolyMedium(int idMedium) {
             ui->label_4->show();
 
             QString dDodania = medium->getDataDodania().toString("dd.MM.yyyy");
-            QString dEdycji = medium->getDataOstatniejEdycji().toString("dd.MM.yyyy HH:mm");
+            QString dEdycji = medium->getDataOstatniejAktywnosci().toString("dd.MM.yyyy HH:mm");
             ui->lblDetaleDaty->setText(QString("Dodano: %1 | Ostatnia aktywność: %2").arg(dDodania).arg(dEdycji));
 
             ui->spinDetaleDocelowy->setValue(medium->getPostep().docelowa);
