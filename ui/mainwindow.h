@@ -10,6 +10,7 @@
 #include "multimediaformwidget.h"
 #include "szczegolywidget.h"
 #include "dashboardwidget.h"
+#include "panelnawigacjiwidget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -33,8 +34,7 @@ private:
     StatisticsWidget *statsWidget;
     MultimediaFormWidget *formularzWidget;
     DashboardWidget *dashboardWidget;
-
-    void zaladujDaneDoDrzewa();
+    PanelNawigacjiWidget *panelNawigacji;
 
     bool czyTrybEdycji = false;
     int idEdytowanegoMedium = -1;
@@ -42,12 +42,6 @@ private:
     void pokazSzczegolyMedium(int idMedium);
 
     SzczegolyWidget *szczegolyWidget;
-
-
-private slots:
-    void onWybieranieElementuDrzewa(QTreeWidgetItem *item, int column);
-    void onWyszukiwanie(const QString &text);
-    void pokazMenuDrzewa(const QPoint &pos);
 
 };
 #endif // MAINWINDOW_H
