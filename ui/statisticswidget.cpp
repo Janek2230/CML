@@ -7,7 +7,7 @@
 #include <QBarCategoryAxis>
 #include <QValueAxis>
 
-StatisticsWidget::StatisticsWidget(DatabaseManager& db, QWidget *parent) :
+StatisticsWidget::StatisticsWidget(AppController& controller, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::StatisticsWidget),
     appController(controller)
