@@ -47,3 +47,65 @@ bool AppController::czyOsiagnietoCel(int aktualna, int docelowa) {
 bool AppController::aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa, int ocena) {
     return dbManager.aktualizujPostep(idMedium, status, aktualna, docelowa, ocena);
 }
+
+
+bool AppController::dodajKategorie(const QString &nazwa, const QString &jednostka) {
+    if (dbManager.dodajKategorie(nazwa, jednostka) > 0) {
+        emit daneZmienione();
+        return true;
+    }
+    return false;
+}
+
+bool AppController::aktualizujKategorie(int id, const QString &nazwa, const QString &jednostka) {
+    if (dbManager.aktualizujKategorie(id, nazwa, jednostka)) {
+        emit daneZmienione();
+        return true;
+    }
+    return false;
+}
+
+bool AppController::usunKategorie(int idKat, bool usunPowiazane) {
+    if (dbManager.usunKategorie(idKat, usunPowiazane)) {
+        emit daneZmienione();
+        return true;
+    }
+    return false;
+}
+
+bool AppController::usunPlatforme(int idPlat, bool usunPowiazane) {
+    if (dbManager.usunPlatforme(idPlat, usunPowiazane)) {
+        emit daneZmienione();
+        return true;
+    }
+    return false;
+}
+
+bool AppController::zmienKategorieWielu(const QList<int>& idMultimediow, int nowaKategoriaId) {
+    if (dbManager.zmienKategorieWielu(idMultimediow, nowaKategoriaId)) {
+        emit daneZmienione();
+        return true;
+    }
+    return false;
+}
+
+bool AppController::usunWieleMultimediow(const QList<int>& idList) {
+    if (dbManager.usunWieleMultimediow(idList)) {
+        emit daneZmienione();
+        return true;
+    }
+    return false;
+}
+
+QList<AppController::KategoriaModel> AppController::pobierzPelneKategorie() {
+    QList<KategoriaModel> lista;
+    auto suroweDane = dbManager.pobierzSuroweKategorie();
+    for(const auto& wiersz : suroweDane) {
+        lista.append({wiersz[0].toInt(), wiersz[1].toString(), wiersz[2].toString()});
+    }
+    return lista;
+}
+
+QStringList AppController::pobierzDostepneStatusy() {
+    return {"Planowane", "W trakcie", "Wstrzymane", "Ukończone", "Porzucone"};
+}

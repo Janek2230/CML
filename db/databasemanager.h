@@ -36,6 +36,7 @@ public:
 
     QList<QPair<int, QString>> pobierzKategorie();
     QList<QPair<int, QString>> pobierzPlatformy();
+    QList<QList<QVariant>> pobierzSuroweKategorie();
 
     bool aktualizujKategorie(int id, const QString &nazwa, const QString &jednostka);
     bool aktualizujPlatforme(int id, const QString &nazwa);

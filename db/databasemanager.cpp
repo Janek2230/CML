@@ -468,3 +468,12 @@ QList<StatystykaAktywnosci> DatabaseManager::pobierzSuroweDaneStatystyk(int zakr
     }
     return wyniki;
 }
+
+QList<QList<QVariant>> DatabaseManager::pobierzSuroweKategorie() {
+    QList<QList<QVariant>> wynik;
+    QSqlQuery q("SELECT id, nazwa, jednostka FROM kategorie ORDER BY nazwa");
+    while(q.next()) {
+        wynik.append({q.value(0), q.value(1), q.value(2)});
+    }
+    return wynik;
+}

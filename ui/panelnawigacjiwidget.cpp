@@ -193,9 +193,8 @@ void PanelNawigacjiWidget::pokazMenuDrzewa(const QPoint &pos) {
                     int noweIdKat = comboNowaKat.currentData().toInt();
                     if (noweIdKat == 0) return;
 
-                    if (dbManager.zmienKategorieWielu(wybraneIds, noweIdKat)) {
-                        zaladujDaneDoDrzewa();
-                        emit drzewoZmieniloBaze();
+                    if (!appController.zmienKategorieWielu(wybraneIds, noweIdKat)) {
+                        QMessageBox::critical(this, "Błąd", "Nie udało się przenieść elementów.");
                     } else {
                         QMessageBox::critical(this, "Błąd", "Nie udało się przenieść elementów.");
                     }
@@ -207,10 +206,8 @@ void PanelNawigacjiWidget::pokazMenuDrzewa(const QPoint &pos) {
             menu.addSeparator();
             menu.addAction(QString("Usuń zaznaczone pozycje (%1)").arg(wybraneIds.size()), this, [this, wybraneIds]() {
                 if (QMessageBox::question(this, "Masowe usuwanie", QString("Czy na pewno chcesz usunąć bezpowrotnie %1 pozycji z biblioteki?").arg(wybraneIds.size())) == QMessageBox::Yes) {
-                    if (dbManager.usunWieleMultimediow(wybraneIds)) {
-                        zaladujDaneDoDrzewa();
-                        emit zadaniePowrotuDoDashboardu();
-                        emit drzewoZmieniloBaze();
+                    if (!appController.usunWieleMultimediow(wybraneIds)) {
+                        QMessageBox::critical(this, "Błąd", "Nie udało się przenieść elementów.");
                     }
                 }
             });
@@ -282,9 +279,8 @@ void PanelNawigacjiWidget::pokazMenuDrzewa(const QPoint &pos) {
 
                     if (msgBox.clickedButton() == btnAnuluj) return;
                     bool usunPowiazane = (msgBox.clickedButton() == btnUsunWszystko);
-                    if (dbManager.usunKategorie(idKat, usunPowiazane)) {
-                        zaladujDaneDoDrzewa();
-                        emit drzewoZmieniloBaze();
+                    if (appController.usunKategorie(idKat, usunPowiazane)) {
+                        QMessageBox::critical(this, "Błąd", "Nie udało się przenieść elementów.");
                     }
                 });
             }
@@ -309,9 +305,8 @@ void PanelNawigacjiWidget::pokazMenuDrzewa(const QPoint &pos) {
 
                     if (msgBox.clickedButton() == btnAnuluj) return;
                     bool usunPowiazane = (msgBox.clickedButton() == btnUsunWszystko);
-                    if (dbManager.usunPlatforme(idPlat, usunPowiazane)) {
-                        zaladujDaneDoDrzewa();
-                        emit drzewoZmieniloBaze();
+                    if (!appController.usunPlatforme(idPlat, usunPowiazane)) {
+                        QMessageBox::critical(this, "Błąd", "Nie udało się przenieść elementów.");
                     }
                 });
             }

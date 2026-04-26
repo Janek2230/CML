@@ -19,7 +19,7 @@ private slots:
     void onBtnUsunClicked();
 
 private:
-    DatabaseManager& dbManager;
+    AppController& appController;
     QTableWidget *tabela;
     QPushButton *btnDodaj;
     QPushButton *btnEdytuj;

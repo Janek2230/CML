@@ -32,14 +32,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionKategorie, &QAction::triggered, this, [this]() {
         KategorieDialog dialog(appController.getDb(), this);
         dialog.exec();
-        panelNawigacji->odswiezDrzewo();
         dashboardWidget->odswiezStatystykiGlowne();
     });
 
     connect(ui->actionPlatformy, &QAction::triggered, this, [this]() {
         PlatformyDialog dialog(appController.getDb(), this);
         dialog.exec();
-        panelNawigacji->odswiezDrzewo();
         dashboardWidget->odswiezStatystykiGlowne();
     });
 
@@ -81,7 +79,6 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     connect(formularzWidget, &MultimediaFormWidget::daneZapisane, this, [this]() {
-        panelNawigacji->odswiezDrzewo();
         dashboardWidget->odswiezStatystykiGlowne();
         ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
     });
@@ -91,13 +88,17 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     connect(szczegolyWidget, &SzczegolyWidget::daneZaktualizowane, this, [this]() {
-        panelNawigacji->odswiezDrzewo();
         dashboardWidget->odswiezStatystykiGlowne();
     });
 
     connect(dashboardWidget, &DashboardWidget::zadaniePokazaniaSzczegolow, this, [this](int id) {
         pokazSzczegolyMedium(id);
         ui->statusbar->showMessage("Przełączono na szczegóły!", 3000);
+    });
+
+    connect(&appController, &AppController::daneZmienione, this, [this]() {
+        panelNawigacji->odswiezDrzewo();
+        dashboardWidget->odswiezStatystykiGlowne();
     });
 
 

@@ -51,13 +51,13 @@ KategorieDialog::~KategorieDialog() {}
 
 void KategorieDialog::wypelnijTabele() {
     tabela->setRowCount(0);
-    QSqlQuery q("SELECT id, nazwa, jednostka FROM kategorie ORDER BY nazwa");
+    auto kategorie = appController.pobierzPelneKategorie();
     int wiersz = 0;
-    while(q.next()) {
+    for(const auto& kat : kategorie) {
         tabela->insertRow(wiersz);
-        tabela->setItem(wiersz, 0, new QTableWidgetItem(q.value(0).toString()));
-        tabela->setItem(wiersz, 1, new QTableWidgetItem(q.value(1).toString()));
-        tabela->setItem(wiersz, 2, new QTableWidgetItem(q.value(2).toString()));
+        tabela->setItem(wiersz, 0, new QTableWidgetItem(QString::number(kat.id)));
+        tabela->setItem(wiersz, 1, new QTableWidgetItem(kat.nazwa));
+        tabela->setItem(wiersz, 2, new QTableWidgetItem(kat.jednostka));
         wiersz++;
     }
 }
@@ -90,7 +90,7 @@ void KategorieDialog::onBtnDodajClicked() {
 
         if (!nazwa.isEmpty()) {
             if (jednostka.isEmpty()) jednostka = "szt.";
-            if (dbManager.dodajKategorie(nazwa, jednostka) > 0) {
+            if (appController.dodajKategorie(nazwa, jednostka)) {
                 wypelnijTabele();
             } else {
                 QMessageBox::warning(this, "Błąd", "Baza odrzuciła kategorię.");
@@ -132,7 +132,7 @@ void KategorieDialog::onBtnEdytujClicked() {
     connect(&bb, &QDialogButtonBox::rejected, &editDialog, &QDialog::reject);
 
     if (editDialog.exec() == QDialog::Accepted && !editNazwa.text().trimmed().isEmpty()) {
-        if (dbManager.aktualizujKategorie(idKat, editNazwa.text().trimmed(), comboJednostka.currentText().trimmed())) {
+        if (appController.aktualizujKategorie(idKat, editNazwa.text().trimmed(), comboJednostka.currentText().trimmed())) {
             wypelnijTabele();
         }
     }
@@ -158,7 +158,7 @@ void KategorieDialog::onBtnUsunClicked() {
     if (msgBox.clickedButton() == btnAnuluj) return;
 
     bool usunZDetalami = (msgBox.clickedButton() == btnUsunWszystko);
-    if (dbManager.usunKategorie(idKat, usunZDetalami)) {
+    if (appController.usunKategorie(idKat, usunZDetalami)) {
         wypelnijTabele();
     }
 }

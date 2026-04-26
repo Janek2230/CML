@@ -62,7 +62,7 @@ void PlatformyDialog::onBtnDodajClicked() {
     bool ok;
     QString nowaNazwa = QInputDialog::getText(this, "Nowa Platforma", "Nazwa:", QLineEdit::Normal, "", &ok);
     if (ok && !nowaNazwa.trimmed().isEmpty()) {
-        if (dbManager.dodajPlatforme(nowaNazwa.trimmed()) > 0) {
+        if (appController.dodajPlatforme(nowaNazwa.trimmed()) > 0) {
             wypelnijTabele();
         } else {
             QMessageBox::warning(this, "Błąd", "Nie udało się dodać platformy.");
@@ -84,7 +84,7 @@ void PlatformyDialog::onBtnEdytujClicked() {
     QString nowaNazwa = QInputDialog::getText(this, "Edytuj Platformę", "Nazwa:", QLineEdit::Normal, obecnaNazwa, &ok);
 
     if (ok && !nowaNazwa.trimmed().isEmpty()) {
-        if (dbManager.aktualizujPlatforme(idPlat, nowaNazwa.trimmed())) {
+        if (appController.aktualizujPlatforme(idPlat, nowaNazwa.trimmed())) {
             wypelnijTabele();
         }
     }
@@ -110,7 +110,7 @@ void PlatformyDialog::onBtnUsunClicked() {
     if (msgBox.clickedButton() == btnAnuluj) return;
 
     bool usunZDetalami = (msgBox.clickedButton() == btnUsunWszystko);
-    if (dbManager.usunPlatforme(idPlat, usunZDetalami)) {
+    if (appController.usunPlatforme(idPlat, usunZDetalami)) {
         wypelnijTabele();
     }
 }

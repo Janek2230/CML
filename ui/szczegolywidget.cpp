@@ -10,9 +10,7 @@ SzczegolyWidget::SzczegolyWidget(DatabaseManager& db, QWidget *parent) :
     ui->setupUi(this);
 
     if (ui->comboDetaleStatus->count() == 0) {
-        ui->comboDetaleStatus->addItem("Planowane");
-        ui->comboDetaleStatus->addItem("W trakcie");
-        ui->comboDetaleStatus->addItem("Porzucone");
+        ui->comboDetaleStatus->addItems(appController.pobierzDostepneStatusy());
     }
 
     connect(ui->spinDetaleAktualny, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int val) {
