@@ -1,12 +1,3 @@
--- 1. Zrzucamy bombę na domyślny schemat (usuwa wszystko: tabele, widoki, relacje, typy ENUM)
-DROP SCHEMA public CASCADE;
-
--- 2. Odbudowujemy pusty schemat
-CREATE SCHEMA public;
-
--- 3. Przywracamy uprawnienia (żeby baza znowu wpuszczała Twoją aplikację na standardowych prawach)
-GRANT ALL ON SCHEMA public TO postgres;
-GRANT ALL ON SCHEMA public TO public;
 
 -- 1. Tabela słownikowa dla platform (zostaje bez zmian)
 CREATE TABLE platformy (

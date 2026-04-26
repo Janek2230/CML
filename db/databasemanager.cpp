@@ -449,6 +449,7 @@ QList<StatystykaAktywnosci> DatabaseManager::pobierzSuroweDaneStatystyk(int zakr
         JOIN podejscia p ON d.id_podejscia = p.id
         JOIN multimedia m ON p.id_medium = m.id
         WHERE COALESCE(d.czas_zakonczenia, d.czas_rozpoczecia, CURRENT_TIMESTAMP) >= CURRENT_DATE - INTERVAL '%3 days'
+          AND COALESCE(d.czas_zakonczenia, d.czas_rozpoczecia, CURRENT_TIMESTAMP) <= CURRENT_TIMESTAMP
         GROUP BY kategoria_czasu, m.tytul
         ORDER BY kategoria_czasu ASC
     )").arg(formatDaty).arg(funkcjaAgregujaca).arg(zakresDni);
