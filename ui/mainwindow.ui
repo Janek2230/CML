@@ -783,58 +783,7 @@
         </layout>
        </widget>
        <widget class="QWidget" name="page_4">
-        <layout class="QGridLayout" name="gridLayout_7">
-         <item row="0" column="0">
-          <layout class="QHBoxLayout" name="horizontalLayout_11">
-           <item>
-            <widget class="QComboBox" name="comboZakresCzasu">
-             <item>
-              <property name="text">
-               <string>Ostatnie 7 dni</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Ostatnie 30 dni</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Ten rok</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Poprzedni rok</string>
-              </property>
-             </item>
-            </widget>
-           </item>
-           <item>
-            <widget class="QComboBox" name="comboMetryka">
-             <item>
-              <property name="text">
-               <string>Spędzony czas [h]</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Liczba sesji</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Przyrost jednostek</string>
-              </property>
-             </item>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item row="1" column="0">
-          <widget class="QChartView" name="wykresSlupkowyAktywnosci"/>
-         </item>
-        </layout>
+        <layout class="QGridLayout" name="gridLayout_7"/>
        </widget>
       </widget>
      </widget>
@@ -861,7 +810,7 @@
      <x>0</x>
      <y>0</y>
      <width>1101</width>
-     <height>25</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">

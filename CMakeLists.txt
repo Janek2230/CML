@@ -19,6 +19,12 @@ qt_add_executable(CML
     ui/kategoriedialog.h ui/kategoriedialog.cpp
     ui/platformydialog.h ui/platformydialog.cpp
 
+    ui/statisticswidget.cpp
+    ui/statisticswidget.cpp
+    ui/statisticswidget.cpp
+    ui/statisticswidget.h
+    ui/statisticswidget.ui
+
 )
 
 target_include_directories(CML
