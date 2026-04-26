@@ -49,8 +49,8 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     connect(ui->btnPowrot, &QPushButton::clicked, this, [this]() {
-        ui->daneSzczegolowe->setCurrentWidget(ui->page);
-        odswiezStatystykiGlowne();
+        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
+        dashboardWidget->odswiezStatystykiGlowne();
     });
 
 
@@ -78,7 +78,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->actionStronaGlowna, &QAction::triggered, this, [this]() {
             ui->panelKategorii->show();
-            ui->daneSzczegolowe->setCurrentWidget(ui->page);
+            ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
             ui->comboWidokStatystyk->hide();
     });
 
@@ -96,7 +96,7 @@ MainWindow::MainWindow(QWidget *parent)
     // --- START APLIKACJI ---
     if (dbManager.openConnection()) {
         zaladujDaneDoDrzewa();
-        odswiezStatystykiGlowne();
+        dashboardWidget->odswiezStatystykiGlowne();
         ui->daneSzczegolowe->setCurrentIndex(0);
     } else {
         qDebug() << "Błąd połączenia z bazą danych.";
@@ -113,14 +113,14 @@ MainWindow::MainWindow(QWidget *parent)
     connect(formularzWidget, &MultimediaFormWidget::daneZapisane, this, [this]() {
         listaMultimediow = dbManager.getAllMultimedia();
         zaladujDaneDoDrzewa();
-        odswiezStatystykiGlowne();
+        dashboardWidget->odswiezStatystykiGlowne();
         // Wracamy do widoku domyślnego
-        ui->daneSzczegolowe->setCurrentWidget(ui->page);
+        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
     });
 
     // Kiedy formularz krzyknie, że go anulowano:
     connect(formularzWidget, &MultimediaFormWidget::formularzAnulowany, this, [this]() {
-        ui->daneSzczegolowe->setCurrentWidget(ui->page);
+        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
     });
 
     connect(ui->btnDodajMedium, &QPushButton::clicked, this, [this]() {
@@ -134,7 +134,16 @@ MainWindow::MainWindow(QWidget *parent)
     connect(szczegolyWidget, &SzczegolyWidget::daneZaktualizowane, this, [this]() {
         listaMultimediow = dbManager.getAllMultimedia(); // Przeładowanie po zmianie
         zaladujDaneDoDrzewa();
-        odswiezStatystykiGlowne();
+        dashboardWidget->odswiezStatystykiGlowne();
+    });
+
+    dashboardWidget = new DashboardWidget(dbManager, this);
+    ui->daneSzczegolowe->addWidget(dashboardWidget);
+
+    // Jeśli dashboard krzyczy, że trzeba pokazać szczegóły (bo kliknięto losowanie lub kafel), MainWindow to robi
+    connect(dashboardWidget, &DashboardWidget::zadaniePokazaniaSzczegolow, this, [this](int id) {
+        pokazSzczegolyMedium(id);
+        ui->statusbar->showMessage("Przełączono na szczegóły!", 3000); // Mały bonus dla wylosowanego
     });
 
 }
@@ -149,27 +158,12 @@ MainWindow::~MainWindow()
 // METODY LOGIKI BIZNESOWEJ I UI
 // ==========================================================
 
-
-void MainWindow::onBtnLosujClicked() {
-    QList<int> doWylosowania;
-    for (const auto& m : std::as_const(listaMultimediow)) {
-        if (m->getStatus() == "Planowane") doWylosowania.append(m->getId());
-    }
-    if (doWylosowania.isEmpty()) {
-        QMessageBox::information(this, "Pusto!", "Nie masz żadnych 'Planowanych' pozycji.");
-        return;
-    }
-    int wylosowaneId = doWylosowania.at(QRandomGenerator::global()->bounded(doWylosowania.size()));
-    pokazSzczegolyMedium(wylosowaneId);
-    ui->statusbar->showMessage("Oto twoje wylosowane przeznaczenie!", 4000);
-}
-
 void MainWindow::onWybieranieElementuDrzewa(QTreeWidgetItem *item, int column) {
     if (!item || item->parent() == nullptr) {
         if (item) item->setExpanded(!item->isExpanded());
         if (ui->daneSzczegolowe->currentWidget() != ui->page) {
-            odswiezStatystykiGlowne();
-            ui->daneSzczegolowe->setCurrentWidget(ui->page);
+            dashboardWidget->odswiezStatystykiGlowne();
+            ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
         }
         return;
     }
@@ -275,62 +269,6 @@ void MainWindow::zaladujDaneDoDrzewa() {
     ui->kategorie->expandAll();
 }
 
-void MainWindow::odswiezStatystykiGlowne() {
-    auto stats = dbManager.getGlobalStats();
-    if (stats.value("Suma", 0) == 0) return;
-
-    QPieSeries *series = new QPieSeries();
-    series->append("Planowane", stats.value("Planowane", 0));
-    series->append("W trakcie", stats.value("W trakcie", 0));
-    series->append("Ukończone", stats.value("Ukończone", 0));
-    series->append("Porzucone", stats.value("Porzucone", 0));
-
-    series->slices().at(0)->setColor(QColor("#7f8c8d"));
-    series->slices().at(1)->setColor(QColor("#2980b9"));
-    series->slices().at(2)->setColor(QColor("#27ae60"));
-    series->slices().at(3)->setColor(QColor("#c0392b"));
-
-    for(auto slice : series->slices()) {
-        if (slice->value() > 0) {
-            slice->setLabelVisible(true);
-            slice->setLabel(QString("%1: %2").arg(slice->label()).arg(slice->value()));
-        }
-    }
-
-    QChart *chart = new QChart();
-    chart->addSeries(series);
-    chart->setTitle("Status Biblioteki");
-    chart->legend()->hide();
-    chart->setAnimationOptions(QChart::SeriesAnimations);
-
-    ui->wykresOwalny->setChart(chart);
-    ui->wykresOwalny->setRenderHint(QPainter::Antialiasing);
-
-    QLayoutItem *child;
-    while ((child = ui->gridOstatnie->takeAt(0)) != nullptr) {
-        delete child->widget();
-        delete child;
-    }
-
-    QList<int> ostatnieId = dbManager.pobierzOstatnioAktywne(6);
-    int wiersz = 0, kolumna = 0;
-
-    for (int id : ostatnieId) {
-        for (const auto& m : std::as_const(listaMultimediow)) {
-            if (m->getId() == id) {
-                QPushButton *btnKafel = new QPushButton(m->getTytul(), this);
-                btnKafel->setMinimumHeight(50);
-                connect(btnKafel, &QPushButton::clicked, this, [this, id]() { pokazSzczegolyMedium(id); });
-                ui->gridOstatnie->addWidget(btnKafel, wiersz, kolumna);
-                kolumna++;
-                if (kolumna > 1) { kolumna = 0; wiersz++; }
-                break;
-            }
-        }
-    }
-}
-
-
 void MainWindow::usunWybraneMedium(int id) {
     QMessageBox::StandardButton reply;
     reply = QMessageBox::question(this, "Potwierdzenie",
@@ -413,7 +351,7 @@ void MainWindow::pokazMenuDrzewa(const QPoint &pos) {
                     if (dbManager.usunWieleMultimediow(wybraneIds)) {
                         listaMultimediow = dbManager.getAllMultimedia();
                         zaladujDaneDoDrzewa();
-                        odswiezStatystykiGlowne();
+                        dashboardWidget->odswiezStatystykiGlowne();
                         ui->daneSzczegolowe->setCurrentIndex(0); // Uciekamy na bezpieczny ekran
                         ui->statusbar->showMessage(QString("Skasowano %1 elementów.").arg(wybraneIds.size()), 4000);
                     } else {
@@ -574,7 +512,7 @@ void MainWindow::pokazMenuDrzewa(const QPoint &pos) {
                     if (dbManager.usunKategorie(idKat, usunPowiazane)) {
                         listaMultimediow = dbManager.getAllMultimedia(); // Pełne przeładowanie bo usunęliśmy elementy
                         zaladujDaneDoDrzewa();
-                        odswiezStatystykiGlowne();
+                        dashboardWidget->odswiezStatystykiGlowne();
                         ui->statusbar->showMessage("Kategoria została usunięta.", 4000);
                     } else {
                         QMessageBox::critical(this, "Błąd", "Nie udało się usunąć kategorii. Baza odrzuciła transakcję.");
@@ -620,7 +558,7 @@ void MainWindow::pokazMenuDrzewa(const QPoint &pos) {
                     if (dbManager.usunPlatforme(idPlat, usunPowiazane)) {
                         listaMultimediow = dbManager.getAllMultimedia();
                         zaladujDaneDoDrzewa();
-                        odswiezStatystykiGlowne();
+                        dashboardWidget->odswiezStatystykiGlowne();
                         ui->statusbar->showMessage("Platforma została usunięta.", 4000);
                     } else {
                         QMessageBox::critical(this, "Błąd", "Nie udało się usunąć platformy. Baza odrzuciła transakcję.");
@@ -696,7 +634,7 @@ void MainWindow::pokazMenuDrzewa(const QPoint &pos) {
                 if (dbManager.usunMedium(id)) {
                     listaMultimediow = dbManager.getAllMultimedia();
                     zaladujDaneDoDrzewa();
-                    odswiezStatystykiGlowne();
+                    dashboardWidget->odswiezStatystykiGlowne();
                     ui->daneSzczegolowe->setCurrentIndex(0);
                 }
             }
