@@ -48,6 +48,7 @@ void MultimediaFormWidget::przygotujFormularz(int idMedium, int idDomyslnejKateg
         czyTrybEdycji = true;
         idEdytowanegoMedium = idMedium;
         ui->btnPotwierdzDodaj->setText("Zapisz zmiany");
+        auto listaMultimediow = dbManager.getAllMultimedia();
         for (const auto& m : std::as_const(listaMultimediow)) {
             if (m->getId() == idMedium) {
                 ui->editNowyTytul->setText(m->getTytul());
@@ -149,7 +150,6 @@ void MultimediaFormWidget::onBtnSzybkaPlatformaClicked() {
             uzupelnijComboBoxy();
             int index = ui->comboNowyTyp->findData(noweId);
             if (index != -1) ui->comboNowyTyp->setCurrentIndex(index);
-            ui->statusbar->showMessage("Dodano i wybrano nową platformę", 3000);
         } else {
             QMessageBox::warning(this, "Błąd", "Nie udało się dodać platformy do bazy.");
         }
@@ -184,8 +184,14 @@ void MultimediaFormWidget::onBtnSzybkaKategoriaClicked() {
             uzupelnijComboBoxy();
             int index = ui->comboNowaKategoria->findData(noweId);
             if (index != -1) ui->comboNowaKategoria->setCurrentIndex(index);
-            ui->statusbar->showMessage("Dodano kategorię!", 3000);
         }
+    }
+}
+
+void MultimediaFormWidget::onComboNowaKategoriaChanged(int index) {
+    if (index >= 0) {
+        QString jednostka = ui->comboNowaKategoria->itemData(index, Qt::UserRole + 1).toString();
+        ui->labJednostka->setText(jednostka.isEmpty() ? "Cel:" : "Cel (" + jednostka + "):");
     }
 }
 
