@@ -60,14 +60,13 @@ void DashboardWidget::odswiezStatystykiGlowne() {
     QList<int> ostatnieId = dbManager.pobierzOstatnioAktywne(6);
     int wiersz = 0, kolumna = 0;
 
-    auto lista = dbManager.getAllMultimedia(); // Brute-force pobranie tytułów
+    auto lista = dbManager.getAllMultimedia();
 
     for (int id : ostatnieId) {
         for (const auto& m : lista) {
             if (m->getId() == id) {
                 QPushButton *btnKafel = new QPushButton(m->getTytul(), this);
                 btnKafel->setMinimumHeight(50);
-                // Emitujemy sygnał, zamiast wołać bezposrednio pokazSzczegolyMedium
                 connect(btnKafel, &QPushButton::clicked, this, [this, id]() { emit zadaniePokazaniaSzczegolow(id); });
                 ui->gridOstatnie->addWidget(btnKafel, wiersz, kolumna);
                 kolumna++;
@@ -90,6 +89,5 @@ void DashboardWidget::onBtnLosujClicked() {
     }
     int wylosowaneId = doWylosowania.at(QRandomGenerator::global()->bounded(doWylosowania.size()));
 
-    // Zamiast zmieniać widok, emitujemy sygnał, że wylosowano grę
     emit zadaniePokazaniaSzczegolow(wylosowaneId);
 }

@@ -7,7 +7,7 @@
 #include <QDialog>
 #include <QFormLayout>
 #include <QDialogButtonBox>
-#include <utility> // dla std::as_const
+#include <utility>
 
 MultimediaFormWidget::MultimediaFormWidget(DatabaseManager& db, QWidget *parent) :
     QWidget(parent),
@@ -19,7 +19,7 @@ MultimediaFormWidget::MultimediaFormWidget(DatabaseManager& db, QWidget *parent)
     connect(ui->btnAnulujDodawanie, &QPushButton::clicked, this, [this]() {
         czyTrybEdycji = false;
         idEdytowanegoMedium = -1;
-        emit formularzAnulowany(); // Krzyczymy, że user anulował
+        emit formularzAnulowany();
     });
 
     connect(ui->comboNowaKategoria, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MultimediaFormWidget::onComboNowaKategoriaChanged);

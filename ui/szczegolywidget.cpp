@@ -9,14 +9,12 @@ SzczegolyWidget::SzczegolyWidget(DatabaseManager& db, QWidget *parent) :
 {
     ui->setupUi(this);
 
-    // Dodajemy opcje, których zapomniałeś przenieść do UI
     if (ui->comboDetaleStatus->count() == 0) {
         ui->comboDetaleStatus->addItem("Planowane");
         ui->comboDetaleStatus->addItem("W trakcie");
         ui->comboDetaleStatus->addItem("Porzucone");
     }
 
-    // Twoje lambdy od przeliczania paska postępu - wreszcie na swoim miejscu!
     connect(ui->spinDetaleAktualny, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int val) {
         int maxVal = ui->spinDetaleDocelowy->value();
         if (maxVal > 0) {
@@ -37,7 +35,6 @@ SzczegolyWidget::SzczegolyWidget(DatabaseManager& db, QWidget *parent) :
         }
     });
 
-    // Podpięcie przycisków
     connect(ui->btnDetaleZapisz, &QPushButton::clicked, this, &SzczegolyWidget::onBtnZapiszClicked);
     connect(ui->btnZacznijOdNowa, &QPushButton::clicked, this, &SzczegolyWidget::onBtnZacznijOdNowaClicked);
 }
@@ -50,7 +47,6 @@ SzczegolyWidget::~SzczegolyWidget()
 void SzczegolyWidget::ustawMedium(int idMedium) {
     aktualneIdMedium = idMedium;
 
-    // Pobieramy świeże dane (Nadal pobierasz całą listę, co jest zbrodnią optymalizacyjną, ale zadziała)
     auto lista = dbManager.getAllMultimedia();
     for (const auto& medium : lista) {
         if (medium->getId() == idMedium) {
@@ -121,8 +117,8 @@ void SzczegolyWidget::onBtnZapiszClicked() {
     }
 
     if (dbManager.aktualizujPostep(aktualneIdMedium, nowyStatus, nowaAktualna, nowaDocelowa, ocena)) {
-        ustawMedium(aktualneIdMedium); // Odśwież widok lokalnie
-        emit daneZaktualizowane();     // Krzyczymy do MainWindow
+        ustawMedium(aktualneIdMedium);
+        emit daneZaktualizowane();
         QMessageBox::information(this, "Sukces", "Zapisano zmiany!");
     }
 }
@@ -137,8 +133,8 @@ void SzczegolyWidget::onBtnZacznijOdNowaClicked() {
     }
 
     if (dbManager.zacznijOdNowa(aktualneIdMedium)) {
-        ustawMedium(aktualneIdMedium); // Odśwież widok lokalnie
-        emit daneZaktualizowane();     // Krzyczymy do MainWindow
+        ustawMedium(aktualneIdMedium);
+        emit daneZaktualizowane();
         QMessageBox::information(this, "Sukces", "Licznik wyzerowany. Lecimy od nowa!");
     }
 }

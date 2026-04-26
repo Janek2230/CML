@@ -51,7 +51,6 @@ KategorieDialog::~KategorieDialog() {}
 
 void KategorieDialog::wypelnijTabele() {
     tabela->setRowCount(0);
-    // Skoro DatabaseManager trzyma połączenie jako domyślne dla aplikacji, to QSqlQuery zadziała idealnie
     QSqlQuery q("SELECT id, nazwa, jednostka FROM kategorie ORDER BY nazwa");
     int wiersz = 0;
     while(q.next()) {
@@ -92,7 +91,7 @@ void KategorieDialog::onBtnDodajClicked() {
         if (!nazwa.isEmpty()) {
             if (jednostka.isEmpty()) jednostka = "szt.";
             if (dbManager.dodajKategorie(nazwa, jednostka) > 0) {
-                wypelnijTabele(); // Odświeżamy tabelę w naszym nowym oknie
+                wypelnijTabele();
             } else {
                 QMessageBox::warning(this, "Błąd", "Baza odrzuciła kategorię.");
             }

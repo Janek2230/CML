@@ -16,19 +16,14 @@ public:
     explicit MultimediaFormWidget(DatabaseManager& db, QWidget *parent = nullptr);
     ~MultimediaFormWidget();
 
-    // Metoda zastępująca Twoje stare przygotujFormularz z MainWindow
     void przygotujFormularz(int idMedium = -1, int idDomyslnejKategorii = 0, int idDomyslnejPlatformy = 0);
 
 signals:
-    // SYGNAŁY - formularz krzyczy, że coś się stało
     void formularzAnulowany();
-    void daneZapisane(); // MainWindow tego posłucha, żeby odświeżyć drzewo
+    void daneZapisane();
 
 private slots:
-    // Slot podłączony pod przycisk "Zapisz/Dodaj"
     void onBtnPotwierdzDodajClicked();
-
-    // Slot podłączony pod zmianę kategorii, żeby zmienić jednostkę w etykiecie
     void onComboNowaKategoriaChanged(int index);
 
     void onBtnSzybkaPlatformaClicked();
@@ -45,4 +40,4 @@ private:
 
 };
 
-#endif // MULTIMEDIAFORMWIDGET_H
+#endif

@@ -34,7 +34,6 @@ QMap<int, QString> DatabaseManager::getCategories() {
 QList<std::shared_ptr<Multimedia>> DatabaseManager::getAllMultimedia() {
     QList<std::shared_ptr<Multimedia>> list;
 
-    // Zauważ, wyciągamy MAX daty z dziennika lub datę dodania jako 'ostatnia_aktywnosc'
     QSqlQuery query(
         "SELECT DISTINCT ON (m.id) "
         "m.id, m.tytul, p.status, k.id, k.jednostka, "
@@ -69,11 +68,9 @@ QList<std::shared_ptr<Multimedia>> DatabaseManager::getAllMultimedia() {
     return list;
 }
 
-// W databasemanager.h dodaj: QMap<QString, int> getGlobalStats();
 
 QMap<QString, int> DatabaseManager::getGlobalStats() {
     QMap<QString, int> stats;
-    // Podzapytanie bierze tylko najświeższe podejścia
     QSqlQuery query(
         "SELECT status, COUNT(*) FROM ("
         "  SELECT DISTINCT ON (id_medium) status "
@@ -97,7 +94,6 @@ QMap<QString, int> DatabaseManager::getGlobalStats() {
 bool DatabaseManager::aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa, int ocena) {
     db.transaction();
 
-    // 1. Pobieramy id i stary stan najnowszego podejscia
     QSqlQuery qSel(db);
     qSel.prepare("SELECT id, wartosc_aktualna, data_rozpoczecia FROM podejscia WHERE id_medium = :id ORDER BY numer_podejscia DESC LIMIT 1");
     qSel.bindValue(":id", idMedium);
@@ -109,7 +105,6 @@ bool DatabaseManager::aktualizujPostep(int idMedium, const QString& status, int 
 
     int przyrost = aktualna - staraWartosc;
 
-    // 2. Aktualizacja podejścia
     QSqlQuery qP(db);
     QString qpSql = "UPDATE podejscia SET wartosc_aktualna = :akt, wartosc_docelowa = :doc, status = :status, ocena = :ocena";
 
@@ -128,7 +123,6 @@ bool DatabaseManager::aktualizujPostep(int idMedium, const QString& status, int 
     qP.bindValue(":id", idPodejscia);
     if (!qP.exec()) { db.rollback(); return false; }
 
-    // 3. Jeśli był postęp, dodajemy do dziennika
     if (przyrost != 0) {
         QSqlQuery qLog(db);
         qLog.prepare("INSERT INTO dziennik_aktywnosci (id_podejscia, przyrost_jednostek) VALUES (:id, :przyrost)");
@@ -166,9 +160,7 @@ bool DatabaseManager::zacznijOdNowa(int idMedium) {
     return true;
 }
 
-// DODAWANIE
 
-// Dodawanie: naprawiony błąd z jednostką i uwzględnione id_platformy
 bool DatabaseManager::dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel) {
     db.transaction();
 
@@ -195,7 +187,6 @@ bool DatabaseManager::dodajNoweMedium(const QString &tytul, int idKat, int idPla
 
 QList<QPair<int, QString>> DatabaseManager::pobierzKategorie() {
     QList<QPair<int, QString>> lista;
-    // Pobieramy ID i nazwę, sortujemy, żeby "Brak kategorii" (zazwyczaj ID 0 lub 1) był na górze
     QSqlQuery query("SELECT id, nazwa FROM kategorie ORDER BY id");
     while(query.next()) {
         lista.append({query.value(0).toInt(), query.value(1).toString()});
@@ -212,13 +203,10 @@ QList<QPair<int, QString>> DatabaseManager::pobierzPlatformy() {
     return lista;
 }
 
-// Podobnie naprawiamy aktualizację
 bool DatabaseManager::aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel) {
     db.transaction();
     QSqlQuery query(db);
 
-    // Wywalamy data_ostatniej_edycji.
-    // Dodajemy QMetaType::fromType<int>() żeby kompilator przestał rzucać tymi żółtymi ostrzeżeniami o deprecjacji.
     query.prepare("UPDATE multimedia SET tytul = :tytul, id_kategorii = :idKat, id_platformy = :idPlat WHERE id = :id");
     query.bindValue(":tytul", tytul);
     query.bindValue(":idKat", idKat > 0 ? QVariant(idKat) : QVariant(QMetaType::fromType<int>()));
@@ -232,7 +220,6 @@ bool DatabaseManager::aktualizujDaneMedium(int id, const QString &tytul, int idK
     }
 
     QSqlQuery query2(db);
-    // Tabela nazywa się podejscia. Aktualizujemy cel TYLKO dla najnowszego podejścia.
     query2.prepare("UPDATE podejscia SET wartosc_docelowa = :cel WHERE id = (SELECT id FROM podejscia WHERE id_medium = :id ORDER BY numer_podejscia DESC LIMIT 1)");
     query2.bindValue(":cel", cel);
     query2.bindValue(":id", id);
@@ -272,14 +259,12 @@ int DatabaseManager::dodajPlatforme(const QString &nazwa) {
 
 QStringList DatabaseManager::pobierzUnikalneJednostki() {
     QStringList lista;
-    // Pobieramy tylko unikalne wartości, żeby na liście nie było 50 razy "strony"
     QSqlQuery query("SELECT DISTINCT jednostka FROM kategorie WHERE jednostka IS NOT NULL AND jednostka != ''");
 
     while (query.next()) {
         lista.append(query.value(0).toString());
     }
 
-    // Jeśli to pusta baza, dajemy pakiet startowy
     if (lista.isEmpty()) {
         lista << "szt." << "strony" << "odcinki" << "seanse" << "godziny";
     }
@@ -288,7 +273,6 @@ QStringList DatabaseManager::pobierzUnikalneJednostki() {
 
 bool DatabaseManager::aktualizujKategorie(int id, const QString &nazwa, const QString &jednostka) {
     QSqlQuery query;
-    // Aktualizujemy kategorie, tak jak nazwa funkcji wskazuje.
     query.prepare("UPDATE kategorie SET nazwa = :nazwa, jednostka = :jednostka WHERE id = :id");
     query.bindValue(":nazwa", nazwa);
     query.bindValue(":jednostka", jednostka);
@@ -340,7 +324,6 @@ QMap<int, QString> DatabaseManager::pobierzSlownikJednostek() {
 QList<int> DatabaseManager::pobierzOstatnioAktywne(int limit) {
     QList<int> lista;
     QSqlQuery query;
-    // Sortujemy po dacie ostatniej edycji, którą dodaliśmy wcześniej
     query.prepare(R"(
         SELECT m.id
         FROM multimedia m
@@ -433,15 +416,13 @@ bool DatabaseManager::usunPlatforme(int idPlat, bool usunPowiazane) {
     return true;
 }
 
-// Zwraca listę struktur lub wariantów, np: Data (jako string), Nazwa Kategorii, Wartość
 QList<QVariantMap> DatabaseManager::pobierzDaneDoWykresu(int zakresDni, const QString& metryka) {
     QList<QVariantMap> wyniki;
     QSqlQuery query(db);
 
-    // Bezpieczny wybór funkcji agregującej
     QString funkcjaAgregujaca;
     if (metryka == "czas") {
-        funkcjaAgregujaca = "SUM(d.czas_trwania_sekundy) / 3600.0"; // Konwersja na godziny
+        funkcjaAgregujaca = "SUM(d.czas_trwania_sekundy) / 3600.0";
     } else if (metryka == "sesje") {
         funkcjaAgregujaca = "COUNT(d.id)";
     } else if (metryka == "jednostki") {
@@ -450,10 +431,8 @@ QList<QVariantMap> DatabaseManager::pobierzDaneDoWykresu(int zakresDni, const QS
         return wyniki;
     }
 
-    // Dynamiczny format daty. Dla > 60 dni grupujemy po miesiącach, inaczej po dniach.
     QString formatDaty = (zakresDni > 60) ? "'YYYY-MM'" : "'MM-DD'";
 
-    // Grupujemy po tytule medium!
     QString sql = QString(R"(
         SELECT
             TO_CHAR(d.data_wpisu, %1) as kategoria_czasu,
@@ -475,7 +454,7 @@ QList<QVariantMap> DatabaseManager::pobierzDaneDoWykresu(int zakresDni, const QS
     while (query.next()) {
         QVariantMap rzad;
         rzad["data"] = query.value(0).toString();
-        rzad["seria"] = query.value(1).toString(); // Zmieniono z kategoria na seria
+        rzad["seria"] = query.value(1).toString();
         rzad["wartosc"] = query.value(2).toDouble();
         wyniki.append(rzad);
     }

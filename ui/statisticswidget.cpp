@@ -1,7 +1,6 @@
 #include "statisticswidget.h"
 #include "ui_statisticswidget.h"
 
-// Musisz tu dorzucić potrzebne nagłówki z QChart
 #include <QChartView>
 #include <QStackedBarSeries>
 #include <QBarSet>
@@ -11,11 +10,10 @@
 StatisticsWidget::StatisticsWidget(DatabaseManager& db, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::StatisticsWidget),
-    dbManager(db) // <- Zapisujemy referencję do bazy
+    dbManager(db)
 {
     ui->setupUi(this);
 
-    // KOD WYCIĘTY Z MAINWINDOW:
     ui->wykresSlupkowyAktywnosci->setMouseTracking(true);
     ui->wykresSlupkowyAktywnosci->viewport()->setMouseTracking(true);
     ui->wykresSlupkowyAktywnosci->viewport()->installEventFilter(this);
@@ -25,7 +23,6 @@ StatisticsWidget::StatisticsWidget(DatabaseManager& db, QWidget *parent) :
     etykietaTooltip->setAttribute(Qt::WA_TransparentForMouseEvents);
     etykietaTooltip->hide();
 
-    // Podłączenie comboboxów, które teraz żyją w tym pliku UI
     connect(ui->comboZakresCzasu, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &StatisticsWidget::odswiezWykresAktywnosci);
     connect(ui->comboMetryka, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &StatisticsWidget::odswiezWykresAktywnosci);
 
@@ -70,18 +67,12 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
         sumaGlobalna += wartosc;
     }
 
-    // --- NOWA LOGIKA: FILTROWANIE LOKALNE (DZIENNE) ---
-    // Koniec z patrzeniem na cały miesiąc. Oceniamy przydatność wartości w danym dniu.
-
-    // Zdefiniuj, co to jest "drobnostka" w skali jednego słupka (dnia).
-    // Jeżeli grasz np. 20 minut i uważasz to za odpadek, daj tu np. 0.5.
     double progDzienny = 0.5;
 
     QSet<QString> samodzielneSerie;
     QMap<QString, double> pozostaleWartosciDzien;
     QMap<QString, QStringList> pozostaleDetaleDzien;
 
-    // Krok 1: Przesiewamy dane dzień po dniu
     for (const QString& d : unikalneDaty) {
         for (auto it = mapaSerii.begin(); it != mapaSerii.end(); ++it) {
             QString nazwa = it.key();
@@ -90,21 +81,17 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
             if (val == 0.0) continue;
 
             if (val >= progDzienny) {
-                // Wartość jest na tyle duża, że dany tytuł zasługuje na własny kolor w legendzie
                 samodzielneSerie.insert(nazwa);
             } else {
-                // Wartość to drobnostka (np. 0.2h). Wrzucamy do szarego worka DLA TEGO KONKRETNEGO DNIA
                 pozostaleWartosciDzien[d] += val;
                 pozostaleDetaleDzien[d].append(QString("- %1: %2 %3").arg(nazwa).arg(QString::number(val, 'f', 1)).arg(jednostkaWykresu));
             }
         }
     }
 
-    // --- BUDOWANIE WYKRESU ---
     QStackedBarSeries *series = new QStackedBarSeries();
     QMap<QString, QStringList> tekstyTooltipow;
 
-    // 1. Generujemy normalne słupki dla tytułów, które chociaż raz w miesiącu przebiły próg
     for (const QString& nazwaSerii : samodzielneSerie) {
         QBarSet *set = new QBarSet(nazwaSerii);
         QStringList tooltipyDlaTejGry;
@@ -112,9 +99,6 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
         for (const QString& d : unikalneDaty) {
             double val = mapaSerii[nazwaSerii].value(d, 0.0);
 
-            // ZABEZPIECZENIE: Jeżeli w dany wtorek grałeś w ten tytuł poniżej progu,
-            // to jego czas trafił do "Pozostałych". Zatem tutaj musimy wyzerować jego własny słupek,
-            // żeby nie wyświetlał się dwa razy!
             if (val < progDzienny) {
                 val = 0.0;
             }
@@ -131,10 +115,9 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
         tekstyTooltipow.insert(nazwaSerii, tooltipyDlaTejGry);
     }
 
-    // 2. Dodajemy jeden zbiorczy worek na śmieci, jeśli cokolwiek się w nim znalazło
     if (!pozostaleWartosciDzien.isEmpty()) {
         QBarSet *setPozostale = new QBarSet("Pozostałe drobnostki");
-        setPozostale->setColor(QColor("#95a5a6")); // Zgniły szary na zgniłe dane
+        setPozostale->setColor(QColor("#95a5a6"));
         QStringList tooltipyDlaPozostalych;
 
         for (const QString& d : unikalneDaty) {
@@ -153,7 +136,6 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
         tekstyTooltipow.insert("Pozostałe drobnostki", tooltipyDlaPozostalych);
     }
 
-    // Tworzymy sam wykres...
     QChart *chart = new QChart();
     chart->addSeries(series);
     chart->setAnimationOptions(QChart::SeriesAnimations);
@@ -162,7 +144,6 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
     QBarCategoryAxis *axisX = new QBarCategoryAxis();
     axisX->append(unikalneDaty);
 
-    // NOWOŚĆ: Rotacja etykiet o 45 stopni
     axisX->setLabelsAngle(-45);
 
     chart->addAxis(axisX, Qt::AlignBottom);
@@ -200,21 +181,18 @@ bool StatisticsWidget::eventFilter(QObject *watched, QEvent *event) {
         if (!etykietaTooltip->isHidden()) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
 
-            // Przesunięcie o 15px w dół i w prawo, żeby kursor nie zasłaniał tekstu
             int x = mouseEvent->pos().x() + 15;
             int y = mouseEvent->pos().y() + 15;
 
-            // Zabezpieczenie przed ucięciem dymka z prawej strony
             if (x + etykietaTooltip->width() > ui->wykresSlupkowyAktywnosci->viewport()->width()) {
                 x = mouseEvent->pos().x() - etykietaTooltip->width() - 15;
             }
-            // Zabezpieczenie przed ucięciem na dole
             if (y + etykietaTooltip->height() > ui->wykresSlupkowyAktywnosci->viewport()->height()) {
                 y = mouseEvent->pos().y() - etykietaTooltip->height() - 15;
             }
 
             etykietaTooltip->move(x, y);
-            etykietaTooltip->raise(); // Wymusza rysowanie nad wykresem
+            etykietaTooltip->raise();
         }
     }
     return QWidget::eventFilter(watched, event);
@@ -227,9 +205,7 @@ void StatisticsWidget::odswiezDane() {
 void StatisticsWidget::onComboWidokChanged(int index) {
     if (index == 0) {
         odswiezWykresAktywnosci();
-        // ui->stackWidokowStatystyk->setCurrentIndex(0); // Jeśli masz tam QStackedWidget
     } else {
-        // Tu wywołujesz logikę Kupki Wstydu (którą pewnie też masz jeszcze w MainWindow...)
         //pokazKupkeWstydu();
     }
 }
