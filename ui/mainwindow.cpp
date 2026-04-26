@@ -10,6 +10,10 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    if (!appController.inicjalizujBaze()) {
+        qDebug() << "Błąd krytyczny: Baza danych nie wystartowała.";
+    }
+
     statsWidget = new StatisticsWidget(appController, this);
     ui->daneSzczegolowe->addWidget(statsWidget);
 
@@ -26,14 +30,14 @@ MainWindow::MainWindow(QWidget *parent)
     ui->splitter->insertWidget(0, panelNawigacji);
 
     connect(ui->actionKategorie, &QAction::triggered, this, [this]() {
-        KategorieDialog dialog(dbManager, this);
+        KategorieDialog dialog(appController.getDb(), this);
         dialog.exec();
         panelNawigacji->odswiezDrzewo();
         dashboardWidget->odswiezStatystykiGlowne();
     });
 
     connect(ui->actionPlatformy, &QAction::triggered, this, [this]() {
-        PlatformyDialog dialog(dbManager, this);
+        PlatformyDialog dialog(appController.getDb(), this);
         dialog.exec();
         panelNawigacji->odswiezDrzewo();
         dashboardWidget->odswiezStatystykiGlowne();

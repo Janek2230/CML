@@ -37,6 +37,7 @@ target_include_directories(CML
         ui
         db
         models
+        controllers
 )
 
 target_link_libraries(CML
