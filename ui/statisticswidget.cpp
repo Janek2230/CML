@@ -28,6 +28,8 @@ StatisticsWidget::StatisticsWidget(DatabaseManager& db, QWidget *parent) :
     // Podłączenie comboboxów, które teraz żyją w tym pliku UI
     connect(ui->comboZakresCzasu, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &StatisticsWidget::odswiezWykresAktywnosci);
     connect(ui->comboMetryka, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &StatisticsWidget::odswiezWykresAktywnosci);
+
+    connect(ui->comboWidokStatystyk, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &StatisticsWidget::onComboWidokChanged);
 }
 
 StatisticsWidget::~StatisticsWidget()
@@ -216,4 +218,18 @@ bool StatisticsWidget::eventFilter(QObject *watched, QEvent *event) {
         }
     }
     return QWidget::eventFilter(watched, event);
+}
+
+void StatisticsWidget::odswiezDane() {
+    onComboWidokChanged(ui->comboWidokStatystyk->currentIndex());
+}
+
+void StatisticsWidget::onComboWidokChanged(int index) {
+    if (index == 0) {
+        odswiezWykresAktywnosci();
+        // ui->stackWidokowStatystyk->setCurrentIndex(0); // Jeśli masz tam QStackedWidget
+    } else {
+        // Tu wywołujesz logikę Kupki Wstydu (którą pewnie też masz jeszcze w MainWindow...)
+        //pokazKupkeWstydu();
+    }
 }

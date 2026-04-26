@@ -21,6 +21,7 @@ public:
 
     // To wywoła MainWindow, gdy użytkownik wejdzie w zakładkę
     void odswiezWykresAktywnosci();
+    void odswiezDane();
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -29,6 +30,11 @@ private:
     Ui::StatisticsWidget *ui;
     DatabaseManager& dbManager; // Wstrzyknięta zależność!
     QLabel *etykietaTooltip;
+
+private slots:
+    void onComboWidokChanged(int index);
 };
+
+
 
 #endif // STATISTICSWIDGET_H

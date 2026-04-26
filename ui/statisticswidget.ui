@@ -15,54 +15,72 @@
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0">
-    <layout class="QHBoxLayout" name="horizontalLayout_11">
+    <layout class="QVBoxLayout" name="verticalLayout">
      <item>
-      <widget class="QComboBox" name="comboZakresCzasu">
+      <layout class="QHBoxLayout" name="horizontalLayout_11">
        <item>
-        <property name="text">
-         <string>Ostatnie 7 dni</string>
-        </property>
+        <widget class="QComboBox" name="comboZakresCzasu">
+         <item>
+          <property name="text">
+           <string>Ostatnie 7 dni</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Ostatnie 30 dni</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Ten rok</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Poprzedni rok</string>
+          </property>
+         </item>
+        </widget>
        </item>
        <item>
-        <property name="text">
-         <string>Ostatnie 30 dni</string>
-        </property>
+        <widget class="QComboBox" name="comboMetryka">
+         <item>
+          <property name="text">
+           <string>Spędzony czas [h]</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Liczba sesji</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Przyrost jednostek</string>
+          </property>
+         </item>
+        </widget>
        </item>
-       <item>
-        <property name="text">
-         <string>Ten rok</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Poprzedni rok</string>
-        </property>
-       </item>
-      </widget>
+      </layout>
      </item>
      <item>
-      <widget class="QComboBox" name="comboMetryka">
+      <widget class="QChartView" name="wykresSlupkowyAktywnosci"/>
+     </item>
+     <item>
+      <widget class="QComboBox" name="comboWidokStatystyk">
        <item>
         <property name="text">
-         <string>Spędzony czas [h]</string>
+         <string>Wykres Aktywności</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>Liczba sesji</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Przyrost jednostek</string>
+         <string>Kupka Wstydu</string>
         </property>
        </item>
       </widget>
      </item>
     </layout>
-   </item>
-   <item row="1" column="0">
-    <widget class="QChartView" name="wykresSlupkowyAktywnosci"/>
    </item>
   </layout>
  </widget>
