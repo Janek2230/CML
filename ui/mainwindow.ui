@@ -26,15 +26,6 @@
       <property name="orientation">
        <enum>Qt::Orientation::Horizontal</enum>
       </property>
-      <widget class="QWidget" name="panelKategorii" native="true">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <layout class="QGridLayout" name="gridLayout"/>
-      </widget>
       <widget class="QStackedWidget" name="daneSzczegolowe">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -43,7 +34,7 @@
         </sizepolicy>
        </property>
        <property name="currentIndex">
-        <number>0</number>
+        <number>3</number>
        </property>
        <widget class="QWidget" name="page">
         <layout class="QGridLayout" name="gridLayout_2"/>
@@ -58,20 +49,6 @@
         <layout class="QGridLayout" name="gridLayout_7"/>
        </widget>
       </widget>
-     </widget>
-    </item>
-    <item row="1" column="1">
-     <widget class="QComboBox" name="comboWidokStatystyk">
-      <item>
-       <property name="text">
-        <string>Wykres Aktywności</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Kupka Wstydu</string>
-       </property>
-      </item>
      </widget>
     </item>
    </layout>

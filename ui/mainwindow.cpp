@@ -2,34 +2,7 @@
 #include "ui_mainwindow.h"
 #include "kategoriedialog.h"
 #include "platformydialog.h"
-#include "statisticswidget.h"
-#include "multimediaformwidget.h"
-
-#include <qlineedit.h>
-#include <utility>
 #include <QDebug>
-#include <QMessageBox>
-#include <QTimer>
-#include <QLocale>
-#include <QInputDialog>
-#include <QDialog>
-#include <QFormLayout>
-#include <QDialogButtonBox>
-#include <QComboBox>
-#include <QTableWidget>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QHeaderView>
-#include <QChartView>
-#include <QPieSeries>
-#include <QChart>
-#include <QRandomGenerator>
-#include <QStackedBarSeries>
-#include <QBarSet>
-#include <QBarCategoryAxis>
-#include <QValueAxis>
-#include <QToolTip>
-#include <algorithm>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -37,105 +10,120 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    connect(ui->btnPowrot, &QPushButton::clicked, this, [this]() {
-        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
-        dashboardWidget->odswiezStatystykiGlowne();
-    });
-
-    // --- AKCJE Z MENU GŁÓWNEGO ---
-    connect(ui->actionKategorie, &QAction::triggered, this, [this]() {
-        KategorieDialog dialog(dbManager, this);
-        dialog.exec();
-        listaMultimediow = dbManager.getAllMultimedia();
-        zaladujDaneDoDrzewa();
-    });
-
-    connect(ui->actionPlatformy, &QAction::triggered, this, [this]() {
-        PlatformyDialog dialog(dbManager, this);
-        dialog.exec();
-        listaMultimediow = dbManager.getAllMultimedia();
-        zaladujDaneDoDrzewa();
-    });
-
-    connect(ui->actionStronaGlowna, &QAction::triggered, this, [this]() {
-            ui->panelKategorii->show();
-            ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
-            ui->comboWidokStatystyk->hide();
-    });
-
-    connect(ui->actionStatystyki, &QAction::triggered, this, [this]() {
-        ui->panelKategorii->hide();
-        // Przełączamy stos na nasz nowy widget!
-        ui->daneSzczegolowe->setCurrentWidget(statsWidget);
-        ui->comboWidokStatystyk->show();
-        statsWidget->odswiezWykresAktywnosci();
-    });
-
+    // 1. TWORZENIE WIDŻETÓW (Prawa strona)
     statsWidget = new StatisticsWidget(dbManager, this);
     ui->daneSzczegolowe->addWidget(statsWidget);
 
     formularzWidget = new MultimediaFormWidget(dbManager, this);
     ui->daneSzczegolowe->addWidget(formularzWidget);
 
-    // Kiedy formularz krzyknie, że zapisał dane:
-    connect(formularzWidget, &MultimediaFormWidget::daneZapisane, this, [this]() {
-        listaMultimediow = dbManager.getAllMultimedia();
-        dashboardWidget->odswiezStatystykiGlowne();
-        // Wracamy do widoku domyślnego
-        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
-    });
-
-    // Kiedy formularz krzyknie, że go anulowano:
-    connect(formularzWidget, &MultimediaFormWidget::formularzAnulowany, this, [this]() {
-        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
-    });
-
-    connect(ui->btnDodajMedium, &QPushButton::clicked, this, [this]() {
-        formularzWidget->przygotujFormularz(-1, 0, 0);
-        ui->daneSzczegolowe->setCurrentWidget(formularzWidget);
-    });
-
     szczegolyWidget = new SzczegolyWidget(dbManager, this);
-    ui->daneSzczegolowe->addWidget(szczegolyWidget); // Wrzucamy na stos widoków
-
-    connect(szczegolyWidget, &SzczegolyWidget::daneZaktualizowane, this, [this]() {
-        listaMultimediow = dbManager.getAllMultimedia(); // Przeładowanie po zmianie
-        zaladujDaneDoDrzewa();
-        dashboardWidget->odswiezStatystykiGlowne();
-    });
+    ui->daneSzczegolowe->addWidget(szczegolyWidget);
 
     dashboardWidget = new DashboardWidget(dbManager, this);
     ui->daneSzczegolowe->addWidget(dashboardWidget);
 
-    // Jeśli dashboard krzyczy, że trzeba pokazać szczegóły (bo kliknięto losowanie lub kafel), MainWindow to robi
-    connect(dashboardWidget, &DashboardWidget::zadaniePokazaniaSzczegolow, this, [this](int id) {
-        pokazSzczegolyMedium(id);
-        ui->statusbar->showMessage("Przełączono na szczegóły!", 3000); // Mały bonus dla wylosowanego
+    // 2. TWORZENIE WIDŻETÓW (Lewa strona)
+    panelNawigacji = new PanelNawigacjiWidget(dbManager, this);
+    // Dodajemy nowy lewy panel na początek (index 0) splittera
+    ui->splitter->insertWidget(0, panelNawigacji);
+    ui->splitter->setStretchFactor(0, 0); // Zabezpieczenie, żeby lewy panel nie rozciągał się jak guma
+    ui->splitter->setStretchFactor(1, 1);
+
+    // 3. AKCJE Z GÓRNEGO MENU (Pasek zadań)
+    connect(ui->actionKategorie, &QAction::triggered, this, [this]() {
+        KategorieDialog dialog(dbManager, this);
+        dialog.exec();
+        panelNawigacji->odswiezDrzewo();
+        dashboardWidget->odswiezStatystykiGlowne();
+    });
+
+    connect(ui->actionPlatformy, &QAction::triggered, this, [this]() {
+        PlatformyDialog dialog(dbManager, this);
+        dialog.exec();
+        panelNawigacji->odswiezDrzewo();
+        dashboardWidget->odswiezStatystykiGlowne();
     });
 
 
-    // Ukrywamy na starcie, dopóki nie wejdziemy w statystyki
-    ui->comboWidokStatystyk->hide();
-    // --- START APLIKACJI ---
+    connect(ui->actionStatystyki, &QAction::triggered, this, [this]() {
+        panelNawigacji->hide();
+        ui->daneSzczegolowe->setCurrentWidget(statsWidget);
+        statsWidget->odswiezDane(); // Jedna metoda, która załatwia wszystko
+    });
+
+    connect(ui->actionStronaGlowna, &QAction::triggered, this, [this]() {
+        panelNawigacji->show(); // Pokazuje panel z kategoriami z powrotem
+        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget); // Przełącza na Dashboard
+        dashboardWidget->odswiezStatystykiGlowne(); // Odświeża wykresy na głównej
+    });
+
+    // 4. ŁĄCZENIE SYGNAŁÓW (MainWindow jako operator centrali)
+
+    // --- Sygnały od Panelu Nawigacji ---
+    connect(panelNawigacji, &PanelNawigacjiWidget::zadaniePokazaniaSzczegolow, this, [this](int id) {
+        pokazSzczegolyMedium(id);
+    });
+
+    connect(panelNawigacji, &PanelNawigacjiWidget::zadaniePowrotuDoDashboardu, this, [this]() {
+        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
+        dashboardWidget->odswiezStatystykiGlowne();
+    });
+
+    connect(panelNawigacji, &PanelNawigacjiWidget::zadanieDodaniaMedium, this, [this](int idKat, int idPlat) {
+        formularzWidget->przygotujFormularz(-1, idKat, idPlat);
+        ui->daneSzczegolowe->setCurrentWidget(formularzWidget);
+    });
+
+    connect(panelNawigacji, &PanelNawigacjiWidget::zadanieEdycjiMedium, this, [this](int idMedium) {
+        formularzWidget->przygotujFormularz(idMedium, 0, 0);
+        ui->daneSzczegolowe->setCurrentWidget(formularzWidget);
+    });
+
+    connect(panelNawigacji, &PanelNawigacjiWidget::drzewoZmieniloBaze, this, [this]() {
+        dashboardWidget->odswiezStatystykiGlowne();
+    });
+
+    // --- Sygnały od Formularza ---
+    connect(formularzWidget, &MultimediaFormWidget::daneZapisane, this, [this]() {
+        panelNawigacji->odswiezDrzewo();
+        dashboardWidget->odswiezStatystykiGlowne();
+        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
+    });
+
+    connect(formularzWidget, &MultimediaFormWidget::formularzAnulowany, this, [this]() {
+        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
+    });
+
+    // --- Sygnały od Szczegółów ---
+    connect(szczegolyWidget, &SzczegolyWidget::daneZaktualizowane, this, [this]() {
+        panelNawigacji->odswiezDrzewo();
+        dashboardWidget->odswiezStatystykiGlowne();
+    });
+
+    // --- Sygnały od Dashboardu ---
+    connect(dashboardWidget, &DashboardWidget::zadaniePokazaniaSzczegolow, this, [this](int id) {
+        pokazSzczegolyMedium(id);
+        ui->statusbar->showMessage("Przełączono na szczegóły!", 3000);
+    });
+
+
+    // 5. START APLIKACJI
     if (dbManager.openConnection()) {
-        zaladujDaneDoDrzewa();
+        panelNawigacji->odswiezDrzewo();
         dashboardWidget->odswiezStatystykiGlowne();
         ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
     } else {
         qDebug() << "Błąd połączenia z bazą danych.";
     }
-
 }
 
 MainWindow::~MainWindow()
 {
-    listaMultimediow.clear();
     delete ui;
 }
-
 
 void MainWindow::pokazSzczegolyMedium(int idMedium) {
     szczegolyWidget->ustawMedium(idMedium);
     ui->daneSzczegolowe->setCurrentWidget(szczegolyWidget);
 }
-
