@@ -2,7 +2,7 @@
 #include "ui_szczegolywidget.h"
 #include <QMessageBox>
 
-SzczegolyWidget::SzczegolyWidget(DatabaseManager& db, QWidget *parent) :
+SzczegolyWidget::SzczegolyWidget(AppController& controller, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::SzczegolyWidget),
     appController(controller)
@@ -45,12 +45,12 @@ SzczegolyWidget::~SzczegolyWidget()
 void SzczegolyWidget::ustawMedium(int idMedium) {
     aktualneIdMedium = idMedium;
 
-    auto lista = dbManager.getAllMultimedia();
+    auto lista = appController.pobierzWszystkieMultimedia();
     for (const auto& medium : lista) {
         if (medium->getId() == idMedium) {
             ui->lblDetaleTytul->setText(medium->getTytul());
 
-            auto platformy = dbManager.pobierzPlatformy();
+            auto platformy = appController.pobierzPlatformy();
             QString nazwaPlat = "Nieznana platforma";
             for (const auto& p : platformy) {
                 if (p.first == medium->getIdPlatformy()) { nazwaPlat = p.second; break; }
@@ -130,7 +130,7 @@ void SzczegolyWidget::onBtnZacznijOdNowaClicked() {
         return;
     }
 
-    if (dbManager.zacznijOdNowa(aktualneIdMedium)) {
+    if (appController.zacznijOdNowa(aktualneIdMedium)) { // ZMIANA
         ustawMedium(aktualneIdMedium);
         emit daneZaktualizowane();
         QMessageBox::information(this, "Sukces", "Licznik wyzerowany. Lecimy od nowa!");

@@ -109,3 +109,26 @@ QList<AppController::KategoriaModel> AppController::pobierzPelneKategorie() {
 QStringList AppController::pobierzDostepneStatusy() {
     return {"Planowane", "W trakcie", "Wstrzymane", "Ukończone", "Porzucone"};
 }
+
+QMap<int, QString> AppController::getCategories() {
+    return dbManager.getCategories();
+}
+
+QList<std::shared_ptr<Multimedia>> AppController::pobierzKupkeWstydu() {
+    auto wszystko = pobierzWszystkieMultimedia();
+    QList<std::shared_ptr<Multimedia>> kupka;
+    QDateTime teraz = QDateTime::currentDateTime();
+
+    for (const auto& m : wszystko) {
+        if (m->getStatus() == "Planowane") {
+            if (m->getDataDodania().daysTo(teraz) > 180) {
+                kupka.append(m);
+            }
+        } else if (m->getStatus() == "W trakcie") {
+            if (m->getDataOstatniejAktywnosci().isValid() && m->getDataOstatniejAktywnosci().daysTo(teraz) > 30) {
+                kupka.append(m);
+            }
+        }
+    }
+    return kupka;
+}

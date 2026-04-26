@@ -1,12 +1,4 @@
-#include "dashboardwidget.h"
-#include "ui_dashboardwidget.h"
-#include <QMessageBox>
-#include <QPieSeries>
-#include <QChart>
-#include <QPushButton>
-#include <QRandomGenerator>
-
-DashboardWidget::DashboardWidget(DatabaseManager& db, QWidget *parent) :
+DashboardWidget::DashboardWidget(AppController& controller, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::DashboardWidget),
     appController(controller)
@@ -15,13 +7,8 @@ DashboardWidget::DashboardWidget(DatabaseManager& db, QWidget *parent) :
     connect(ui->btnLosuj, &QPushButton::clicked, this, &DashboardWidget::onBtnLosujClicked);
 }
 
-DashboardWidget::~DashboardWidget()
-{
-    delete ui;
-}
-
 void DashboardWidget::odswiezStatystykiGlowne() {
-    auto stats = dbManager.getGlobalStats();
+    auto stats = appController.getGlobalStats();
     if (stats.value("Suma", 0) == 0) return;
 
     QPieSeries *series = new QPieSeries();
@@ -57,10 +44,10 @@ void DashboardWidget::odswiezStatystykiGlowne() {
         delete child;
     }
 
-    QList<int> ostatnieId = dbManager.pobierzOstatnioAktywne(6);
+    QList<int> ostatnieId = appController.pobierzOstatnioAktywne(6);
     int wiersz = 0, kolumna = 0;
 
-    auto lista = dbManager.getAllMultimedia();
+    auto lista = appController.pobierzWszystkieMultimedia();
 
     for (int id : ostatnieId) {
         for (const auto& m : lista) {
@@ -78,7 +65,7 @@ void DashboardWidget::odswiezStatystykiGlowne() {
 }
 
 void DashboardWidget::onBtnLosujClicked() {
-    auto lista = dbManager.getAllMultimedia();
+    auto lista = appController.pobierzWszystkieMultimedia();
     QList<int> doWylosowania;
     for (const auto& m : lista) {
         if (m->getStatus() == "Planowane") doWylosowania.append(m->getId());

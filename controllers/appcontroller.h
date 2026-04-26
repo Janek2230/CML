@@ -17,6 +17,8 @@ public:
     QMap<QString, int> getGlobalStats();
     QList<int> pobierzOstatnioAktywne(int limit);
     QStringList pobierzDostepneStatusy();
+    QMap<int, QString> getCategories();
+    QList<std::shared_ptr<Multimedia>> pobierzKupkeWstydu();
 
     bool czyOsiagnietoCel(int aktualna, int docelowa);
     bool aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa, int ocena);

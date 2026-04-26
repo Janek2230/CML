@@ -9,7 +9,7 @@
 #include <QComboBox>
 #include <QDialogButtonBox>
 
-KategorieDialog::KategorieDialog(DatabaseManager& db, QWidget *parent)
+PlatformyDialog::PlatformyDialog(AppController& controller, QWidget *parent)
     : QDialog(parent), appController(controller)
 {
     setWindowTitle("Zarządzanie Kategoriami");
