@@ -7,7 +7,7 @@
 #include <QMouseEvent>
 #include "databasemanager.h"
 #include "statisticswidget.h"
-
+#include "multimediaformwidget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -29,6 +29,7 @@ private:
     QList<std::shared_ptr<Multimedia>> listaMultimediow;
 
     StatisticsWidget *statsWidget;
+    MultimediaFormWidget *formularzWidget;
 
     void zaladujDaneDoDrzewa();
     void odswiezStatystykiGlowne();
@@ -51,9 +52,7 @@ private slots:
     void onBtnZacznijOdNowaClicked();
     void onBtnPotwierdzDodajClicked();
 
-    // NOWE: Wyciągnięte z lambd konstruktora
-    void onBtnSzybkaPlatformaClicked();
-    void onBtnSzybkaKategoriaClicked();
     void onBtnLosujClicked();
+
 };
 #endif // MAINWINDOW_H
