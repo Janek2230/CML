@@ -19,7 +19,6 @@ public:
     explicit StatisticsWidget(DatabaseManager& db, QWidget *parent = nullptr);
     ~StatisticsWidget();
 
-    // To wywoła MainWindow, gdy użytkownik wejdzie w zakładkę
     void odswiezWykresAktywnosci();
     void odswiezDane();
 
@@ -28,7 +27,7 @@ protected:
 
 private:
     Ui::StatisticsWidget *ui;
-    DatabaseManager& dbManager; // Wstrzyknięta zależność!
+    DatabaseManager& dbManager;
     QLabel *etykietaTooltip;
 
 private slots:
@@ -37,4 +36,4 @@ private slots:
 
 
 
-#endif // STATISTICSWIDGET_H
+#endif

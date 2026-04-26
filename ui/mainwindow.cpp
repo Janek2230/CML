@@ -10,7 +10,6 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    // 1. TWORZENIE WIDŻETÓW (Prawa strona)
     statsWidget = new StatisticsWidget(dbManager, this);
     ui->daneSzczegolowe->addWidget(statsWidget);
 
@@ -23,14 +22,11 @@ MainWindow::MainWindow(QWidget *parent)
     dashboardWidget = new DashboardWidget(dbManager, this);
     ui->daneSzczegolowe->addWidget(dashboardWidget);
 
-    // 2. TWORZENIE WIDŻETÓW (Lewa strona)
     panelNawigacji = new PanelNawigacjiWidget(dbManager, this);
-    // Dodajemy nowy lewy panel na początek (index 0) splittera
     ui->splitter->insertWidget(0, panelNawigacji);
-    ui->splitter->setStretchFactor(0, 0); // Zabezpieczenie, żeby lewy panel nie rozciągał się jak guma
+    ui->splitter->setStretchFactor(0, 0);
     ui->splitter->setStretchFactor(1, 1);
 
-    // 3. AKCJE Z GÓRNEGO MENU (Pasek zadań)
     connect(ui->actionKategorie, &QAction::triggered, this, [this]() {
         KategorieDialog dialog(dbManager, this);
         dialog.exec();
@@ -49,18 +45,16 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionStatystyki, &QAction::triggered, this, [this]() {
         panelNawigacji->hide();
         ui->daneSzczegolowe->setCurrentWidget(statsWidget);
-        statsWidget->odswiezDane(); // Jedna metoda, która załatwia wszystko
+        statsWidget->odswiezDane();
     });
 
     connect(ui->actionStronaGlowna, &QAction::triggered, this, [this]() {
-        panelNawigacji->show(); // Pokazuje panel z kategoriami z powrotem
-        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget); // Przełącza na Dashboard
-        dashboardWidget->odswiezStatystykiGlowne(); // Odświeża wykresy na głównej
+        panelNawigacji->show();
+        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
+        dashboardWidget->odswiezStatystykiGlowne();
     });
 
-    // 4. ŁĄCZENIE SYGNAŁÓW (MainWindow jako operator centrali)
 
-    // --- Sygnały od Panelu Nawigacji ---
     connect(panelNawigacji, &PanelNawigacjiWidget::zadaniePokazaniaSzczegolow, this, [this](int id) {
         pokazSzczegolyMedium(id);
     });
@@ -84,7 +78,6 @@ MainWindow::MainWindow(QWidget *parent)
         dashboardWidget->odswiezStatystykiGlowne();
     });
 
-    // --- Sygnały od Formularza ---
     connect(formularzWidget, &MultimediaFormWidget::daneZapisane, this, [this]() {
         panelNawigacji->odswiezDrzewo();
         dashboardWidget->odswiezStatystykiGlowne();
@@ -95,20 +88,17 @@ MainWindow::MainWindow(QWidget *parent)
         ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
     });
 
-    // --- Sygnały od Szczegółów ---
     connect(szczegolyWidget, &SzczegolyWidget::daneZaktualizowane, this, [this]() {
         panelNawigacji->odswiezDrzewo();
         dashboardWidget->odswiezStatystykiGlowne();
     });
 
-    // --- Sygnały od Dashboardu ---
     connect(dashboardWidget, &DashboardWidget::zadaniePokazaniaSzczegolow, this, [this](int id) {
         pokazSzczegolyMedium(id);
         ui->statusbar->showMessage("Przełączono na szczegóły!", 3000);
     });
 
 
-    // 5. START APLIKACJI
     if (dbManager.openConnection()) {
         panelNawigacji->odswiezDrzewo();
         dashboardWidget->odswiezStatystykiGlowne();

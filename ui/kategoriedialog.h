@@ -6,13 +6,12 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include "databasemanager.h" // Dialog musi mieć dostęp do bazy!
+#include "databasemanager.h"
 
 class KategorieDialog : public QDialog {
     Q_OBJECT
 
 public:
-    // Przekazujemy referencję do istniejącego dbManagera z MainWindow
     explicit KategorieDialog(DatabaseManager& db, QWidget *parent = nullptr);
     ~KategorieDialog();
 
@@ -24,7 +23,6 @@ private slots:
 private:
     DatabaseManager& dbManager;
 
-    // Wskaźniki na elementy UI
     QTableWidget *tabela;
     QPushButton *btnDodaj;
     QPushButton *btnEdytuj;
@@ -34,4 +32,4 @@ private:
     void wypelnijTabele();
 };
 
-#endif // KATEGORIEDIALOG_H
+#endif

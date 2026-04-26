@@ -29,4 +29,4 @@ private:
     void wypelnijTabele();
 };
 
-#endif // PLATFORMYDIALOG_H
+#endif

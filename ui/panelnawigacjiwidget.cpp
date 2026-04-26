@@ -17,12 +17,10 @@ PanelNawigacjiWidget::PanelNawigacjiWidget(DatabaseManager& db, QWidget *parent)
 {
     ui->setupUi(this);
 
-    // Inicjalizacja UI
     ui->comboGrupowanie->addItems({"Kategoria", "Status", "Platforma", "Data dodania"});
     ui->kategorie->setContextMenuPolicy(Qt::CustomContextMenu);
     ui->kategorie->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
-    // Połączenia (Zamiast rzeźbić UI, po prostu krzyczymy sygnałami na zewnątrz)
     connect(ui->comboGrupowanie, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index) {
         zaladujDaneDoDrzewa();
     });
@@ -32,14 +30,13 @@ PanelNawigacjiWidget::PanelNawigacjiWidget(DatabaseManager& db, QWidget *parent)
     });
 
     connect(ui->btnDodajMedium, &QPushButton::clicked, this, [this]() {
-        emit zadanieDodaniaMedium(0, 0); // 0 to nasze domyślne braki kategorii/platformy
+        emit zadanieDodaniaMedium(0, 0);
     });
 
     connect(ui->kategorie, &QTreeWidget::itemClicked, this, &PanelNawigacjiWidget::onWybieranieElementuDrzewa);
     connect(ui->wyszukiwarka, &QLineEdit::textChanged, this, &PanelNawigacjiWidget::onWyszukiwanie);
     connect(ui->kategorie, &QTreeWidget::customContextMenuRequested, this, &PanelNawigacjiWidget::pokazMenuDrzewa);
 
-    // Na start
     zaladujDaneDoDrzewa();
 }
 
@@ -55,11 +52,9 @@ void PanelNawigacjiWidget::odswiezDrzewo() {
 void PanelNawigacjiWidget::onWybieranieElementuDrzewa(QTreeWidgetItem *item, int column) {
     if (!item || item->parent() == nullptr) {
         if (item) item->setExpanded(!item->isExpanded());
-        // Użytkownik kliknął w kategorię, więc pokazujemy z powrotem dashboard
         emit zadaniePowrotuDoDashboardu();
         return;
     }
-    // Użytkownik kliknął w konkretny element, krzyczymy żeby pokazać jego szczegóły
     int idWybranegoElementu = item->data(0, Qt::UserRole).toInt();
     emit zadaniePokazaniaSzczegolow(idWybranegoElementu);
 }
@@ -89,7 +84,7 @@ void PanelNawigacjiWidget::onWyszukiwanie(const QString &text) {
 
 void PanelNawigacjiWidget::zaladujDaneDoDrzewa() {
     ui->kategorie->clear();
-    listaMultimediow = dbManager.getAllMultimedia(); // Aktualizujemy lokalną kopię bazy
+    listaMultimediow = dbManager.getAllMultimedia();
 
     int trybGrupowania = ui->comboGrupowanie->currentIndex();
     QMap<int, QString> slownikKategorii;
@@ -100,7 +95,7 @@ void PanelNawigacjiWidget::zaladujDaneDoDrzewa() {
     QMap<QString, QTreeWidgetItem*> wezlyGlowne;
 
     if (trybGrupowania == 0) {
-        auto q = dbManager.pobierzKategorie(); // Skorzystajmy z Twojej metody
+        auto q = dbManager.pobierzKategorie();
         for(const auto& kat : q) {
             QString nazwa = kat.second;
             QTreeWidgetItem *wezel = new QTreeWidgetItem(ui->kategorie);
@@ -165,7 +160,6 @@ void PanelNawigacjiWidget::pokazMenuDrzewa(const QPoint &pos) {
 
     QList<QTreeWidgetItem*> wybrane = ui->kategorie->selectedItems();
 
-    // 0. MASOWE OPERACJE
     if (wybrane.size() > 1) {
         QList<int> wybraneIds;
         for (auto *item : wybrane) {
@@ -201,7 +195,7 @@ void PanelNawigacjiWidget::pokazMenuDrzewa(const QPoint &pos) {
 
                     if (dbManager.zmienKategorieWielu(wybraneIds, noweIdKat)) {
                         zaladujDaneDoDrzewa();
-                        emit drzewoZmieniloBaze(); // Informujemy resztę aplikacji
+                        emit drzewoZmieniloBaze();
                     } else {
                         QMessageBox::critical(this, "Błąd", "Nie udało się przenieść elementów.");
                     }
@@ -226,7 +220,6 @@ void PanelNawigacjiWidget::pokazMenuDrzewa(const QPoint &pos) {
     }
 
     if (!kliknietyElement) {
-        // 1. KLIKNIĘTO W TŁO
         int trybGrupowania = ui->comboGrupowanie->currentIndex();
         if (trybGrupowania == 0) {
             menu.addAction("Dodaj nową kategorię...", this, [this]() {
@@ -267,7 +260,6 @@ void PanelNawigacjiWidget::pokazMenuDrzewa(const QPoint &pos) {
         }
     }
     else if (kliknietyElement->parent() == nullptr) {
-        // 2. KLIKNIĘTO W KORZEŃ (Kategoria/Platforma)
         int trybGrupowania = ui->comboGrupowanie->currentIndex();
 
         if (trybGrupowania == 0) {
@@ -326,7 +318,6 @@ void PanelNawigacjiWidget::pokazMenuDrzewa(const QPoint &pos) {
         }
     }
     else {
-        // 3. KLIKNIĘTO W KONKRETNY TYTUŁ
         menu.addAction("Edytuj pozycję", this, [this, kliknietyElement]() {
             int idMedium = kliknietyElement->data(0, Qt::UserRole).toInt();
             emit zadanieEdycjiMedium(idMedium);

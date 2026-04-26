@@ -19,7 +19,6 @@ public:
     void odswiezStatystykiGlowne();
 
 signals:
-    // Krzyczymy do MainWindow, żeby pokazało detale tego konkretnego ID
     void zadaniePokazaniaSzczegolow(int idMedium);
 
 private slots:

@@ -34,4 +34,4 @@ private:
 
     void pokazSzczegolyMedium(int idMedium);
 };
-#endif // MAINWINDOW_H
+#endif

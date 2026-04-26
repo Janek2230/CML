@@ -16,11 +16,9 @@ public:
     explicit SzczegolyWidget(DatabaseManager& db, QWidget *parent = nullptr);
     ~SzczegolyWidget();
 
-    // Tą metodą MainWindow będzie pompować dane do widoku
     void ustawMedium(int idMedium);
 
 signals:
-    // Sygnał emitowany, gdy zapiszemy postęp albo wyzerujemy grę
     void daneZaktualizowane();
 
 private slots:
@@ -30,7 +28,7 @@ private slots:
 private:
     Ui::SzczegolyWidget *ui;
     DatabaseManager& dbManager;
-    int aktualneIdMedium = -1; // Zapamiętujemy, co obecnie wyświetlamy
+    int aktualneIdMedium = -1;
 };
 
-#endif // SZCZEGOLYWIDGET_H
+#endif
