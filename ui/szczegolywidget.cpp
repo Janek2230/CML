@@ -5,7 +5,7 @@
 SzczegolyWidget::SzczegolyWidget(DatabaseManager& db, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::SzczegolyWidget),
-    dbManager(db)
+    appController(controller)
 {
     ui->setupUi(this);
 
@@ -108,7 +108,7 @@ void SzczegolyWidget::onBtnZapiszClicked() {
     int nowaDocelowa = ui->spinDetaleDocelowy->value();
     int ocena = ui->lblDetaleOcena->value();
 
-    if (nowaAktualna >= nowaDocelowa && nowaDocelowa > 0) {
+    if (appController.czyOsiagnietoCel(nowaAktualna, nowaDocelowa)) {
         auto odpowiedz = QMessageBox::question(this, "Automatyczne ukończenie",
                                                "Wartość aktualna zrównała się z docelową. Po zapisaniu pozycja automatycznie zmieni status na 'Ukończone'.\nKontynuować?",
                                                QMessageBox::Yes | QMessageBox::No);
@@ -116,7 +116,7 @@ void SzczegolyWidget::onBtnZapiszClicked() {
         nowyStatus = "Ukończone";
     }
 
-    if (dbManager.aktualizujPostep(aktualneIdMedium, nowyStatus, nowaAktualna, nowaDocelowa, ocena)) {
+    if (appController.aktualizujPostep(aktualneIdMedium, nowyStatus, nowaAktualna, nowaDocelowa, ocena)) {
         ustawMedium(aktualneIdMedium);
         emit daneZaktualizowane();
         QMessageBox::information(this, "Sukces", "Zapisano zmiany!");

@@ -4,7 +4,7 @@
 #include <QWidget>
 #include <QTreeWidgetItem>
 #include <QMenu>
-#include "databasemanager.h"
+#include "appcontroller.h"
 #include "multimedia.h"
 
 namespace Ui { class PanelNawigacjiWidget; }
@@ -12,7 +12,7 @@ namespace Ui { class PanelNawigacjiWidget; }
 class PanelNawigacjiWidget : public QWidget {
     Q_OBJECT
 public:
-    explicit PanelNawigacjiWidget(DatabaseManager& db, QWidget *parent = nullptr);
+    explicit PanelNawigacjiWidget(AppController& controller, QWidget *parent = nullptr);
     ~PanelNawigacjiWidget();
 
     void odswiezDrzewo();
@@ -31,7 +31,7 @@ private slots:
 
 private:
     Ui::PanelNawigacjiWidget *ui;
-    DatabaseManager& dbManager;
+    AppController& appController;
     QList<std::shared_ptr<Multimedia>> listaMultimediow;
 
     void zaladujDaneDoDrzewa();

@@ -13,7 +13,7 @@
 PanelNawigacjiWidget::PanelNawigacjiWidget(DatabaseManager& db, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::PanelNawigacjiWidget),
-    dbManager(db)
+    appController(controller)
 {
     ui->setupUi(this);
 

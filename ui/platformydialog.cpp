@@ -7,7 +7,7 @@
 #include <QInputDialog>
 
 PlatformyDialog::PlatformyDialog(DatabaseManager& db, QWidget *parent)
-    : QDialog(parent), dbManager(db)
+    : QDialog(parent), appController(controller)
 {
     setWindowTitle("Zarządzanie Platformami");
     resize(400, 400);

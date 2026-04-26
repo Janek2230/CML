@@ -2,7 +2,7 @@
 #define MULTIMEDIAFORMWIDGET_H
 
 #include <QWidget>
-#include "databasemanager.h"
+#include "appcontroller.h"
 
 namespace Ui {
 class MultimediaFormWidget;
@@ -13,7 +13,7 @@ class MultimediaFormWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit MultimediaFormWidget(DatabaseManager& db, QWidget *parent = nullptr);
+    explicit MultimediaFormWidget(AppController& controller, QWidget *parent = nullptr);
     ~MultimediaFormWidget();
 
     void przygotujFormularz(int idMedium = -1, int idDomyslnejKategorii = 0, int idDomyslnejPlatformy = 0);
@@ -31,7 +31,7 @@ private slots:
 
 private:
     Ui::MultimediaFormWidget *ui;
-    DatabaseManager& dbManager;
+    AppController& appController;
 
     bool czyTrybEdycji = false;
     int idEdytowanegoMedium = -1;

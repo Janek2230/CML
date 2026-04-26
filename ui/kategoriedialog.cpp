@@ -10,7 +10,7 @@
 #include <QDialogButtonBox>
 
 KategorieDialog::KategorieDialog(DatabaseManager& db, QWidget *parent)
-    : QDialog(parent), dbManager(db)
+    : QDialog(parent), appController(controller)
 {
     setWindowTitle("Zarządzanie Kategoriami");
     resize(500, 400);

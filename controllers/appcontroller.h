@@ -12,9 +12,13 @@ public:
 
     bool inicjalizujBaze();
 
-    DatabaseManager& getDb() { return dbManager; }
-
     QList<QVariantMap> pobierzDaneDlaWykresu(int zakres, const QString& metryka);
+    QList<std::shared_ptr<Multimedia>> pobierzWszystkieMultimedia();
+    QMap<QString, int> getGlobalStats();
+    QList<int> pobierzOstatnioAktywne(int limit);
+
+    bool czyOsiagnietoCel(int aktualna, int docelowa);
+    bool aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa, int ocena);
 
 signals:
     void bladKrytyczny(const QString& wiadomosc);

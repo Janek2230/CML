@@ -9,7 +9,7 @@
 DashboardWidget::DashboardWidget(DatabaseManager& db, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::DashboardWidget),
-    dbManager(db)
+    appController(controller)
 {
     ui->setupUi(this);
     connect(ui->btnLosuj, &QPushButton::clicked, this, &DashboardWidget::onBtnLosujClicked);

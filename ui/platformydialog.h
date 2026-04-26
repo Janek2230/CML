@@ -4,13 +4,13 @@
 #include <QDialog>
 #include <QTableWidget>
 #include <QPushButton>
-#include "databasemanager.h"
+#include "appcontroller.h"
 
 class PlatformyDialog : public QDialog {
     Q_OBJECT
 
 public:
-    explicit PlatformyDialog(DatabaseManager& db, QWidget *parent = nullptr);
+    explicit PlatformyDialog(AppController& controller, QWidget *parent = nullptr);
     ~PlatformyDialog();
 
 private slots:

@@ -17,16 +17,16 @@ MainWindow::MainWindow(QWidget *parent)
     statsWidget = new StatisticsWidget(appController, this);
     ui->daneSzczegolowe->addWidget(statsWidget);
 
-    formularzWidget = new MultimediaFormWidget(appController.getDb(), this);
+    formularzWidget = new MultimediaFormWidget(appController, this);
     ui->daneSzczegolowe->addWidget(formularzWidget);
 
-    szczegolyWidget = new SzczegolyWidget(appController.getDb(), this);
+    szczegolyWidget = new SzczegolyWidget(appController, this);
     ui->daneSzczegolowe->addWidget(szczegolyWidget);
 
-    dashboardWidget = new DashboardWidget(appController.getDb(), this);
+    dashboardWidget = new DashboardWidget(appController, this);
     ui->daneSzczegolowe->addWidget(dashboardWidget);
 
-    panelNawigacji = new PanelNawigacjiWidget(appController.getDb(), this);
+    panelNawigacji = new PanelNawigacjiWidget(appController, this);
     ui->splitter->insertWidget(0, panelNawigacji);
 
     connect(ui->actionKategorie, &QAction::triggered, this, [this]() {

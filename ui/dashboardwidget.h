@@ -2,7 +2,7 @@
 #define DASHBOARDWIDGET_H
 
 #include <QWidget>
-#include "databasemanager.h"
+#include "appcontroller.h"
 
 namespace Ui {
 class DashboardWidget;
@@ -13,7 +13,7 @@ class DashboardWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit DashboardWidget(DatabaseManager& db, QWidget *parent = nullptr);
+    explicit DashboardWidget(AppController& controller, QWidget *parent = nullptr);
     ~DashboardWidget();
 
     void odswiezStatystykiGlowne();
@@ -26,7 +26,7 @@ private slots:
 
 private:
     Ui::DashboardWidget *ui;
-    DatabaseManager& dbManager;
+    AppController& appController;
 };
 
 #endif // DASHBOARDWIDGET_H

@@ -6,13 +6,13 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include "databasemanager.h"
+#include "appcontroller.h"
 
 class KategorieDialog : public QDialog {
     Q_OBJECT
 
 public:
-    explicit KategorieDialog(DatabaseManager& db, QWidget *parent = nullptr);
+    explicit KategorieDialog(AppController& controller, QWidget *parent = nullptr);
     ~KategorieDialog();
 
 private slots:
@@ -21,7 +21,7 @@ private slots:
     void onBtnUsunClicked();
 
 private:
-    DatabaseManager& dbManager;
+    AppController& appController;
 
     QTableWidget *tabela;
     QPushButton *btnDodaj;

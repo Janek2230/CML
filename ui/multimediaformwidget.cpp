@@ -12,7 +12,7 @@
 MultimediaFormWidget::MultimediaFormWidget(DatabaseManager& db, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::MultimediaFormWidget),
-    dbManager(db)
+    appController(controller)
 {
     ui->setupUi(this);
 

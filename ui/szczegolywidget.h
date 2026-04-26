@@ -2,7 +2,7 @@
 #define SZCZEGOLYWIDGET_H
 
 #include <QWidget>
-#include "databasemanager.h"
+#include "appcontroller.h"
 
 namespace Ui {
 class SzczegolyWidget;
@@ -13,7 +13,7 @@ class SzczegolyWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit SzczegolyWidget(DatabaseManager& db, QWidget *parent = nullptr);
+    explicit SzczegolyWidget(AppController& controller, QWidget *parent = nullptr);
     ~SzczegolyWidget();
 
     void ustawMedium(int idMedium);
@@ -27,7 +27,7 @@ private slots:
 
 private:
     Ui::SzczegolyWidget *ui;
-    DatabaseManager& dbManager;
+    AppController& appController;
     int aktualneIdMedium = -1;
 };
 

@@ -31,3 +31,19 @@ QList<QVariantMap> AppController::pobierzDaneDlaWykresu(int zakres, const QStrin
 
     return sformatowaneDane;
 }
+
+QList<std::shared_ptr<Multimedia>> AppController::pobierzWszystkieMultimedia() {
+    return dbManager.getAllMultimedia();
+}
+
+QMap<QString, int> AppController::getGlobalStats() {
+    return dbManager.getGlobalStats();
+}
+
+bool AppController::czyOsiagnietoCel(int aktualna, int docelowa) {
+    return (aktualna >= docelowa && docelowa > 0);
+}
+
+bool AppController::aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa, int ocena) {
+    return dbManager.aktualizujPostep(idMedium, status, aktualna, docelowa, ocena);
+}
