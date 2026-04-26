@@ -6,6 +6,8 @@
 #include <QLabel>
 #include <QMouseEvent>
 #include "databasemanager.h"
+#include "statisticswidget.h"
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -26,6 +28,8 @@ private:
     DatabaseManager dbManager;
     QList<std::shared_ptr<Multimedia>> listaMultimediow;
 
+    StatisticsWidget *statsWidget;
+
     void zaladujDaneDoDrzewa();
     void odswiezStatystykiGlowne();
 
@@ -36,9 +40,6 @@ private:
     void pokazSzczegolyMedium(int idMedium);
 
     void uzupelnijComboBoxy();
-    void odswiezWykresAktywnosci();
-    QLabel *etykietaTooltip;
-    bool eventFilter(QObject *watched, QEvent *event);
 
 private slots:
     void onWybieranieElementuDrzewa(QTreeWidgetItem *item, int column);
