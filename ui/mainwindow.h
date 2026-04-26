@@ -8,6 +8,7 @@
 #include "databasemanager.h"
 #include "statisticswidget.h"
 #include "multimediaformwidget.h"
+#include "szczegolywidget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -39,15 +40,13 @@ private:
     void usunWybraneMedium(int id);
     void pokazSzczegolyMedium(int idMedium);
 
+    SzczegolyWidget *szczegolyWidget;
+
 
 private slots:
     void onWybieranieElementuDrzewa(QTreeWidgetItem *item, int column);
     void onWyszukiwanie(const QString &text);
     void pokazMenuDrzewa(const QPoint &pos);
-
-    // Wyciągnięte z konstruktora: Logika detali i formularza
-    void onBtnDetaleZapiszClicked();
-    void onBtnZacznijOdNowaClicked();
 
     void onBtnLosujClicked();
 

@@ -38,9 +38,6 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     // Inicjalizacja kontrolek
-    ui->comboDetaleStatus->addItem("Planowane");
-    ui->comboDetaleStatus->addItem("W trakcie");
-    ui->comboDetaleStatus->addItem("Porzucone");
     ui->comboGrupowanie->addItems({"Kategoria", "Status", "Platforma", "Data dodania"});
 
     ui->kategorie->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -56,36 +53,11 @@ MainWindow::MainWindow(QWidget *parent)
         odswiezStatystykiGlowne();
     });
 
-    // Paski postępu (te lambdy są okej, bo bezpośrednio modyfikują UI obok siebie)
-    connect(ui->spinDetaleAktualny, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int val) {
-        int maxVal = ui->spinDetaleDocelowy->value();
-        if (maxVal > 0) {
-            int procent = (static_cast<double>(val) / maxVal) * 100;
-            ui->progressBarDetale->setValue(procent);
-        }
-        if (val > 0 && ui->comboDetaleStatus->currentText() == "Planowane") {
-            ui->comboDetaleStatus->setCurrentText("W trakcie");
-        }
-    });
-
-    connect(ui->spinDetaleDocelowy, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int maxVal) {
-        ui->spinDetaleAktualny->setMaximum(maxVal);
-        int val = ui->spinDetaleAktualny->value();
-        if (maxVal > 0) {
-            int procent = (static_cast<double>(val) / maxVal) * 100;
-            ui->progressBarDetale->setValue(procent);
-        }
-    });
-
-
 
     // --- STANDARDOWE POŁĄCZENIA SLOTÓW ---
     connect(ui->kategorie, &QTreeWidget::itemClicked, this, &MainWindow::onWybieranieElementuDrzewa);
     connect(ui->wyszukiwarka, &QLineEdit::textChanged, this, &MainWindow::onWyszukiwanie);
     connect(ui->kategorie, &QTreeWidget::customContextMenuRequested, this, &MainWindow::pokazMenuDrzewa);
-
-    connect(ui->btnDetaleZapisz, &QPushButton::clicked, this, &MainWindow::onBtnDetaleZapiszClicked);
-    connect(ui->btnZacznijOdNowa, &QPushButton::clicked, this, &MainWindow::onBtnZacznijOdNowaClicked);
 
     connect(ui->btnLosuj, &QPushButton::clicked, this, &MainWindow::onBtnLosujClicked);
 
@@ -156,6 +128,15 @@ MainWindow::MainWindow(QWidget *parent)
         ui->daneSzczegolowe->setCurrentWidget(formularzWidget);
     });
 
+    szczegolyWidget = new SzczegolyWidget(dbManager, this);
+    ui->daneSzczegolowe->addWidget(szczegolyWidget); // Wrzucamy na stos widoków
+
+    connect(szczegolyWidget, &SzczegolyWidget::daneZaktualizowane, this, [this]() {
+        listaMultimediow = dbManager.getAllMultimedia(); // Przeładowanie po zmianie
+        zaladujDaneDoDrzewa();
+        odswiezStatystykiGlowne();
+    });
+
 }
 
 MainWindow::~MainWindow()
@@ -182,72 +163,6 @@ void MainWindow::onBtnLosujClicked() {
     pokazSzczegolyMedium(wylosowaneId);
     ui->statusbar->showMessage("Oto twoje wylosowane przeznaczenie!", 4000);
 }
-
-void MainWindow::onBtnDetaleZapiszClicked() {
-    auto wybrane = ui->kategorie->selectedItems();
-    if (wybrane.isEmpty()) return;
-
-    int id = wybrane.first()->data(0, Qt::UserRole).toInt();
-    QString nowyStatus = ui->comboDetaleStatus->currentText();
-    int nowaAktualna = ui->spinDetaleAktualny->value();
-    int nowaDocelowa = ui->spinDetaleDocelowy->value();
-    int ocena = ui->lblDetaleOcena->value();
-
-    if (nowaAktualna >= nowaDocelowa && nowaDocelowa > 0) {
-        auto odpowiedz = QMessageBox::question(this, "Automatyczne ukończenie",
-                                               "Wartość aktualna zrównała się z docelową. Po zapisaniu pozycja automatycznie zmieni status na 'Ukończone'.\nKontynuować?",
-                                               QMessageBox::Yes | QMessageBox::No);
-        if (odpowiedz == QMessageBox::No) return;
-        nowyStatus = "Ukończone";
-    }
-
-    if (dbManager.aktualizujPostep(id, nowyStatus, nowaAktualna, nowaDocelowa, ocena)) {
-        for(auto& medium : listaMultimediow) {
-            if(medium->getId() == id) {
-                medium->setStatus(nowyStatus);
-                medium->setOcena(ocena);
-                Postep p = medium->getPostep();
-                p.aktualna = nowaAktualna;
-                p.docelowa = nowaDocelowa;
-                medium->setPostep(p);
-                break;
-            }
-        }
-        pokazSzczegolyMedium(id);
-        odswiezStatystykiGlowne();
-        ui->statusbar->showMessage("Zapisano zmiany w bazie!", 3000);
-    }
-}
-
-void MainWindow::onBtnZacznijOdNowaClicked() {
-    auto wybrane = ui->kategorie->selectedItems();
-    if (wybrane.isEmpty()) return;
-
-    int id = wybrane.first()->data(0, Qt::UserRole).toInt();
-
-    if (QMessageBox::question(this, "Zacznij od nowa",
-                              "Czy na pewno chcesz wyzerować postęp i zacząć od nowa?\nTa operacja doda +1 do licznika powtórek.",
-                              QMessageBox::Yes | QMessageBox::No) == QMessageBox::No) {
-        return;
-    }
-
-    if (dbManager.zacznijOdNowa(id)) {
-        for(auto& medium : listaMultimediow) {
-            if(medium->getId() == id) {
-                medium->setStatus("W trakcie");
-                Postep p = medium->getPostep();
-                p.aktualna = 0;
-                p.numer_podejscia++;
-                medium->setPostep(p);
-                break;
-            }
-        }
-        pokazSzczegolyMedium(id);
-        odswiezStatystykiGlowne();
-        ui->statusbar->showMessage("Licznik wyzerowany. Lecimy od nowa!", 3000);
-    }
-}
-
 
 void MainWindow::onWybieranieElementuDrzewa(QTreeWidgetItem *item, int column) {
     if (!item || item->parent() == nullptr) {
@@ -430,59 +345,9 @@ void MainWindow::usunWybraneMedium(int id) {
     }
 }
 
-
 void MainWindow::pokazSzczegolyMedium(int idMedium) {
-    for (const auto& medium : std::as_const(listaMultimediow)) {
-        if (medium->getId() == idMedium) {
-            ui->lblDetaleTytul->setText(medium->getTytul());
-
-            auto platformy = dbManager.pobierzPlatformy();
-            QString nazwaPlat = "Nieznana platforma";
-            for (const auto& p : platformy) {
-                if (p.first == medium->getIdPlatformy()) { nazwaPlat = p.second; break; }
-            }
-            ui->labNazwaPlatformy->setText(nazwaPlat);
-
-            if (medium->getStatus() == "Ukończone") {
-                int nr = medium->getPostep().numer_podejscia;
-                QString tekstUkonczenia = (nr > 1) ? QString("UKOŃCZONO (x%1)").arg(nr) : "UKOŃCZONO";
-                ui->lblWielkiStatus->setText(tekstUkonczenia);
-                ui->lblWielkiStatus->show();
-                ui->btnZacznijOdNowa->show();
-                ui->frameKontrolkiPostepu->hide();
-                ui->progressBarDetale->hide();
-                ui->comboDetaleStatus->hide();
-                ui->label_2->hide();
-            } else {
-                ui->lblWielkiStatus->hide();
-                ui->btnZacznijOdNowa->hide();
-                ui->frameKontrolkiPostepu->show();
-                ui->progressBarDetale->show();
-                ui->comboDetaleStatus->show();
-                ui->label_2->show();
-                ui->comboDetaleStatus->setCurrentText(medium->getStatus());
-            }
-
-            int procent = static_cast<int>(medium->getPostep().getProcent());
-            ui->progressBarDetale->setValue(procent);
-
-            ui->lblDetaleOcena->setValue(medium->getOcena());
-            ui->lblDetaleOcena->show();
-            ui->label_4->show();
-
-            QString dDodania = medium->getDataDodania().toString("dd.MM.yyyy");
-            QString dEdycji = medium->getDataOstatniejAktywnosci().toString("dd.MM.yyyy HH:mm");
-            ui->lblDetaleDaty->setText(QString("Dodano: %1 | Ostatnia aktywność: %2").arg(dDodania).arg(dEdycji));
-
-            ui->spinDetaleDocelowy->setValue(medium->getPostep().docelowa);
-            ui->spinDetaleAktualny->setMaximum(medium->getPostep().docelowa);
-            ui->spinDetaleAktualny->setValue(medium->getPostep().aktualna);
-            ui->lblDetaleJednostka->setText(medium->getPostep().jednostka);
-
-            ui->daneSzczegolowe->setCurrentWidget(ui->page_2);
-            break;
-        }
-    }
+    szczegolyWidget->ustawMedium(idMedium);
+    ui->daneSzczegolowe->setCurrentWidget(szczegolyWidget);
 }
 
 void MainWindow::pokazMenuDrzewa(const QPoint &pos) {
