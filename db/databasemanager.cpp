@@ -129,10 +129,12 @@ bool DatabaseManager::aktualizujPostep(int idMedium, const QString& status, int 
 
     if (przyrost != 0) {
         QSqlQuery qLog(db);
-        qLog.prepare("INSERT INTO dziennik_aktywnosci (id_podejscia, przyrost_jednostek, czas_rozpoczecia, czas_zakonczenia) "
-                     "VALUES (:id, :przyrost, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
+        qLog.prepare("INSERT INTO dziennik_aktywnosci (id_podejscia, przyrost_jednostek, czas_rozpoczecia, czas_zakonczenia, czas_trwania_sekundy) "
+                     "VALUES (:id, :przyrost, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, :sekundy)");
         qLog.bindValue(":id", idPodejscia);
         qLog.bindValue(":przyrost", przyrost);
+        qLog.bindValue(":sekundy", przyrost * 3600);
+
         if (!qLog.exec()) { db.rollback(); return false; }
     }
 

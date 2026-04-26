@@ -42,6 +42,7 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
     if (indexZakresu == 0) zakres = 7;
     else if (indexZakresu == 1) zakres = 30;
     else if (indexZakresu == 2) zakres = 365;
+    else if (indexZakresu == 3) zakres = 730;
 
     QString metryka = "czas";
     QString jednostkaWykresu = "[h]";
@@ -169,11 +170,8 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
         }
     });
 
-    QChart *staryWykres = ui->wykresSlupkowyAktywnosci->chart();
     ui->wykresSlupkowyAktywnosci->setChart(chart);
     ui->wykresSlupkowyAktywnosci->setRenderHint(QPainter::Antialiasing);
-
-    if (staryWykres) delete staryWykres;
 }
 
 bool StatisticsWidget::eventFilter(QObject *watched, QEvent *event) {
