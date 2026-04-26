@@ -36,11 +36,9 @@ private:
 
     bool czyTrybEdycji = false;
     int idEdytowanegoMedium = -1;
-    void przygotujFormularz(int idMedium = -1, int idDomyslnejKategorii = 0, int idDomyslnejPlatformy = 0);
     void usunWybraneMedium(int id);
     void pokazSzczegolyMedium(int idMedium);
 
-    void uzupelnijComboBoxy();
 
 private slots:
     void onWybieranieElementuDrzewa(QTreeWidgetItem *item, int column);
@@ -50,7 +48,6 @@ private slots:
     // Wyciągnięte z konstruktora: Logika detali i formularza
     void onBtnDetaleZapiszClicked();
     void onBtnZacznijOdNowaClicked();
-    void onBtnPotwierdzDodajClicked();
 
     void onBtnLosujClicked();
 
