@@ -9,6 +9,7 @@
 #include "statisticswidget.h"
 #include "multimediaformwidget.h"
 #include "szczegolywidget.h"
+#include "dashboardwidget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -31,9 +32,9 @@ private:
 
     StatisticsWidget *statsWidget;
     MultimediaFormWidget *formularzWidget;
+    DashboardWidget *dashboardWidget;
 
     void zaladujDaneDoDrzewa();
-    void odswiezStatystykiGlowne();
 
     bool czyTrybEdycji = false;
     int idEdytowanegoMedium = -1;
@@ -47,8 +48,6 @@ private slots:
     void onWybieranieElementuDrzewa(QTreeWidgetItem *item, int column);
     void onWyszukiwanie(const QString &text);
     void pokazMenuDrzewa(const QPoint &pos);
-
-    void onBtnLosujClicked();
 
 };
 #endif // MAINWINDOW_H
