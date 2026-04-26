@@ -26,7 +26,13 @@ Tu można użyć tych pięciokątnych wykresów, wybrać te kateogire itd. najwy
 
 4. Trzeba popracować na wyglądem wykresu: 1. Trzeba jakoś grupować albo nie wyświetlać wartości nieistotnych 2. Dobrze było by zrezygnować z jasnych koloróW, wtapiają się w tło, albo zmienic tło wykresu na ciemne, albo dodać obramowania do słupków.
 
+5. Zapisz zmiany cały czas wyświeyla komunikat o tym żeby automatycznie zakończyć nawet po tym jak już jest zakończone
 
+6. Wprowadzić automatyczną zmianę na porzucone jeśli ktoś nie ustawi wstrzymane i ma w trakcie jakiś długi czas
+
+7. Dodać obłsugę statusu wstyrzymanego
+
+8. Wykres statystyk nie działa (znowu)
 
 
 */

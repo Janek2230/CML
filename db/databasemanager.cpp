@@ -43,7 +43,7 @@ QList<std::shared_ptr<Multimedia>> DatabaseManager::getAllMultimedia() {
         "m.id, m.tytul, p.status, k.id, k.jednostka, "
         "p.wartosc_aktualna, p.wartosc_docelowa, m.data_dodania, "
         "m.id_platformy, p.ocena, "
-        "COALESCE(MAX(d.data_wpisu) OVER (PARTITION BY p.id), m.data_dodania) AS ostatnia_aktywnosc, "
+        "COALESCE(MAX(COALESCE(d.czas_zakonczenia, d.czas_rozpoczecia)) OVER (PARTITION BY p.id), m.data_dodania) AS ostatnia_aktywnosc, "
         "p.numer_podejscia "
         "FROM multimedia m "
         "LEFT JOIN kategorie k ON m.id_kategorii = k.id "
@@ -129,7 +129,8 @@ bool DatabaseManager::aktualizujPostep(int idMedium, const QString& status, int 
 
     if (przyrost != 0) {
         QSqlQuery qLog(db);
-        qLog.prepare("INSERT INTO dziennik_aktywnosci (id_podejscia, przyrost_jednostek) VALUES (:id, :przyrost)");
+        qLog.prepare("INSERT INTO dziennik_aktywnosci (id_podejscia, przyrost_jednostek, czas_rozpoczecia, czas_zakonczenia) "
+                     "VALUES (:id, :przyrost, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
         qLog.bindValue(":id", idPodejscia);
         qLog.bindValue(":przyrost", przyrost);
         if (!qLog.exec()) { db.rollback(); return false; }
@@ -334,7 +335,7 @@ QList<int> DatabaseManager::pobierzOstatnioAktywne(int limit) {
         LEFT JOIN podejscia p ON m.id = p.id_medium
         LEFT JOIN dziennik_aktywnosci d ON p.id = d.id_podejscia
         GROUP BY m.id, m.data_dodania
-        ORDER BY GREATEST(m.data_dodania, MAX(d.data_wpisu)) DESC NULLS LAST
+        ORDER BY GREATEST(m.data_dodania, MAX(COALESCE(d.czas_zakonczenia, d.czas_rozpoczecia))) DESC NULLS LAST
         LIMIT :limit
     )");
     query.bindValue(":limit", limit);
@@ -439,13 +440,13 @@ QList<StatystykaAktywnosci> DatabaseManager::pobierzSuroweDaneStatystyk(int zakr
 
     QString sql = QString(R"(
         SELECT
-            TO_CHAR(d.data_wpisu, %1) as kategoria_czasu,
+            TO_CHAR(COALESCE(d.czas_zakonczenia, d.czas_rozpoczecia, CURRENT_TIMESTAMP), %1) as kategoria_czasu,
             m.tytul as nazwa_serii,
             %2 as wartosc
         FROM dziennik_aktywnosci d
         JOIN podejscia p ON d.id_podejscia = p.id
         JOIN multimedia m ON p.id_medium = m.id
-        WHERE d.data_wpisu >= CURRENT_DATE - INTERVAL '%3 days'
+        WHERE COALESCE(d.czas_zakonczenia, d.czas_rozpoczecia, CURRENT_TIMESTAMP) >= CURRENT_DATE - INTERVAL '%3 days'
         GROUP BY kategoria_czasu, m.tytul
         ORDER BY kategoria_czasu ASC
     )").arg(formatDaty).arg(funkcjaAgregujaca).arg(zakresDni);
