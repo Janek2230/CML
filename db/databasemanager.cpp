@@ -175,8 +175,8 @@ bool DatabaseManager::dodajNoweMedium(const QString &tytul, int idKat, int idPla
     QSqlQuery query1(db);
     query1.prepare("INSERT INTO multimedia (tytul, id_kategorii, id_platformy) VALUES (:tytul, :idKat, :idPlat) RETURNING id");
     query1.bindValue(":tytul", tytul);
-    query1.bindValue(":idKat", idKat > 0 ? QVariant(idKat) : QVariant(QVariant::Int));
-    query1.bindValue(":idPlat", idPlatformy > 0 ? QVariant(idPlatformy) : QVariant(QVariant::Int));
+    query1.bindValue(":idKat", idKat > 0 ? QVariant(idKat) : QVariant(QMetaType::fromType<int>()));
+    query1.bindValue(":idPlat", idPlatformy > 0 ? QVariant(idPlatformy) : QVariant(QMetaType::fromType<int>()));
 
     if (!query1.exec() || !query1.next()) { db.rollback(); return false; }
     int noweId = query1.value(0).toInt();

@@ -1,6 +1,14 @@
 #include "multimediaformwidget.h"
 #include "ui_multimediaformwidget.h"
 
+#include <QMessageBox>
+#include <QTimer>
+#include <QInputDialog>
+#include <QDialog>
+#include <QFormLayout>
+#include <QDialogButtonBox>
+#include <utility> // dla std::as_const
+
 MultimediaFormWidget::MultimediaFormWidget(DatabaseManager& db, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::MultimediaFormWidget),
@@ -48,8 +56,7 @@ void MultimediaFormWidget::przygotujFormularz(int idMedium, int idDomyslnejKateg
         czyTrybEdycji = true;
         idEdytowanegoMedium = idMedium;
         ui->btnPotwierdzDodaj->setText("Zapisz zmiany");
-        auto listaMultimediow = dbManager.getAllMultimedia();
-        for (const auto& m : std::as_const(listaMultimediow)) {
+        for (const auto& m : dbManager.getAllMultimedia()) {
             if (m->getId() == idMedium) {
                 ui->editNowyTytul->setText(m->getTytul());
                 ui->spinNowyCel->setValue(m->getPostep().docelowa);
@@ -62,7 +69,6 @@ void MultimediaFormWidget::przygotujFormularz(int idMedium, int idDomyslnejKateg
             }
         }
     }
-    ui->daneSzczegolowe->setCurrentWidget(ui->page_3);
 }
 
 void MultimediaFormWidget::onBtnPotwierdzDodajClicked() {
@@ -95,8 +101,6 @@ void MultimediaFormWidget::onBtnPotwierdzDodajClicked() {
     if (sukces) {
         int zapisaneIdKat = ui->comboNowaKategoria->currentData().toInt();
         int zapisaneIdPlat = ui->comboNowyTyp->currentData().toInt();
-
-        listaMultimediow = dbManager.getAllMultimedia();
 
         emit daneZapisane();
         uzupelnijComboBoxy();

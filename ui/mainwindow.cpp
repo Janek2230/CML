@@ -51,9 +51,6 @@ MainWindow::MainWindow(QWidget *parent)
         zaladujDaneDoDrzewa();
     });
 
-    connect(ui->btnDodajMedium, &QPushButton::clicked, this, [this]() { przygotujFormularz(-1, 0); });
-
-
     connect(ui->btnPowrot, &QPushButton::clicked, this, [this]() {
         ui->daneSzczegolowe->setCurrentWidget(ui->page);
         odswiezStatystykiGlowne();
@@ -98,7 +95,6 @@ MainWindow::MainWindow(QWidget *parent)
         dialog.exec();
         listaMultimediow = dbManager.getAllMultimedia();
         zaladujDaneDoDrzewa();
-        uzupelnijComboBoxy();
     });
 
     connect(ui->actionPlatformy, &QAction::triggered, this, [this]() {
@@ -106,7 +102,6 @@ MainWindow::MainWindow(QWidget *parent)
         dialog.exec();
         listaMultimediow = dbManager.getAllMultimedia();
         zaladujDaneDoDrzewa();
-        uzupelnijComboBoxy();
     });
 
     connect(ui->actionStronaGlowna, &QAction::triggered, this, [this]() {
@@ -130,7 +125,6 @@ MainWindow::MainWindow(QWidget *parent)
     if (dbManager.openConnection()) {
         zaladujDaneDoDrzewa();
         odswiezStatystykiGlowne();
-        uzupelnijComboBoxy();
         ui->daneSzczegolowe->setCurrentIndex(0);
     } else {
         qDebug() << "Błąd połączenia z bazą danych.";
@@ -159,8 +153,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->btnDodajMedium, &QPushButton::clicked, this, [this]() {
         formularzWidget->przygotujFormularz(-1, 0, 0);
-        ui->daneSzczegolowe->setCurrentWidget(formularzWidget); // Pokaż formularz!
+        ui->daneSzczegolowe->setCurrentWidget(formularzWidget);
     });
+
 }
 
 MainWindow::~MainWindow()
@@ -611,9 +606,6 @@ void MainWindow::pokazMenuDrzewa(const QPoint &pos) {
 
                         int noweId = dbManager.dodajKategorie(nazwa, jednostka);
                         if (noweId > 0) {
-                            uzupelnijComboBoxy();
-                            int index = ui->comboNowaKategoria->findData(noweId);
-                            if (index != -1) ui->comboNowaKategoria->setCurrentIndex(index);
 
                             // Jeśli wywołujesz to z poziomu drzewa, przyda się odświeżyć drzewo:
                             zaladujDaneDoDrzewa();
@@ -633,7 +625,6 @@ void MainWindow::pokazMenuDrzewa(const QPoint &pos) {
                 if (ok && !nazwa.trimmed().isEmpty()) {
                     if (dbManager.dodajPlatforme(nazwa.trimmed()) > 0) {
                         zaladujDaneDoDrzewa();
-                        uzupelnijComboBoxy();
                     }
                 }
             });
@@ -647,7 +638,8 @@ void MainWindow::pokazMenuDrzewa(const QPoint &pos) {
             // WIDOK KATEGORII
             menu.addAction("Dodaj pozycję do tej kategorii", this, [this, kliknietyElement]() {
                 int idKategorii = kliknietyElement->data(0, Qt::UserRole).toInt();
-                przygotujFormularz(-1, idKategorii, 0);
+                formularzWidget->przygotujFormularz(-1, idKategorii, 0);
+                ui->daneSzczegolowe->setCurrentWidget(formularzWidget);
             });
 
             if (kliknietyElement->text(0) != "Brak kategorii") {
@@ -687,7 +679,6 @@ void MainWindow::pokazMenuDrzewa(const QPoint &pos) {
                                 // PRZEŁADOWUJEMY Z BAZY - bo zmiana jednostki wpływa na wszystkie multimedia w tej kategorii
                                 listaMultimediow = dbManager.getAllMultimedia();
                                 zaladujDaneDoDrzewa();
-                                uzupelnijComboBoxy();
                                 ui->statusbar->showMessage("Kategoria zaktualizowana!", 3000);
                             }
                         }
@@ -718,7 +709,6 @@ void MainWindow::pokazMenuDrzewa(const QPoint &pos) {
                     if (dbManager.usunKategorie(idKat, usunPowiazane)) {
                         listaMultimediow = dbManager.getAllMultimedia(); // Pełne przeładowanie bo usunęliśmy elementy
                         zaladujDaneDoDrzewa();
-                        uzupelnijComboBoxy();
                         odswiezStatystykiGlowne();
                         ui->statusbar->showMessage("Kategoria została usunięta.", 4000);
                     } else {
@@ -731,7 +721,8 @@ void MainWindow::pokazMenuDrzewa(const QPoint &pos) {
             // WIDOK PLATFORMY
             menu.addAction("Dodaj pozycję do tej platformy", this, [this, kliknietyElement]() {
                 int idPlatformy = kliknietyElement->data(0, Qt::UserRole).toInt();
-                przygotujFormularz(-1, 0, idPlatformy);
+                formularzWidget->przygotujFormularz(-1, 0, idPlatformy);
+                ui->daneSzczegolowe->setCurrentWidget(formularzWidget);
             });
 
             // Zabezpieczenie przed psuciem bazy i usuwaniem "Nieznanej platformy"
@@ -764,7 +755,6 @@ void MainWindow::pokazMenuDrzewa(const QPoint &pos) {
                     if (dbManager.usunPlatforme(idPlat, usunPowiazane)) {
                         listaMultimediow = dbManager.getAllMultimedia();
                         zaladujDaneDoDrzewa();
-                        uzupelnijComboBoxy();
                         odswiezStatystykiGlowne();
                         ui->statusbar->showMessage("Platforma została usunięta.", 4000);
                     } else {
@@ -778,7 +768,8 @@ void MainWindow::pokazMenuDrzewa(const QPoint &pos) {
         // 3. KLIKNIĘTO W KONKRETNE MEDIUM (np. "Cyberpunk 2077")
         menu.addAction("Edytuj pozycję", this, [this, kliknietyElement]() {
             int idMedium = kliknietyElement->data(0, Qt::UserRole).toInt();
-            przygotujFormularz(idMedium, 0); // Tryb edycji na podstawie ID!
+            formularzWidget->przygotujFormularz(idMedium, 0); // Tryb edycji na podstawie ID!
+            ui->daneSzczegolowe->setCurrentWidget(formularzWidget);
         });
 
         // --- NOWOŚĆ: Skrót dla leniwych (Szybka zmiana kategorii jednego elementu) ---
