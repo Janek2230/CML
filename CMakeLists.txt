@@ -23,6 +23,7 @@ qt_add_executable(CML
     ui/statisticswidget.h
     ui/statisticswidget.ui
     ui/multimediaformwidget.h ui/multimediaformwidget.cpp ui/multimediaformwidget.ui
+    ui/szczegolywidget.h ui/szczegolywidget.cpp ui/szczegolywidget.ui
 
 )
 
