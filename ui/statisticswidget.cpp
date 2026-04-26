@@ -10,7 +10,7 @@
 StatisticsWidget::StatisticsWidget(DatabaseManager& db, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::StatisticsWidget),
-    dbManager(db)
+    appController(controller)
 {
     ui->setupUi(this);
 
@@ -49,7 +49,7 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
     if (indexMetryki == 1) { metryka = "sesje"; jednostkaWykresu = "sesji"; }
     else if (indexMetryki == 2) { metryka = "jednostki"; jednostkaWykresu = "jednostek"; }
 
-    auto dane = dbManager.pobierzDaneDoWykresu(zakres, metryka);
+    auto dane = appController.pobierzDaneDlaWykresu(zakres, metryka);
 
     QStringList unikalneDaty;
     QMap<QString, QMap<QString, double>> mapaSerii;

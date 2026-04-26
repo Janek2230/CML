@@ -10,22 +10,20 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    statsWidget = new StatisticsWidget(dbManager, this);
+    statsWidget = new StatisticsWidget(appController, this);
     ui->daneSzczegolowe->addWidget(statsWidget);
 
-    formularzWidget = new MultimediaFormWidget(dbManager, this);
+    formularzWidget = new MultimediaFormWidget(appController.getDb(), this);
     ui->daneSzczegolowe->addWidget(formularzWidget);
 
-    szczegolyWidget = new SzczegolyWidget(dbManager, this);
+    szczegolyWidget = new SzczegolyWidget(appController.getDb(), this);
     ui->daneSzczegolowe->addWidget(szczegolyWidget);
 
-    dashboardWidget = new DashboardWidget(dbManager, this);
+    dashboardWidget = new DashboardWidget(appController.getDb(), this);
     ui->daneSzczegolowe->addWidget(dashboardWidget);
 
-    panelNawigacji = new PanelNawigacjiWidget(dbManager, this);
+    panelNawigacji = new PanelNawigacjiWidget(appController.getDb(), this);
     ui->splitter->insertWidget(0, panelNawigacji);
-    ui->splitter->setStretchFactor(0, 0);
-    ui->splitter->setStretchFactor(1, 1);
 
     connect(ui->actionKategorie, &QAction::triggered, this, [this]() {
         KategorieDialog dialog(dbManager, this);
@@ -99,13 +97,9 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
 
-    if (dbManager.openConnection()) {
-        panelNawigacji->odswiezDrzewo();
-        dashboardWidget->odswiezStatystykiGlowne();
-        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
-    } else {
-        qDebug() << "Błąd połączenia z bazą danych.";
-    }
+    panelNawigacji->odswiezDrzewo();
+    dashboardWidget->odswiezStatystykiGlowne();
+    ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
 }
 
 MainWindow::~MainWindow()

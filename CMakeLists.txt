@@ -26,6 +26,9 @@ qt_add_executable(CML
     ui/szczegolywidget.h ui/szczegolywidget.cpp ui/szczegolywidget.ui
     ui/dashboardwidget.h ui/dashboardwidget.cpp ui/dashboardwidget.ui
     ui/panelnawigacjiwidget.h ui/panelnawigacjiwidget.cpp ui/panelnawigacjiwidget.ui
+    models/aktywnosc_statystyki.h
+    controllers/appcontroller.h
+    controllers/appcontroller.cpp
 
 )
 
