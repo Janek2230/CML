@@ -59,8 +59,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->wyszukiwarka, &QLineEdit::textChanged, this, &MainWindow::onWyszukiwanie);
     connect(ui->kategorie, &QTreeWidget::customContextMenuRequested, this, &MainWindow::pokazMenuDrzewa);
 
-    connect(ui->btnLosuj, &QPushButton::clicked, this, &MainWindow::onBtnLosujClicked);
-
     // --- AKCJE Z MENU GŁÓWNEGO ---
     connect(ui->actionKategorie, &QAction::triggered, this, [this]() {
         KategorieDialog dialog(dbManager, this);
@@ -89,19 +87,6 @@ MainWindow::MainWindow(QWidget *parent)
         ui->comboWidokStatystyk->show();
         statsWidget->odswiezWykresAktywnosci();
     });
-
-
-    // Ukrywamy na starcie, dopóki nie wejdziemy w statystyki
-    ui->comboWidokStatystyk->hide();
-    // --- START APLIKACJI ---
-    if (dbManager.openConnection()) {
-        zaladujDaneDoDrzewa();
-        dashboardWidget->odswiezStatystykiGlowne();
-        ui->daneSzczegolowe->setCurrentIndex(0);
-    } else {
-        qDebug() << "Błąd połączenia z bazą danych.";
-    }
-
 
     statsWidget = new StatisticsWidget(dbManager, this);
     ui->daneSzczegolowe->addWidget(statsWidget);
@@ -145,6 +130,18 @@ MainWindow::MainWindow(QWidget *parent)
         pokazSzczegolyMedium(id);
         ui->statusbar->showMessage("Przełączono na szczegóły!", 3000); // Mały bonus dla wylosowanego
     });
+
+
+    // Ukrywamy na starcie, dopóki nie wejdziemy w statystyki
+    ui->comboWidokStatystyk->hide();
+    // --- START APLIKACJI ---
+    if (dbManager.openConnection()) {
+        zaladujDaneDoDrzewa();
+        dashboardWidget->odswiezStatystykiGlowne();
+        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
+    } else {
+        qDebug() << "Błąd połączenia z bazą danych.";
+    }
 
 }
 
