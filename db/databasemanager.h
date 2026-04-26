@@ -46,8 +46,8 @@ public:
     bool usunWieleMultimediow(const QList<int>& idList);
 
     QMap<int, QString> pobierzSlownikJednostek();
-
-    QList<int> pobierzOstatnioEdytowane(int limit);
+    QList<QVariantMap> pobierzDaneDoWykresu(int zakresDni, const QString& metryka);
+    QList<int> pobierzOstatnioAktywne(int limit);
 };
 
 #endif

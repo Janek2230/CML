@@ -55,6 +55,25 @@
           </item>
          </layout>
         </item>
+        <item row="3" column="0">
+         <widget class="QPushButton" name="btnPowrot">
+          <property name="text">
+           <string>Strona Główna</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QTreeWidget" name="kategorie">
+          <property name="headerHidden">
+           <bool>true</bool>
+          </property>
+          <column>
+           <property name="text">
+            <string notr="true">1</string>
+           </property>
+          </column>
+         </widget>
+        </item>
         <item row="1" column="0">
          <layout class="QHBoxLayout" name="horizontalLayout_6">
           <item>
@@ -82,25 +101,6 @@
           </item>
          </layout>
         </item>
-        <item row="2" column="0">
-         <widget class="QTreeWidget" name="kategorie">
-          <property name="headerHidden">
-           <bool>true</bool>
-          </property>
-          <column>
-           <property name="text">
-            <string notr="true">1</string>
-           </property>
-          </column>
-         </widget>
-        </item>
-        <item row="3" column="0">
-         <widget class="QPushButton" name="btnPowrot">
-          <property name="text">
-           <string>Strona Główna</string>
-          </property>
-         </widget>
-        </item>
        </layout>
       </widget>
       <widget class="QStackedWidget" name="daneSzczegolowe">
@@ -111,7 +111,7 @@
         </sizepolicy>
        </property>
        <property name="currentIndex">
-        <number>1</number>
+        <number>3</number>
        </property>
        <widget class="QWidget" name="page">
         <layout class="QGridLayout" name="gridLayout_2">
@@ -123,7 +123,10 @@
            <item>
             <widget class="QLabel" name="label">
              <property name="text">
-              <string>Ostatnio dodane/aktualizowane</string>
+              <string>Ostatnia aktywność</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
              </property>
             </widget>
            </item>
@@ -472,7 +475,7 @@
            <item>
             <widget class="QLabel" name="lblDetaleDaty">
              <property name="text">
-              <string>TextLabel</string>
+              <string>Ostatnio aktywne</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTop|Qt::AlignmentFlag::AlignTrailing</set>
@@ -779,7 +782,75 @@
          </item>
         </layout>
        </widget>
+       <widget class="QWidget" name="page_4">
+        <layout class="QGridLayout" name="gridLayout_7">
+         <item row="0" column="0">
+          <layout class="QHBoxLayout" name="horizontalLayout_11">
+           <item>
+            <widget class="QComboBox" name="comboZakresCzasu">
+             <item>
+              <property name="text">
+               <string>Ostatnie 7 dni</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Ostatnie 30 dni</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Ten rok</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Poprzedni rok</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="comboMetryka">
+             <item>
+              <property name="text">
+               <string>Spędzony czas [h]</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Liczba sesji</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Przyrost jednostek</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item row="1" column="0">
+          <widget class="QChartView" name="wykresSlupkowyAktywnosci"/>
+         </item>
+        </layout>
+       </widget>
       </widget>
+     </widget>
+    </item>
+    <item row="1" column="1">
+     <widget class="QComboBox" name="comboWidokStatystyk">
+      <item>
+       <property name="text">
+        <string>Wykres Aktywności</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Kupka Wstydu</string>
+       </property>
+      </item>
      </widget>
     </item>
    </layout>
@@ -790,7 +861,7 @@
      <x>0</x>
      <y>0</y>
      <width>1101</width>
-     <height>21</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">
@@ -801,7 +872,15 @@
     <addaction name="actionKategorie"/>
     <addaction name="actionPlatformy"/>
    </widget>
+   <widget class="QMenu" name="menuWidok">
+    <property name="title">
+     <string>Widok</string>
+    </property>
+    <addaction name="actionStronaGlowna"/>
+    <addaction name="actionStatystyki"/>
+   </widget>
    <addaction name="menu"/>
+   <addaction name="menuWidok"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionZarz_dzaj_Kategoriami">
@@ -822,6 +901,16 @@
   <action name="actionPlatformy">
    <property name="text">
     <string>Platformy...</string>
+   </property>
+  </action>
+  <action name="actionStronaGlowna">
+   <property name="text">
+    <string>Strona Główna</string>
+   </property>
+  </action>
+  <action name="actionStatystyki">
+   <property name="text">
+    <string>Statystyki</string>
    </property>
   </action>
  </widget>
