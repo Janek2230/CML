@@ -3,6 +3,7 @@
 #include "kategoriedialog.h"
 #include "platformydialog.h"
 #include "statisticswidget.h"
+#include "multimediaformwidget.h"
 
 #include <qlineedit.h>
 #include <utility>
@@ -52,22 +53,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->btnDodajMedium, &QPushButton::clicked, this, [this]() { przygotujFormularz(-1, 0); });
 
-    connect(ui->btnAnulujDodawanie, &QPushButton::clicked, this, [this]() {
-        czyTrybEdycji = false;
-        idEdytowanegoMedium = -1;
-        ui->daneSzczegolowe->setCurrentWidget(ui->page);
-    });
 
     connect(ui->btnPowrot, &QPushButton::clicked, this, [this]() {
         ui->daneSzczegolowe->setCurrentWidget(ui->page);
         odswiezStatystykiGlowne();
-    });
-
-    connect(ui->comboNowaKategoria, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index) {
-        if (index >= 0) {
-            QString jednostka = ui->comboNowaKategoria->itemData(index, Qt::UserRole + 1).toString();
-            ui->labJednostka->setText(jednostka.isEmpty() ? "Cel:" : "Cel (" + jednostka + "):");
-        }
     });
 
     // Paski postępu (te lambdy są okej, bo bezpośrednio modyfikują UI obok siebie)
@@ -100,11 +89,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->btnDetaleZapisz, &QPushButton::clicked, this, &MainWindow::onBtnDetaleZapiszClicked);
     connect(ui->btnZacznijOdNowa, &QPushButton::clicked, this, &MainWindow::onBtnZacznijOdNowaClicked);
-    connect(ui->btnPotwierdzDodaj, &QPushButton::clicked, this, &MainWindow::onBtnPotwierdzDodajClicked);
 
-    // Zastąpione lambdy:
-    connect(ui->btnDodajPlatforme, &QPushButton::clicked, this, &MainWindow::onBtnSzybkaPlatformaClicked);
-    connect(ui->btnDodajKategorie, &QPushButton::clicked, this, &MainWindow::onBtnSzybkaKategoriaClicked);
     connect(ui->btnLosuj, &QPushButton::clicked, this, &MainWindow::onBtnLosujClicked);
 
     // --- AKCJE Z MENU GŁÓWNEGO ---
@@ -154,6 +139,28 @@ MainWindow::MainWindow(QWidget *parent)
 
     statsWidget = new StatisticsWidget(dbManager, this);
     ui->daneSzczegolowe->addWidget(statsWidget);
+
+    formularzWidget = new MultimediaFormWidget(dbManager, this);
+    ui->daneSzczegolowe->addWidget(formularzWidget);
+
+    // Kiedy formularz krzyknie, że zapisał dane:
+    connect(formularzWidget, &MultimediaFormWidget::daneZapisane, this, [this]() {
+        listaMultimediow = dbManager.getAllMultimedia();
+        zaladujDaneDoDrzewa();
+        odswiezStatystykiGlowne();
+        // Wracamy do widoku domyślnego
+        ui->daneSzczegolowe->setCurrentWidget(ui->page);
+    });
+
+    // Kiedy formularz krzyknie, że go anulowano:
+    connect(formularzWidget, &MultimediaFormWidget::formularzAnulowany, this, [this]() {
+        ui->daneSzczegolowe->setCurrentWidget(ui->page);
+    });
+
+    connect(ui->btnDodajMedium, &QPushButton::clicked, this, [this]() {
+        formularzWidget->przygotujFormularz(-1, 0, 0);
+        ui->daneSzczegolowe->setCurrentWidget(formularzWidget); // Pokaż formularz!
+    });
 }
 
 MainWindow::~MainWindow()
@@ -166,54 +173,6 @@ MainWindow::~MainWindow()
 // METODY LOGIKI BIZNESOWEJ I UI
 // ==========================================================
 
-void MainWindow::onBtnSzybkaPlatformaClicked() {
-    bool ok;
-    QString nowaNazwa = QInputDialog::getText(this, "Nowa Platforma", "Podaj nazwę nowej platformy:", QLineEdit::Normal, "", &ok);
-    if (ok && !nowaNazwa.trimmed().isEmpty()) {
-        int noweId = dbManager.dodajPlatforme(nowaNazwa.trimmed());
-        if (noweId > 0) {
-            uzupelnijComboBoxy();
-            int index = ui->comboNowyTyp->findData(noweId);
-            if (index != -1) ui->comboNowyTyp->setCurrentIndex(index);
-            ui->statusbar->showMessage("Dodano i wybrano nową platformę", 3000);
-        } else {
-            QMessageBox::warning(this, "Błąd", "Nie udało się dodać platformy do bazy.");
-        }
-    }
-}
-
-void MainWindow::onBtnSzybkaKategoriaClicked() {
-    QDialog dialog(this);
-    dialog.setWindowTitle("Nowa Kategoria");
-    dialog.resize(300, 100);
-    QFormLayout form(&dialog);
-
-    QLineEdit editNazwa(&dialog);
-    QComboBox comboJednostka(&dialog);
-    comboJednostka.setEditable(true);
-    comboJednostka.addItems(dbManager.pobierzUnikalneJednostki());
-
-    form.addRow("Nazwa kategorii:", &editNazwa);
-    form.addRow("Jednostka:", &comboJednostka);
-
-    QDialogButtonBox buttonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, &dialog);
-    form.addRow(&buttonBox);
-
-    connect(&buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    connect(&buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-
-    if (dialog.exec() == QDialog::Accepted && !editNazwa.text().trimmed().isEmpty()) {
-        QString jednostka = comboJednostka.currentText().trimmed();
-        if (jednostka.isEmpty()) jednostka = "szt.";
-        int noweId = dbManager.dodajKategorie(editNazwa.text().trimmed(), jednostka);
-        if (noweId > 0) {
-            uzupelnijComboBoxy();
-            int index = ui->comboNowaKategoria->findData(noweId);
-            if (index != -1) ui->comboNowaKategoria->setCurrentIndex(index);
-            ui->statusbar->showMessage("Dodano kategorię!", 3000);
-        }
-    }
-}
 
 void MainWindow::onBtnLosujClicked() {
     QList<int> doWylosowania;
@@ -294,55 +253,6 @@ void MainWindow::onBtnZacznijOdNowaClicked() {
     }
 }
 
-void MainWindow::onBtnPotwierdzDodajClicked() {
-    QString tytul = ui->editNowyTytul->text().trimmed();
-    if (tytul.isEmpty()) {
-        QMessageBox::warning(this, "Błąd", "Tytuł nie może być pusty!");
-        return;
-    }
-
-    int idKat = ui->comboNowaKategoria->currentData().toInt();
-    int idPlat = ui->comboNowyTyp->currentData().toInt();
-    int cel = ui->spinNowyCel->value();
-
-    bool sukces = false;
-    if (czyTrybEdycji) {
-        sukces = dbManager.aktualizujDaneMedium(idEdytowanegoMedium, tytul, idKat, idPlat, cel);
-        if (sukces) {
-            ui->lblKomunikatFormularza->setStyleSheet("color: green; font-weight: bold;");
-            ui->lblKomunikatFormularza->setText("Zaktualizowano: " + tytul);
-        }
-    } else {
-        sukces = dbManager.dodajNoweMedium(tytul, idKat, idPlat, cel);
-        if (sukces) {
-            ui->lblKomunikatFormularza->setStyleSheet("color: green; font-weight: bold;");
-            ui->lblKomunikatFormularza->setText("Dodano do biblioteki: "+ tytul+"!");
-            ui->editNowyTytul->clear();
-        }
-    }
-
-    if (sukces) {
-        int zapisaneIdKat = ui->comboNowaKategoria->currentData().toInt();
-        int zapisaneIdPlat = ui->comboNowyTyp->currentData().toInt();
-
-        listaMultimediow = dbManager.getAllMultimedia();
-        zaladujDaneDoDrzewa();
-        odswiezStatystykiGlowne();
-        uzupelnijComboBoxy();
-
-        int idxKat = ui->comboNowaKategoria->findData(zapisaneIdKat);
-        if (idxKat != -1) ui->comboNowaKategoria->setCurrentIndex(idxKat);
-
-        int idxPlat = ui->comboNowyTyp->findData(zapisaneIdPlat);
-        if (idxPlat != -1) ui->comboNowyTyp->setCurrentIndex(idxPlat);
-
-        ui->editNowyTytul->clear();
-    } else {
-        ui->lblKomunikatFormularza->setStyleSheet("color: red; font-weight: bold;");
-        ui->lblKomunikatFormularza->setText("Błąd bazy danych!");
-        QTimer::singleShot(4000, this, [this]() { ui->lblKomunikatFormularza->clear(); });
-    }
-}
 
 void MainWindow::onWybieranieElementuDrzewa(QTreeWidgetItem *item, int column) {
     if (!item || item->parent() == nullptr) {
@@ -510,41 +420,6 @@ void MainWindow::odswiezStatystykiGlowne() {
     }
 }
 
-void MainWindow::przygotujFormularz(int idMedium, int idDomyslnejKategorii, int idDomyslnejPlatformy) {
-    uzupelnijComboBoxy();
-    if (idMedium == -1) {
-        czyTrybEdycji = false;
-        ui->btnPotwierdzDodaj->setText("Dodaj do biblioteki");
-        ui->editNowyTytul->clear();
-        ui->spinNowyCel->setValue(1);
-        ui->spinNowaOcena->setValue(0);
-        if (idDomyslnejKategorii != 0) {
-            int indexKat = ui->comboNowaKategoria->findData(idDomyslnejKategorii);
-            if (indexKat != -1) ui->comboNowaKategoria->setCurrentIndex(indexKat);
-        }
-        if (idDomyslnejPlatformy != 0) {
-            int indexPlat = ui->comboNowyTyp->findData(idDomyslnejPlatformy);
-            if (indexPlat != -1) ui->comboNowyTyp->setCurrentIndex(indexPlat);
-        }
-    } else {
-        czyTrybEdycji = true;
-        idEdytowanegoMedium = idMedium;
-        ui->btnPotwierdzDodaj->setText("Zapisz zmiany");
-        for (const auto& m : std::as_const(listaMultimediow)) {
-            if (m->getId() == idMedium) {
-                ui->editNowyTytul->setText(m->getTytul());
-                ui->spinNowyCel->setValue(m->getPostep().docelowa);
-                ui->spinNowaOcena->setValue(m->getOcena());
-                int idxKat = ui->comboNowaKategoria->findData(m->getIdKategorii());
-                ui->comboNowaKategoria->setCurrentIndex(idxKat != -1 ? idxKat : 0);
-                int idxPlat = ui->comboNowyTyp->findData(m->getIdPlatformy());
-                ui->comboNowyTyp->setCurrentIndex(idxPlat != -1 ? idxPlat : 0);
-                break;
-            }
-        }
-    }
-    ui->daneSzczegolowe->setCurrentWidget(ui->page_3);
-}
 
 void MainWindow::usunWybraneMedium(int id) {
     QMessageBox::StandardButton reply;
@@ -560,31 +435,6 @@ void MainWindow::usunWybraneMedium(int id) {
     }
 }
 
-void MainWindow::uzupelnijComboBoxy() {
-    ui->comboNowaKategoria->clear();
-    ui->comboNowyTyp->clear();
-
-    ui->comboNowaKategoria->addItem("--- Wybierz kategorię ---", 0);
-    ui->comboNowaKategoria->setItemData(0, "jednostka", Qt::UserRole + 1);
-
-    auto kategorie = dbManager.pobierzKategorie();
-    auto jednostki = dbManager.pobierzSlownikJednostek();
-
-    for (const auto& kat : std::as_const(kategorie)) {
-        if (kat.first != 0) {
-            ui->comboNowaKategoria->addItem(kat.second, kat.first);
-            int idx = ui->comboNowaKategoria->count() - 1;
-            QString jedn = jednostki.value(kat.first, "Wartość");
-            ui->comboNowaKategoria->setItemData(idx, jedn, Qt::UserRole + 1);
-        }
-    }
-
-    ui->comboNowyTyp->addItem("--- Wybierz platformę ---", 0);
-    auto platformy = dbManager.pobierzPlatformy();
-    for (const auto& plat : std::as_const(platformy)) {
-        if (plat.first != 0) ui->comboNowyTyp->addItem(plat.second, plat.first);
-    }
-}
 
 void MainWindow::pokazSzczegolyMedium(int idMedium) {
     for (const auto& medium : std::as_const(listaMultimediow)) {

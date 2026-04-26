@@ -20,10 +20,9 @@ qt_add_executable(CML
     ui/platformydialog.h ui/platformydialog.cpp
 
     ui/statisticswidget.cpp
-    ui/statisticswidget.cpp
-    ui/statisticswidget.cpp
     ui/statisticswidget.h
     ui/statisticswidget.ui
+    ui/multimediaformwidget.h ui/multimediaformwidget.cpp ui/multimediaformwidget.ui
 
 )
 
