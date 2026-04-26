@@ -3,7 +3,6 @@
 
 #include <QWidget>
 #include "databasemanager.h"
-#include "multimediaformwidget.h"
 
 namespace Ui {
 class MultimediaFormWidget;
@@ -38,8 +37,6 @@ private slots:
 private:
     Ui::MultimediaFormWidget *ui;
     DatabaseManager& dbManager;
-
-    MultimediaFormWidget *formularzWidget;
 
     bool czyTrybEdycji = false;
     int idEdytowanegoMedium = -1;
