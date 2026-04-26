@@ -7,6 +7,7 @@
 #include <QSqlQuery>
 
 #include "multimedia.h"
+#include "aktywnosc_statystyki.h"
 
 class DatabaseManager {
 private:
@@ -46,7 +47,7 @@ public:
     bool usunWieleMultimediow(const QList<int>& idList);
 
     QMap<int, QString> pobierzSlownikJednostek();
-    QList<QVariantMap> pobierzDaneDoWykresu(int zakresDni, const QString& metryka);
+    QList<StatystykaAktywnosci> pobierzSuroweDaneStatystyk(int zakresDni, const QString& metryka);
     QList<int> pobierzOstatnioAktywne(int limit);
 };
 

@@ -5,7 +5,7 @@
 #include <QLabel>
 #include <QEvent>
 #include <QMouseEvent>
-#include "databasemanager.h"
+#include "appcontroller.h"
 
 namespace Ui {
 class StatisticsWidget;
@@ -16,7 +16,7 @@ class StatisticsWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit StatisticsWidget(DatabaseManager& db, QWidget *parent = nullptr);
+    explicit StatisticsWidget(AppController& controller, QWidget *parent = nullptr);
     ~StatisticsWidget();
 
     void odswiezWykresAktywnosci();
@@ -27,7 +27,7 @@ protected:
 
 private:
     Ui::StatisticsWidget *ui;
-    DatabaseManager& dbManager;
+    AppController& appController;
     QLabel *etykietaTooltip;
 
 private slots:

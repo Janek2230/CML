@@ -2,7 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "databasemanager.h"
+#include "appcontroller.h"
 #include "statisticswidget.h"
 #include "multimediaformwidget.h"
 #include "szczegolywidget.h"
@@ -23,7 +23,7 @@ public:
 
 private:
     Ui::MainWindow *ui;
-    DatabaseManager dbManager;
+    AppController appController;
 
 
     StatisticsWidget *statsWidget;

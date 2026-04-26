@@ -2,10 +2,13 @@
 
 DatabaseManager::DatabaseManager() {
     db = QSqlDatabase::addDatabase("QPSQL");
-    db.setHostName("localhost");
-    db.setDatabaseName("cml");
-    db.setUserName("postgres");
-    db.setPassword("Q@wertyuiop");
+
+    QSettings settings("config.ini", QSettings::IniFormat);
+
+    db.setHostName(settings.value("database/host", "localhost").toString());
+    db.setDatabaseName(settings.value("database/name", "cml").toString());
+    db.setUserName(settings.value("database/user", "postgres").toString());
+    db.setPassword(settings.value("database/password", "").toString());
 }
 
 bool DatabaseManager::openConnection() {
@@ -457,6 +460,51 @@ QList<QVariantMap> DatabaseManager::pobierzDaneDoWykresu(int zakresDni, const QS
         rzad["seria"] = query.value(1).toString();
         rzad["wartosc"] = query.value(2).toDouble();
         wyniki.append(rzad);
+    }
+    return wyniki;
+}
+
+QList<StatystykaAktywnosci> DatabaseManager::pobierzSuroweDaneStatystyk(int zakresDni, const QString& metryka) {
+    QList<StatystykaAktywnosci> wyniki;
+    QSqlQuery query(db);
+
+    QString funkcjaAgregujaca;
+    if (metryka == "czas") {
+        funkcjaAgregujaca = "SUM(d.czas_trwania_sekundy)"; // SUROWE SEKUNDY!
+    } else if (metryka == "sesje") {
+        funkcjaAgregujaca = "COUNT(d.id)";
+    } else if (metryka == "jednostki") {
+        funkcjaAgregujaca = "SUM(d.przyrost_jednostek)";
+    } else {
+        return wyniki;
+    }
+
+    QString formatDaty = (zakresDni > 60) ? "'YYYY-MM'" : "'MM-DD'";
+
+    QString sql = QString(R"(
+        SELECT
+            TO_CHAR(d.data_wpisu, %1) as kategoria_czasu,
+            m.tytul as nazwa_serii,
+            %2 as wartosc
+        FROM dziennik_aktywnosci d
+        JOIN podejscia p ON d.id_podejscia = p.id
+        JOIN multimedia m ON p.id_medium = m.id
+        WHERE d.data_wpisu >= CURRENT_DATE - INTERVAL '%3 days'
+        GROUP BY kategoria_czasu, m.tytul
+        ORDER BY kategoria_czasu ASC
+    )").arg(formatDaty).arg(funkcjaAgregujaca).arg(zakresDni);
+
+    if (!query.exec(sql)) {
+        qDebug() << "Błąd pobierania danych do wykresu:" << query.lastError().text();
+        return wyniki;
+    }
+
+    while (query.next()) {
+        StatystykaAktywnosci s;
+        s.data = query.value(0).toString();
+        s.nazwaSerii = query.value(1).toString();
+        s.wartosc = query.value(2).toDouble();
+        wyniki.append(s);
     }
     return wyniki;
 }
