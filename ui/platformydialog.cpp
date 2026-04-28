@@ -6,7 +6,7 @@
 #include <QSqlQuery>
 #include <QInputDialog>
 
-PlatformyDialog::PlatformyDialog(DatabaseManager& db, QWidget *parent)
+PlatformyDialog::PlatformyDialog(AppController& controller, QWidget *parent)
     : QDialog(parent), appController(controller)
 {
     setWindowTitle("Zarządzanie Platformami");

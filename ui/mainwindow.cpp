@@ -30,13 +30,13 @@ MainWindow::MainWindow(QWidget *parent)
     ui->splitter->insertWidget(0, panelNawigacji);
 
     connect(ui->actionKategorie, &QAction::triggered, this, [this]() {
-        KategorieDialog dialog(appController.getDb(), this);
+        KategorieDialog dialog(appController, this);
         dialog.exec();
         dashboardWidget->odswiezStatystykiGlowne();
     });
 
     connect(ui->actionPlatformy, &QAction::triggered, this, [this]() {
-        PlatformyDialog dialog(appController.getDb(), this);
+        PlatformyDialog dialog(appController, this);
         dialog.exec();
         dashboardWidget->odswiezStatystykiGlowne();
     });

@@ -31,6 +31,16 @@ public:
     struct KategoriaModel { int id; QString nazwa; QString jednostka; };
     QList<KategoriaModel> pobierzPelneKategorie();
 
+    bool zacznijOdNowa(int idMedium);
+    bool dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel);
+    bool aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel);
+    int dodajPlatforme(const QString &nazwa);
+    bool aktualizujPlatforme(int id, const QString &nazwa);
+    QStringList pobierzUnikalneJednostki();
+    QList<QPair<int, QString>> pobierzKategorie();
+    QList<QPair<int, QString>> pobierzPlatformy();
+    QMap<int, QString> pobierzSlownikJednostek();
+
 signals:
     void bladKrytyczny(const QString& wiadomosc);
     void daneZmienione();

@@ -9,7 +9,7 @@
 #include <QComboBox>
 #include <QDialogButtonBox>
 
-PlatformyDialog::PlatformyDialog(AppController& controller, QWidget *parent)
+KategorieDialog::KategorieDialog(AppController& controller, QWidget *parent)
     : QDialog(parent), appController(controller)
 {
     setWindowTitle("Zarządzanie Kategoriami");
@@ -73,7 +73,7 @@ void KategorieDialog::onBtnDodajClicked() {
 
     QComboBox comboJednostka(&dialog);
     comboJednostka.setEditable(true);
-    comboJednostka.addItems(dbManager.pobierzUnikalneJednostki());
+    comboJednostka.addItems(appController.pobierzUnikalneJednostki());
 
     form.addRow("Nazwa kategorii:", &editNazwa);
     form.addRow("Jednostka:", &comboJednostka);
@@ -119,7 +119,7 @@ void KategorieDialog::onBtnEdytujClicked() {
 
     QComboBox comboJednostka(&editDialog);
     comboJednostka.setEditable(true);
-    comboJednostka.addItems(dbManager.pobierzUnikalneJednostki());
+    comboJednostka.addItems(appController.pobierzUnikalneJednostki());
     comboJednostka.setCurrentText(obecnaJednostka);
 
     form.addRow("Nazwa:", &editNazwa);

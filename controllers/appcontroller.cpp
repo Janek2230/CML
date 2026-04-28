@@ -116,19 +116,45 @@ QMap<int, QString> AppController::getCategories() {
 
 QList<std::shared_ptr<Multimedia>> AppController::pobierzKupkeWstydu() {
     auto wszystko = pobierzWszystkieMultimedia();
-    QList<std::shared_ptr<Multimedia>> kupka;
+    QList<std::shared_ptr<Multimedia>> pobraneDane;
     QDateTime teraz = QDateTime::currentDateTime();
 
     for (const auto& m : wszystko) {
         if (m->getStatus() == "Planowane") {
             if (m->getDataDodania().daysTo(teraz) > 180) {
-                kupka.append(m);
+                pobraneDane.append(m);
             }
         } else if (m->getStatus() == "W trakcie") {
             if (m->getDataOstatniejAktywnosci().isValid() && m->getDataOstatniejAktywnosci().daysTo(teraz) > 30) {
-                kupka.append(m);
+                pobraneDane.append(m);
             }
         }
     }
-    return kupka;
+    return pobraneDane;
 }
+
+bool AppController::zacznijOdNowa(int idMedium) {
+    if(dbManager.zacznijOdNowa(idMedium)) { emit daneZmienione(); return true; }
+    return false;
+}
+bool AppController::dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel) {
+    if(dbManager.dodajNoweMedium(tytul, idKat, idPlatformy, cel)) { emit daneZmienione(); return true; }
+    return false;
+}
+bool AppController::aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel) {
+    if(dbManager.aktualizujDaneMedium(id, tytul, idKat, idPlatformy, cel)) { emit daneZmienione(); return true; }
+    return false;
+}
+int AppController::dodajPlatforme(const QString &nazwa) {
+    int id = dbManager.dodajPlatforme(nazwa);
+    if(id > 0) { emit daneZmienione(); }
+    return id;
+}
+bool AppController::aktualizujPlatforme(int id, const QString &nazwa) {
+    if(dbManager.aktualizujPlatforme(id, nazwa)) { emit daneZmienione(); return true; }
+    return false;
+}
+QStringList AppController::pobierzUnikalneJednostki() { return dbManager.pobierzUnikalneJednostki(); }
+QList<QPair<int, QString>> AppController::pobierzKategorie() { return dbManager.pobierzKategorie(); }
+QList<QPair<int, QString>> AppController::pobierzPlatformy() { return dbManager.pobierzPlatformy(); }
+QMap<int, QString> AppController::pobierzSlownikJednostek() { return dbManager.pobierzSlownikJednostek(); }
