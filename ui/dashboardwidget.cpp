@@ -1,3 +1,15 @@
+#include "dashboardwidget.h"
+#include "ui_dashboardwidget.h"
+
+#include <QChart>
+#include <QPieSeries>
+#include <QChartView>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QRandomGenerator>
+#include <QLayoutItem>
+#include <QColor>
+
 DashboardWidget::DashboardWidget(AppController& controller, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::DashboardWidget),
