@@ -50,6 +50,7 @@ public:
     QMap<int, QString> pobierzSlownikJednostek();
     QList<StatystykaAktywnosci> pobierzSuroweDaneStatystyk(int zakresDni, const QString& metryka);
     QList<int> pobierzOstatnioAktywne(int limit);
+    QList<PodejscieHistoryczne> pobierzPelnaHistorie(int idMedium);
 };
 
 #endif

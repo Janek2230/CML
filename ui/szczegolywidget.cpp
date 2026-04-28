@@ -33,6 +33,10 @@ SzczegolyWidget::SzczegolyWidget(AppController& controller, QWidget *parent) :
         }
     });
 
+    connect(ui->treeHistoria, &QTreeWidget::itemClicked, this, [this](QTreeWidgetItem *item, int column) {
+        ui->txtSzczegolyWpisu->setHtml(item->data(0, Qt::UserRole).toString());
+    });
+
     connect(ui->btnDetaleZapisz, &QPushButton::clicked, this, &SzczegolyWidget::onBtnZapiszClicked);
     connect(ui->btnZacznijOdNowa, &QPushButton::clicked, this, &SzczegolyWidget::onBtnZacznijOdNowaClicked);
 }
@@ -96,6 +100,7 @@ void SzczegolyWidget::ustawMedium(int idMedium) {
             break;
         }
     }
+    odswiezHistorie(idMedium);
 }
 
 void SzczegolyWidget::onBtnZapiszClicked() {
@@ -135,4 +140,45 @@ void SzczegolyWidget::onBtnZacznijOdNowaClicked() {
         emit daneZaktualizowane();
         QMessageBox::information(this, "Sukces", "Licznik wyzerowany. Lecimy od nowa!");
     }
+}
+
+void SzczegolyWidget::odswiezHistorie(int idMedium) {
+    ui->treeHistoria->clear();
+    ui->txtSzczegolyWpisu->clear();
+
+    auto historia = appController.pobierzHistorie(idMedium);
+
+    for (const auto& p : historia) {
+        // Tworzymy węzeł podejścia
+        QTreeWidgetItem *pNode = new QTreeWidgetItem(ui->treeHistoria);
+        pNode->setText(0, QString("Podejście #%1 (%2)").arg(p.numer).arg(p.status));
+        pNode->setText(2, QString("%1/%2").arg(p.aktualna).arg(p.docelowa));
+        pNode->setBackground(0, QColor("#f0f0f0"));
+
+        // Zapisujemy recenzję w UserRole, żeby wyświetlić ją po kliknięciu
+        QString infoPodejscie = QString("<b>Status:</b> %1<br><b>Ocena:</b> %2/10<br><br><b>Recenzja:</b><br>%3")
+                                    .arg(p.status).arg(p.ocena > 0 ? QString::number(p.ocena) : "brak")
+                                    .arg(p.recenzja.isEmpty() ? "Brak recenzji." : p.recenzja);
+        pNode->setData(0, Qt::UserRole, infoPodejscie);
+
+        for (const auto& s : p.sesje) {
+            QTreeWidgetItem *sNode = new QTreeWidgetItem(pNode);
+            sNode->setText(0, "Sesja");
+            sNode->setText(1, s.data.toString("dd.MM.yyyy HH:mm"));
+            sNode->setText(2, QString("+%1").arg(s.przyrost));
+
+            // Konwersja sekund na format H:M
+            int h = s.sekundy / 3600;
+            int m = (s.sekundy % 3600) / 60;
+            sNode->setText(3, QString("%1h %2m").arg(h).arg(m));
+            sNode->setText(4, s.notatka);
+
+            // Zapisujemy pełną notatkę sesji
+            QString infoSesja = QString("<b>Data:</b> %1<br><b>Przyrost:</b> %2<br><b>Czas trwania:</b> %3h %4m<br><br><b>Notatka:</b><br>%5")
+                                    .arg(s.data.toString("dd.MM.yyyy HH:mm")).arg(s.przyrost).arg(h).arg(m)
+                                    .arg(s.notatka.isEmpty() ? "Brak notatki dla tej sesji." : s.notatka);
+            sNode->setData(0, Qt::UserRole, infoSesja);
+        }
+    }
+    ui->treeHistoria->expandAll();
 }

@@ -166,6 +166,10 @@ bool AppController::usunMedium(int idMedium) {
     return false;
 }
 
+QList<PodejscieHistoryczne> AppController::pobierzHistorie(int idMedium) {
+    return dbManager.pobierzPelnaHistorie(idMedium);
+}
+
 QStringList AppController::pobierzUnikalneJednostki() { return dbManager.pobierzUnikalneJednostki(); }
 QList<QPair<int, QString>> AppController::pobierzKategorie() { return dbManager.pobierzKategorie(); }
 QList<QPair<int, QString>> AppController::pobierzPlatformy() { return dbManager.pobierzPlatformy(); }

@@ -29,6 +29,7 @@ qt_add_executable(CML
     models/aktywnosc_statystyki.h
     controllers/appcontroller.h
     controllers/appcontroller.cpp
+    models/historia.h
 
 )
 

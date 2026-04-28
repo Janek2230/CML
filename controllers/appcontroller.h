@@ -41,6 +41,7 @@ public:
     QList<QPair<int, QString>> pobierzKategorie();
     QList<QPair<int, QString>> pobierzPlatformy();
     QMap<int, QString> pobierzSlownikJednostek();
+    QList<PodejscieHistoryczne> pobierzHistorie(int idMedium);
 
 
 signals:

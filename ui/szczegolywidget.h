@@ -29,6 +29,7 @@ private:
     Ui::SzczegolyWidget *ui;
     AppController& appController;
     int aktualneIdMedium = -1;
+    void odswiezHistorie(int idMedium);
 };
 
 #endif

@@ -477,3 +477,46 @@ QList<QList<QVariant>> DatabaseManager::pobierzSuroweKategorie() {
     }
     return wynik;
 }
+
+QList<PodejscieHistoryczne> DatabaseManager::pobierzPelnaHistorie(int idMedium) {
+    QList<PodejscieHistoryczne> historia;
+
+    // 1. Pobieramy wszystkie podejścia dla danego medium
+    QSqlQuery qP(db);
+    qP.prepare("SELECT id, numer_podejscia, status, wartosc_aktualna, wartosc_docelowa, ocena, recenzja "
+               "FROM podejscia WHERE id_medium = :id ORDER BY numer_podejscia DESC");
+    qP.bindValue(":id", idMedium);
+
+    if (!qP.exec()) return historia;
+
+    while (qP.next()) {
+        PodejscieHistoryczne p;
+        p.id = qP.value(0).toInt();
+        p.numer = qP.value(1).toInt();
+        p.status = qP.value(2).toString();
+        p.aktualna = qP.value(3).toInt();
+        p.docelowa = qP.value(4).toInt();
+        p.ocena = qP.value(5).toInt();
+        p.recenzja = qP.value(6).toString();
+
+        // 2. Dla każdego podejścia pobieramy jego sesje z dziennika
+        QSqlQuery qS(db);
+        qS.prepare("SELECT id, COALESCE(czas_zakonczenia, czas_rozpoczecia), przyrost_jednostek, czas_trwania_sekundy, notatka "
+                   "FROM dziennik_aktywnosci WHERE id_podejscia = :idP ORDER BY czas_rozpoczecia DESC");
+        qS.bindValue(":idP", p.id);
+
+        if (qS.exec()) {
+            while (qS.next()) {
+                Sesja s;
+                s.id = qS.value(0).toInt();
+                s.data = qS.value(1).toDateTime();
+                s.przyrost = qS.value(2).toInt();
+                s.sekundy = qS.value(3).toInt();
+                s.notatka = qS.value(4).toString();
+                p.sesje.append(s);
+            }
+        }
+        historia.append(p);
+    }
+    return historia;
+}
