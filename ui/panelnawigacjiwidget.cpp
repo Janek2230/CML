@@ -154,3 +154,7 @@ void PanelNawigacjiWidget::zaladujDaneDoDrzewa() {
     ui->kategorie->expandAll();
 }
 
+void PanelNawigacjiWidget::pokazMenuDrzewa(const QPoint &pos) {
+    // Tutaj w przyszłości dodasz kod wyświetlający menu kontekstowe (np. Usuń, Edytuj)
+}
+

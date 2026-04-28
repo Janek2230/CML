@@ -154,6 +154,10 @@ bool AppController::aktualizujPlatforme(int id, const QString &nazwa) {
     if(dbManager.aktualizujPlatforme(id, nazwa)) { emit daneZmienione(); return true; }
     return false;
 }
+QList<int> AppController::pobierzOstatnioAktywne(int limit) {
+    return dbManager.pobierzOstatnioAktywne(limit);
+}
+
 QStringList AppController::pobierzUnikalneJednostki() { return dbManager.pobierzUnikalneJednostki(); }
 QList<QPair<int, QString>> AppController::pobierzKategorie() { return dbManager.pobierzKategorie(); }
 QList<QPair<int, QString>> AppController::pobierzPlatformy() { return dbManager.pobierzPlatformy(); }

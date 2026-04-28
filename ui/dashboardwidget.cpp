@@ -19,6 +19,10 @@ DashboardWidget::DashboardWidget(AppController& controller, QWidget *parent) :
     connect(ui->btnLosuj, &QPushButton::clicked, this, &DashboardWidget::onBtnLosujClicked);
 }
 
+DashboardWidget::~DashboardWidget() {
+    delete ui;
+}
+
 void DashboardWidget::odswiezStatystykiGlowne() {
     auto stats = appController.getGlobalStats();
     if (stats.value("Suma", 0) == 0) return;
