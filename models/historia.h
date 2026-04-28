@@ -20,6 +20,7 @@ struct PodejscieHistoryczne {
     int docelowa;
     int ocena;
     QString recenzja;
+    QDateTime data_rozpoczecia;
     QList<Sesja> sesje;
 };
 

@@ -371,11 +371,6 @@
              <string>Czas</string>
             </property>
            </column>
-           <column>
-            <property name="text">
-             <string>Notatka</string>
-            </property>
-           </column>
           </widget>
          </item>
          <item>

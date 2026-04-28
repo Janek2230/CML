@@ -1,6 +1,7 @@
 #include "szczegolywidget.h"
 #include "ui_szczegolywidget.h"
 #include <QMessageBox>
+#include <QHeaderView>
 
 SzczegolyWidget::SzczegolyWidget(AppController& controller, QWidget *parent) :
     QWidget(parent),
@@ -8,6 +9,8 @@ SzczegolyWidget::SzczegolyWidget(AppController& controller, QWidget *parent) :
     appController(controller)
 {
     ui->setupUi(this);
+
+    ui->treeHistoria->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
 
     if (ui->comboDetaleStatus->count() == 0) {
         ui->comboDetaleStatus->addItems(appController.pobierzDostepneStatusy());
@@ -48,6 +51,7 @@ SzczegolyWidget::~SzczegolyWidget()
 
 void SzczegolyWidget::ustawMedium(int idMedium) {
     aktualneIdMedium = idMedium;
+    ui->tabWidget->setCurrentIndex(0);
 
     auto lista = appController.pobierzWszystkieMultimedia();
     for (const auto& medium : lista) {
@@ -153,17 +157,29 @@ void SzczegolyWidget::odswiezHistorie(int idMedium) {
         QTreeWidgetItem *pNode = new QTreeWidgetItem(ui->treeHistoria);
         pNode->setText(0, QString("Podejście #%1 (%2)").arg(p.numer).arg(p.status));
         pNode->setText(2, QString("%1/%2").arg(p.aktualna).arg(p.docelowa));
-        pNode->setBackground(0, QColor("#f0f0f0"));
 
-        // Zapisujemy recenzję w UserRole, żeby wyświetlić ją po kliknięciu
-        QString infoPodejscie = QString("<b>Status:</b> %1<br><b>Ocena:</b> %2/10<br><br><b>Recenzja:</b><br>%3")
-                                    .arg(p.status).arg(p.ocena > 0 ? QString::number(p.ocena) : "brak")
-                                    .arg(p.recenzja.isEmpty() ? "Brak recenzji." : p.recenzja);
-        pNode->setData(0, Qt::UserRole, infoPodejscie);
+        if (p.data_rozpoczecia.isValid()) {
+            pNode->setText(1, p.data_rozpoczecia.toString("dd.MM.yyyy HH:mm"));
+        } else {
+            pNode->setText(1, "Nie rozpoczęto");
+        }
 
-        for (const auto& s : p.sesje) {
+        pNode->setText(2, QString("%1/%2").arg(p.aktualna).arg(p.docelowa));
+
+        int sumaSekund = 0;
+        QDateTime najnowszaData;
+        if (!p.sesje.isEmpty()) {
+            najnowszaData = p.sesje.first().data; // Sesje są sortowane malejąco z DB
+        }
+
+        int iloscSesji = p.sesje.size();
+        for (int i = 0; i < iloscSesji; ++i) {
+            const auto& s = p.sesje[i];
+            sumaSekund += s.sekundy;
+
             QTreeWidgetItem *sNode = new QTreeWidgetItem(pNode);
-            sNode->setText(0, "Sesja");
+            // Numeracja rosnąca od najstarszej (a lista jest malejąca)
+            sNode->setText(0, QString("Sesja #%1").arg(iloscSesji - i));
             sNode->setText(1, s.data.toString("dd.MM.yyyy HH:mm"));
             sNode->setText(2, QString("+%1").arg(s.przyrost));
 
@@ -171,7 +187,6 @@ void SzczegolyWidget::odswiezHistorie(int idMedium) {
             int h = s.sekundy / 3600;
             int m = (s.sekundy % 3600) / 60;
             sNode->setText(3, QString("%1h %2m").arg(h).arg(m));
-            sNode->setText(4, s.notatka);
 
             // Zapisujemy pełną notatkę sesji
             QString infoSesja = QString("<b>Data:</b> %1<br><b>Przyrost:</b> %2<br><b>Czas trwania:</b> %3h %4m<br><br><b>Notatka:</b><br>%5")
@@ -179,6 +194,23 @@ void SzczegolyWidget::odswiezHistorie(int idMedium) {
                                     .arg(s.notatka.isEmpty() ? "Brak notatki dla tej sesji." : s.notatka);
             sNode->setData(0, Qt::UserRole, infoSesja);
         }
+
+        // Dodanie zagregowanych danych dla głównego węzła (Podejścia)
+        if (najnowszaData.isValid()) {
+            pNode->setText(1, najnowszaData.toString("dd.MM.yyyy HH:mm"));
+        } else {
+            pNode->setText(1, "-"); // Brak sesji
+        }
+
+        int sumH = sumaSekund / 3600;
+        int sumM = (sumaSekund % 3600) / 60;
+        pNode->setText(3, QString("%1h %2m").arg(sumH).arg(sumM));
+
+        // Zapisujemy recenzję w UserRole, żeby wyświetlić ją po kliknięciu
+        QString infoPodejscie = QString("<b>Status:</b> %1<br><b>Ocena:</b> %2/10<br><br><b>Recenzja:</b><br>%3")
+                                    .arg(p.status).arg(p.ocena > 0 ? QString::number(p.ocena) : "brak")
+                                    .arg(p.recenzja.isEmpty() ? "Brak recenzji." : p.recenzja);
+        pNode->setData(0, Qt::UserRole, infoPodejscie);
     }
     ui->treeHistoria->expandAll();
 }
