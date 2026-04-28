@@ -123,7 +123,7 @@ bool DatabaseManager::aktualizujPostep(int idMedium, const QString& status, int 
     qP.bindValue(":akt", aktualna);
     qP.bindValue(":doc", docelowa);
     qP.bindValue(":status", status);
-    qP.bindValue(":ocena", ocena > 0 ? ocena : QVariant(QVariant::Int));
+    qP.bindValue(":ocena", ocena > 0 ? ocena : QVariant(QMetaType::fromType<int>()));
     qP.bindValue(":id", idPodejscia);
     if (!qP.exec()) { db.rollback(); return false; }
 
@@ -304,7 +304,7 @@ bool DatabaseManager::zmienKategorieWielu(const QList<int>& idMultimediow, int n
     query.prepare("UPDATE multimedia SET id_kategorii = :idKat WHERE id = :idMed");
 
     for (int id : idMultimediow) {
-        query.bindValue(":idKat", nowaKategoriaId > 0 ? QVariant(nowaKategoriaId) : QVariant(QVariant::Int));
+        query.bindValue(":idKat", nowaKategoriaId > 0 ? QVariant(nowaKategoriaId) : QVariant(QMetaType::fromType<int>()));
         query.bindValue(":idMed", id);
 
         if (!query.exec()) {

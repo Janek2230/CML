@@ -340,67 +340,69 @@
       <attribute name="title">
        <string>Dziennik</string>
       </attribute>
-      <widget class="QTreeWidget" name="treeHistoria">
-       <property name="geometry">
-        <rect>
-         <x>80</x>
-         <y>80</y>
-         <width>741</width>
-         <height>192</height>
-        </rect>
-       </property>
-       <column>
-        <property name="text">
-         <string>Zdarzenie</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Data</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Postęp</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Czas</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Notatka</string>
-        </property>
-       </column>
-      </widget>
-      <widget class="QGroupBox" name="groupBox">
-       <property name="geometry">
-        <rect>
-         <x>169</x>
-         <y>269</y>
-         <width>331</width>
-         <height>121</height>
-        </rect>
-       </property>
-       <property name="title">
-        <string>Szczegóły wpisu</string>
-       </property>
-       <widget class="QTextEdit" name="txtSzczegolyWpisu">
-        <property name="geometry">
-         <rect>
-          <x>40</x>
-          <y>30</y>
-          <width>104</width>
-          <height>85</height>
-         </rect>
-        </property>
-        <property name="readOnly">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </widget>
+      <layout class="QGridLayout" name="gridLayout_5">
+       <item row="0" column="0">
+        <layout class="QVBoxLayout" name="verticalLayout_2">
+         <item>
+          <widget class="QTreeWidget" name="treeHistoria">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <column>
+            <property name="text">
+             <string>Zdarzenie</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Data</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Postęp</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Czas</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Notatka</string>
+            </property>
+           </column>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="groupBox">
+           <property name="title">
+            <string>Szczegóły wpisu</string>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_3">
+            <item row="0" column="0">
+             <widget class="QTextEdit" name="txtSzczegolyWpisu">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
      </widget>
     </widget>
    </item>

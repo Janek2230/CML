@@ -8,6 +8,7 @@
 
 #include "multimedia.h"
 #include "aktywnosc_statystyki.h"
+#include "historia.h"
 
 class DatabaseManager {
 private:
