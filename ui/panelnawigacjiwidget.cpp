@@ -155,26 +155,71 @@ void PanelNawigacjiWidget::zaladujDaneDoDrzewa() {
 }
 
 void PanelNawigacjiWidget::pokazMenuDrzewa(const QPoint &pos) {
-    QTreeWidgetItem *item = ui->kategorie->itemAt(pos);
-    if (!item) return;
+    QList<QTreeWidgetItem*> zaznaczone = ui->kategorie->selectedItems();
+    if (zaznaczone.isEmpty()) return;
+
+    // Filtrujemy tylko te elementy, które są mediami (mają rodzica)
+    QList<int> wybraneId;
+    for (auto *item : zaznaczone) {
+        if (item->parent() != nullptr) {
+            wybraneId.append(item->data(0, Qt::UserRole).toInt());
+        }
+    }
+
+    if (wybraneId.isEmpty()) return;
 
     QMenu menu(this);
 
-    if (item->parent() != nullptr) {
-        int idMedium = item->data(0, Qt::UserRole).toInt();
-
+    // 1. Opcja Edycji (tylko dla pojedynczego elementu)
+    if (wybraneId.size() == 1) {
         QAction *akcjaEdytuj = menu.addAction("Edytuj wpis");
-        QAction *akcjaUsun = menu.addAction("Usuń z biblioteki");
-
-        QAction *wybranaAkcja = menu.exec(ui->kategorie->viewport()->mapToGlobal(pos));
-
-        if (wybranaAkcja == akcjaEdytuj) {
-            emit zadanieEdycjiMedium(idMedium);
-        } else if (wybranaAkcja == akcjaUsun) {
-            if (QMessageBox::question(this, "Potwierdzenie", "Czy na pewno chcesz bezpowrotnie usunąć to medium?", QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes) {
-                appController.usunMedium(idMedium);
-            }
-        }
+        connect(akcjaEdytuj, &QAction::triggered, this, [this, id = wybraneId.first()]() {
+            emit zadanieEdycjiMedium(id);
+        });
+        menu.addSeparator();
     }
+
+    // 2. Dynamiczne podmenu "Zmień kategorię na..." (logika z archiwalnego mainwindow.cpp)
+    QMenu *submenuKategorii = menu.addMenu("Zmień kategorię na...");
+    auto kategorieMap = appController.getCategories();
+
+    for (auto it = kategorieMap.begin(); it != kategorieMap.end(); ++it) {
+        int idKat = it.key();
+        QString nazwaKat = it.value();
+
+        QAction *akt = submenuKategorii->addAction(nazwaKat);
+        connect(akt, &QAction::triggered, this, [this, wybraneId, idKat]() {
+            if (appController.zmienKategorieWielu(wybraneId, idKat)) {
+                // Po zmianie drzewo odświeży się automatycznie dzięki sygnałowi daneZmienione()
+            } else {
+                QMessageBox::critical(this, "Błąd", "Nie udało się zmienić kategorii w bazie danych.");
+            }
+        });
+    }
+
+    menu.addSeparator();
+
+    // 3. Usuwanie (Pojedyncze lub Masowe)
+    QString tekstUsun = (wybraneId.size() > 1)
+                            ? QString("Usuń zaznaczone elementy (%1)").arg(wybraneId.size())
+                            : "Usuń z biblioteki";
+
+    QAction *akcjaUsun = menu.addAction(tekstUsun);
+    connect(akcjaUsun, &QAction::triggered, this, [this, wybraneId]() {
+        QString pyt = (wybraneId.size() > 1)
+        ? QString("Czy na pewno chcesz usunąć %1 elementów?").arg(wybraneId.size())
+        : "Czy na pewno chcesz usunąć ten wpis?";
+
+        if (QMessageBox::question(this, "Potwierdzenie", pyt, QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes) {
+            if (wybraneId.size() == 1) {
+                appController.usunMedium(wybraneId.first());
+            } else {
+                appController.usunWieleMultimediow(wybraneId);
+            }
+            emit zadaniePowrotuDoDashboardu();
+        }
+    });
+
+    menu.exec(ui->kategorie->viewport()->mapToGlobal(pos));
 }
 

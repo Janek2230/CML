@@ -42,6 +42,7 @@ public:
     QList<QPair<int, QString>> pobierzPlatformy();
     QMap<int, QString> pobierzSlownikJednostek();
 
+
 signals:
     void bladKrytyczny(const QString& wiadomosc);
     void daneZmienione();
