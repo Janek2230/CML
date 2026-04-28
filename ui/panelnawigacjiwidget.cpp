@@ -155,6 +155,26 @@ void PanelNawigacjiWidget::zaladujDaneDoDrzewa() {
 }
 
 void PanelNawigacjiWidget::pokazMenuDrzewa(const QPoint &pos) {
-    // Tutaj w przyszłości dodasz kod wyświetlający menu kontekstowe (np. Usuń, Edytuj)
+    QTreeWidgetItem *item = ui->kategorie->itemAt(pos);
+    if (!item) return;
+
+    QMenu menu(this);
+
+    if (item->parent() != nullptr) {
+        int idMedium = item->data(0, Qt::UserRole).toInt();
+
+        QAction *akcjaEdytuj = menu.addAction("Edytuj wpis");
+        QAction *akcjaUsun = menu.addAction("Usuń z biblioteki");
+
+        QAction *wybranaAkcja = menu.exec(ui->kategorie->viewport()->mapToGlobal(pos));
+
+        if (wybranaAkcja == akcjaEdytuj) {
+            emit zadanieEdycjiMedium(idMedium);
+        } else if (wybranaAkcja == akcjaUsun) {
+            if (QMessageBox::question(this, "Potwierdzenie", "Czy na pewno chcesz bezpowrotnie usunąć to medium?", QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes) {
+                appController.usunMedium(idMedium);
+            }
+        }
+    }
 }
 

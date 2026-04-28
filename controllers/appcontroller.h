@@ -34,6 +34,7 @@ public:
     bool zacznijOdNowa(int idMedium);
     bool dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel);
     bool aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel);
+    bool usunMedium(int idMedium);
     int dodajPlatforme(const QString &nazwa);
     bool aktualizujPlatforme(int id, const QString &nazwa);
     QStringList pobierzUnikalneJednostki();

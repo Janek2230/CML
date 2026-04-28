@@ -101,7 +101,7 @@ void PlatformyDialog::onBtnUsunClicked() {
     msgBox.setWindowTitle("Usuwanie");
     msgBox.setText("Usuwasz platformę: " + nazwa + "\nCo robimy z zawartością?");
 
-    QPushButton *btnPrzenies = msgBox.addButton("Przenieś do 'Nieznana'", QMessageBox::ActionRole);
+    msgBox.addButton("Przenieś do 'Brak'", QMessageBox::ActionRole);
     QPushButton *btnUsunWszystko = msgBox.addButton("Usuń wszystko", QMessageBox::DestructiveRole);
     QPushButton *btnAnuluj = msgBox.addButton("Anuluj", QMessageBox::RejectRole);
 

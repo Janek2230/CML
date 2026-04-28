@@ -158,6 +158,14 @@ QList<int> AppController::pobierzOstatnioAktywne(int limit) {
     return dbManager.pobierzOstatnioAktywne(limit);
 }
 
+bool AppController::usunMedium(int idMedium) {
+    if (dbManager.usunMedium(idMedium)) {
+        emit daneZmienione();
+        return true;
+    }
+    return false;
+}
+
 QStringList AppController::pobierzUnikalneJednostki() { return dbManager.pobierzUnikalneJednostki(); }
 QList<QPair<int, QString>> AppController::pobierzKategorie() { return dbManager.pobierzKategorie(); }
 QList<QPair<int, QString>> AppController::pobierzPlatformy() { return dbManager.pobierzPlatformy(); }

@@ -53,7 +53,7 @@ void KategorieDialog::wypelnijTabele() {
     tabela->setRowCount(0);
     auto kategorie = appController.pobierzPelneKategorie();
     int wiersz = 0;
-    for(const auto& kat : kategorie) {
+    for(const auto& kat : std::as_const(kategorie)) {
         tabela->insertRow(wiersz);
         tabela->setItem(wiersz, 0, new QTableWidgetItem(QString::number(kat.id)));
         tabela->setItem(wiersz, 1, new QTableWidgetItem(kat.nazwa));
