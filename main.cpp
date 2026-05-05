@@ -15,6 +15,8 @@ int main(int argc, char *argv[])
  * Do rozważenia jakieś okładki w tło, choć z tym może być za dużo niepotrzbnego zachodu.
 
 Zakładka z notatkami i recenzjami
+Oś czasu na której będą możliwe do poczytania napisane recenzje i notatki.
+
 
 Zakładka aktywność:
 4. Trzeba popracować na wyglądem wykresu: 1. Trzeba jakoś grupować albo nie wyświetlać wartości nieistotnych 2. Dobrze było by zrezygnować z jasnych koloróW, wtapiają się w tło, albo zmienic tło wykresu na ciemne, albo dodać obramowania do słupków.
