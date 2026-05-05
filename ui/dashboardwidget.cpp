@@ -30,13 +30,15 @@ void DashboardWidget::odswiezStatystykiGlowne() {
     QPieSeries *series = new QPieSeries();
     series->append("Planowane", stats.value("Planowane", 0));
     series->append("W trakcie", stats.value("W trakcie", 0));
+    series->append("Wstrzymane", stats.value("Wstrzymane", 0));
     series->append("Ukończone", stats.value("Ukończone", 0));
     series->append("Porzucone", stats.value("Porzucone", 0));
 
     series->slices().at(0)->setColor(QColor("#7f8c8d"));
     series->slices().at(1)->setColor(QColor("#2980b9"));
-    series->slices().at(2)->setColor(QColor("#27ae60"));
-    series->slices().at(3)->setColor(QColor("#c0392b"));
+    series->slices().at(2)->setColor(QColor("#f1c40f")); // Wstrzymane
+    series->slices().at(3)->setColor(QColor("#27ae60"));
+    series->slices().at(4)->setColor(QColor("#c0392b"));
 
     for(auto slice : series->slices()) {
         if (slice->value() > 0) {

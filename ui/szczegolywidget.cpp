@@ -101,9 +101,38 @@ void SzczegolyWidget::ustawMedium(int idMedium) {
             ui->spinDetaleAktualny->setValue(medium->getPostep().aktualna);
             ui->lblDetaleJednostka->setText(medium->getPostep().jednostka);
 
+            auto historia = appController.pobierzHistorie(idMedium);
+            QDateTime dataStartuPodejscia;
+            if (!historia.isEmpty()) {
+                dataStartuPodejscia = historia.first().data_rozpoczecia; // Najnowsze podejście
+            }
+
+            QDateTime teraz = QDateTime::currentDateTime();
+            QString tekstLicznikow;
+
+            if (medium->getStatus() == "Ukończone") {
+                ui->lblLicznikiZaniedbania->hide(); // Zakończenie wyłącza licznik
+            } else {
+                ui->lblLicznikiZaniedbania->show();
+                int dniOdDodania = medium->getDataDodania().daysTo(teraz);
+                tekstLicznikow = QString("W bibliotece od: %1 dni").arg(dniOdDodania);
+
+                if (medium->getStatus() == "W trakcie" && dataStartuPodejscia.isValid()) {
+                    int dniOdStartu = dataStartuPodejscia.daysTo(teraz);
+                    int dniBezAkcji = medium->getDataOstatniejAktywnosci().daysTo(teraz);
+                    tekstLicznikow += QString(" | Podejście aktywne od: %1 dni | Brak postępu od: %2 dni")
+                                          .arg(dniOdStartu).arg(dniBezAkcji);
+                } else if (medium->getStatus() == "Wstrzymane") {
+                    int dniPrzestoju = medium->getDataOstatniejAktywnosci().daysTo(teraz);
+                    tekstLicznikow += QString(" | Wstrzymane od: %1 dni").arg(dniPrzestoju);
+                }
+            }
+            ui->lblLicznikiZaniedbania->setText(tekstLicznikow);
+
             break;
         }
     }
+
     odswiezHistorie(idMedium);
 }
 
@@ -153,60 +182,48 @@ void SzczegolyWidget::odswiezHistorie(int idMedium) {
     auto historia = appController.pobierzHistorie(idMedium);
 
     for (const auto& p : historia) {
-        // Tworzymy węzeł podejścia
+        // 1. Tworzymy węzeł podejścia
         QTreeWidgetItem *pNode = new QTreeWidgetItem(ui->treeHistoria);
         pNode->setText(0, QString("Podejście #%1 (%2)").arg(p.numer).arg(p.status));
+
+        // 2. Ustawiamy postęp (kolumna 2)
         pNode->setText(2, QString("%1/%2").arg(p.aktualna).arg(p.docelowa));
 
+        // 3. Ustawiamy DATĘ ROZPOCZĘCIA (kolumna 1) - i NIE nadpisujemy jej później!
         if (p.data_rozpoczecia.isValid()) {
             pNode->setText(1, p.data_rozpoczecia.toString("dd.MM.yyyy HH:mm"));
         } else {
             pNode->setText(1, "Nie rozpoczęto");
         }
 
-        pNode->setText(2, QString("%1/%2").arg(p.aktualna).arg(p.docelowa));
-
         int sumaSekund = 0;
-        QDateTime najnowszaData;
-        if (!p.sesje.isEmpty()) {
-            najnowszaData = p.sesje.first().data; // Sesje są sortowane malejąco z DB
-        }
-
         int iloscSesji = p.sesje.size();
+
         for (int i = 0; i < iloscSesji; ++i) {
             const auto& s = p.sesje[i];
             sumaSekund += s.sekundy;
 
             QTreeWidgetItem *sNode = new QTreeWidgetItem(pNode);
-            // Numeracja rosnąca od najstarszej (a lista jest malejąca)
             sNode->setText(0, QString("Sesja #%1").arg(iloscSesji - i));
             sNode->setText(1, s.data.toString("dd.MM.yyyy HH:mm"));
             sNode->setText(2, QString("+%1").arg(s.przyrost));
 
-            // Konwersja sekund na format H:M
             int h = s.sekundy / 3600;
             int m = (s.sekundy % 3600) / 60;
             sNode->setText(3, QString("%1h %2m").arg(h).arg(m));
 
-            // Zapisujemy pełną notatkę sesji
             QString infoSesja = QString("<b>Data:</b> %1<br><b>Przyrost:</b> %2<br><b>Czas trwania:</b> %3h %4m<br><br><b>Notatka:</b><br>%5")
                                     .arg(s.data.toString("dd.MM.yyyy HH:mm")).arg(s.przyrost).arg(h).arg(m)
                                     .arg(s.notatka.isEmpty() ? "Brak notatki dla tej sesji." : s.notatka);
             sNode->setData(0, Qt::UserRole, infoSesja);
         }
 
-        // Dodanie zagregowanych danych dla głównego węzła (Podejścia)
-        if (najnowszaData.isValid()) {
-            pNode->setText(1, najnowszaData.toString("dd.MM.yyyy HH:mm"));
-        } else {
-            pNode->setText(1, "-"); // Brak sesji
-        }
-
+        // 4. Ustawiamy ZSUMOWANY CZAS dla podejścia (kolumna 3)
         int sumH = sumaSekund / 3600;
         int sumM = (sumaSekund % 3600) / 60;
         pNode->setText(3, QString("%1h %2m").arg(sumH).arg(sumM));
 
-        // Zapisujemy recenzję w UserRole, żeby wyświetlić ją po kliknięciu
+        // 5. Zapisujemy recenzję do podglądu
         QString infoPodejscie = QString("<b>Status:</b> %1<br><b>Ocena:</b> %2/10<br><br><b>Recenzja:</b><br>%3")
                                     .arg(p.status).arg(p.ocena > 0 ? QString::number(p.ocena) : "brak")
                                     .arg(p.recenzja.isEmpty() ? "Brak recenzji." : p.recenzja);

@@ -12,9 +12,7 @@ int main(int argc, char *argv[])
 
 /*
  * QSS - to może pomóc w tyam aby jakoś to wyglądało, do zapoznania się.
- * Dodać historię podejść do danego medium
  * Do rozważenia jakieś okładki w tło, choć z tym może być za dużo niepotrzbnego zachodu.
- * Aktualnie wyświetla się data dodania i ostatniej edycji, zastąpimy ją datą ostatniej aktywnosći, dodatkowo można jeszcze dodać licznik dni które mineły od daty dodania w przypadku gdy jeszcze nie rozpączęto akcji (czyli medium ma status "planowane") z tą grą oraz dni od rozpąćzecia aktywnośći w przypadku gdy zmieniono status na "w trakcie"
 
 1. Kupkę wstydu czyli rzeczy które mają datę dodania bardzo dawną i dalej status planowany lub rzeczy które są w trakcie i od dawana nie były w dzienniku aktywności. (wybór pewnie też combooxem aby zdecydować które chemy wyświetlić) + możliwość szybkiej zmiany statusu na porzucony w przypadku aktywności w trakcie.
 
@@ -32,6 +30,10 @@ Tu można użyć tych pięciokątnych wykresów, wybrać te kateogire itd. najwy
 7. Dodać obłsugę statusu wstyrzymanego
 
 8. Wykres statystyk nie działa (znowu)
+
+9. Dodać wyświetlanie łącznie spędzone czasu w jakimś medium
+
+10. Rozważyć możliwosć dodania dodawania nowych jednostek
 
 
 */

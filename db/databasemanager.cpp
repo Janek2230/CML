@@ -483,8 +483,10 @@ QList<PodejscieHistoryczne> DatabaseManager::pobierzPelnaHistorie(int idMedium) 
 
     // 1. Pobieramy wszystkie podejścia dla danego medium
     QSqlQuery qP(db);
-    qP.prepare("SELECT id, numer_podejscia, status, wartosc_aktualna, wartosc_docelowa, ocena, recenzja, data_rozpoczecia " // Dodano pole
+    qP.prepare("SELECT id, numer_podejscia, status, wartosc_aktualna, wartosc_docelowa, ocena, recenzja, data_rozpoczecia "
                "FROM podejscia WHERE id_medium = :id ORDER BY numer_podejscia DESC");
+
+    qP.bindValue(":id", idMedium);
 
     if (!qP.exec()) return historia;
 
