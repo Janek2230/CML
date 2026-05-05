@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include "kategoriedialog.h"
 #include "platformydialog.h"
+#include "tagidialog.h"
 #include <QDebug>
 
 MainWindow::MainWindow(QWidget *parent)
@@ -41,11 +42,10 @@ MainWindow::MainWindow(QWidget *parent)
         dashboardWidget->odswiezStatystykiGlowne();
     });
 
-
-    connect(ui->actionStatystyki, &QAction::triggered, this, [this]() {
-        panelNawigacji->hide();
-        ui->daneSzczegolowe->setCurrentWidget(statsWidget);
-        statsWidget->odswiezDane();
+    connect(ui->actionTagi, &QAction::triggered, this, [this]() {
+        TagiDialog dialog(appController, this);
+        dialog.exec();
+        dashboardWidget->odswiezStatystykiGlowne();
     });
 
     connect(ui->actionStronaGlowna, &QAction::triggered, this, [this]() {
@@ -54,6 +54,11 @@ MainWindow::MainWindow(QWidget *parent)
         dashboardWidget->odswiezStatystykiGlowne();
     });
 
+    connect(ui->actionStatystyki, &QAction::triggered, this, [this]() {
+        panelNawigacji->hide();
+        ui->daneSzczegolowe->setCurrentWidget(statsWidget);
+        statsWidget->odswiezDane();
+    });
 
     connect(panelNawigacji, &PanelNawigacjiWidget::zadaniePokazaniaSzczegolow, this, [this](int id) {
         pokazSzczegolyMedium(id);
@@ -96,6 +101,11 @@ MainWindow::MainWindow(QWidget *parent)
         ui->statusbar->showMessage("Przełączono na szczegóły!", 3000);
     });
 
+    connect(statsWidget, &StatisticsWidget::zadaniePokazaniaSzczegolow, this, [this](int id) {
+        pokazSzczegolyMedium(id);
+        ui->statusbar->showMessage("Otworzono propozycję z Kupki Wstydu.", 3000);
+    });
+
     connect(&appController, &AppController::daneZmienione, this, [this]() {
         panelNawigacji->odswiezDrzewo();
         dashboardWidget->odswiezStatystykiGlowne();
@@ -113,6 +123,7 @@ MainWindow::~MainWindow()
 }
 
 void MainWindow::pokazSzczegolyMedium(int idMedium) {
+    panelNawigacji->show();
     szczegolyWidget->ustawMedium(idMedium);
     ui->daneSzczegolowe->setCurrentWidget(szczegolyWidget);
 }

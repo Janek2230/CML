@@ -40,6 +40,18 @@ QMap<QString, int> AppController::getGlobalStats() {
     return dbManager.getGlobalStats();
 }
 
+QVariantMap AppController::pobierzStatystykiPodsumowania() {
+    return dbManager.pobierzStatystykiPodsumowania();
+}
+
+QList<QVariantMap> AppController::pobierzPodsumowanieKategorii() {
+    return dbManager.pobierzPodsumowanieKategorii();
+}
+
+QList<QVariantMap> AppController::pobierzPodsumowanieTagow() {
+    return dbManager.pobierzPodsumowanieTagow();
+}
+
 bool AppController::czyOsiagnietoCel(int aktualna, int docelowa) {
     return (aktualna >= docelowa && docelowa > 0);
 }
@@ -128,6 +140,10 @@ QList<std::shared_ptr<Multimedia>> AppController::pobierzKupkeWstydu() {
             if (m->getDataOstatniejAktywnosci().isValid() && m->getDataOstatniejAktywnosci().daysTo(teraz) > 30) {
                 pobraneDane.append(m);
             }
+        } else if (m->getStatus() == "Wstrzymane") {
+            if (m->getDataOstatniejAktywnosci().isValid() && m->getDataOstatniejAktywnosci().daysTo(teraz) > 30) {
+                pobraneDane.append(m);
+            }
         }
     }
     return pobraneDane;
@@ -150,8 +166,29 @@ int AppController::dodajPlatforme(const QString &nazwa) {
     if(id > 0) { emit daneZmienione(); }
     return id;
 }
+int AppController::dodajTag(const QString &nazwa) {
+    int id = dbManager.dodajTag(nazwa);
+    if (id > 0) {
+        emit daneZmienione();
+    }
+    return id;
+}
 bool AppController::aktualizujPlatforme(int id, const QString &nazwa) {
     if(dbManager.aktualizujPlatforme(id, nazwa)) { emit daneZmienione(); return true; }
+    return false;
+}
+bool AppController::aktualizujTag(int id, const QString &nazwa) {
+    if (dbManager.aktualizujTag(id, nazwa)) {
+        emit daneZmienione();
+        return true;
+    }
+    return false;
+}
+bool AppController::usunTag(int idTagu) {
+    if (dbManager.usunTag(idTagu)) {
+        emit daneZmienione();
+        return true;
+    }
     return false;
 }
 QList<int> AppController::pobierzOstatnioAktywne(int limit) {
@@ -170,7 +207,68 @@ QList<PodejscieHistoryczne> AppController::pobierzHistorie(int idMedium) {
     return dbManager.pobierzPelnaHistorie(idMedium);
 }
 
+bool AppController::dodajPodejscie(int idMedium, const QString& status, int docelowa) {
+    if (dbManager.dodajPodejscie(idMedium, status, docelowa)) {
+        emit daneZmienione();
+        return true;
+    }
+    return false;
+}
+
+bool AppController::aktualizujPodejscie(int idPodejscia, const QString& status, int aktualna, int docelowa, int ocena, const QString& recenzja) {
+    if (dbManager.aktualizujPodejscie(idPodejscia, status, aktualna, docelowa, ocena, recenzja)) {
+        emit daneZmienione();
+        return true;
+    }
+    return false;
+}
+
+bool AppController::usunPodejscie(int idPodejscia) {
+    if (dbManager.usunPodejscie(idPodejscia)) {
+        emit daneZmienione();
+        return true;
+    }
+    return false;
+}
+
+bool AppController::dodajSesje(int idPodejscia, int przyrost, int sekundy, const QString& notatka) {
+    if (dbManager.dodajSesje(idPodejscia, przyrost, sekundy, notatka)) {
+        emit daneZmienione();
+        return true;
+    }
+    return false;
+}
+
+bool AppController::aktualizujSesje(int idSesji, int przyrost, int sekundy, const QString& notatka) {
+    if (dbManager.aktualizujSesje(idSesji, przyrost, sekundy, notatka)) {
+        emit daneZmienione();
+        return true;
+    }
+    return false;
+}
+
+bool AppController::usunSesje(int idSesji) {
+    if (dbManager.usunSesje(idSesji)) {
+        emit daneZmienione();
+        return true;
+    }
+    return false;
+}
+
+bool AppController::ustawUlubione(int idMedium, bool ulubione) {
+    if (dbManager.ustawUlubione(idMedium, ulubione)) {
+        emit daneZmienione();
+        return true;
+    }
+    return false;
+}
+
+QVariantMap AppController::pobierzCiekawostkiStatystyczne() {
+    return dbManager.pobierzCiekawostkiStatystyczne();
+}
+
 QStringList AppController::pobierzUnikalneJednostki() { return dbManager.pobierzUnikalneJednostki(); }
 QList<QPair<int, QString>> AppController::pobierzKategorie() { return dbManager.pobierzKategorie(); }
 QList<QPair<int, QString>> AppController::pobierzPlatformy() { return dbManager.pobierzPlatformy(); }
+QList<QPair<int, QString>> AppController::pobierzTagi() { return dbManager.pobierzTagi(); }
 QMap<int, QString> AppController::pobierzSlownikJednostek() { return dbManager.pobierzSlownikJednostek(); }

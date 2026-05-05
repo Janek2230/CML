@@ -21,9 +21,6 @@ public:
 signals:
     void zadaniePokazaniaSzczegolow(int idMedium);
 
-private slots:
-    void onBtnLosujClicked();
-
 private:
     Ui::DashboardWidget *ui;
     AppController& appController;

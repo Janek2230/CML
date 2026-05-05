@@ -17,6 +17,7 @@ private:
     int ocena;
 
     int idPlatformy;
+    bool ulubione = false;
 
 public:
     Multimedia(int id, QString tytul, int idKat, int idPlat, QString status, Postep postep)
@@ -32,6 +33,8 @@ public:
 
     int getOcena() const { return ocena; }
     void setOcena(int o) { ocena = o; }
+    bool getCzyUlubione() const { return ulubione; }
+    void setCzyUlubione(bool val) { ulubione = val; }
     QDateTime getDataOstatniejAktywnosci() const { return dataOstatniejAktywnosci; }
     void setDataOstatniejAktywnosci(const QDateTime &d) { dataOstatniejAktywnosci = d; }
 

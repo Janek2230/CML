@@ -32,13 +32,6 @@
      <item>
       <layout class="QGridLayout" name="gridOstatnie"/>
      </item>
-     <item>
-      <widget class="QPushButton" name="btnLosuj">
-       <property name="text">
-        <string>Wylosuj mi coś z Kupki Wstydu!</string>
-       </property>
-      </widget>
-     </item>
     </layout>
    </item>
   </layout>

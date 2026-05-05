@@ -42,7 +42,7 @@ QList<std::shared_ptr<Multimedia>> DatabaseManager::getAllMultimedia() {
         "SELECT DISTINCT ON (m.id) "
         "m.id, m.tytul, p.status, k.id, k.jednostka, "
         "p.wartosc_aktualna, p.wartosc_docelowa, m.data_dodania, "
-        "m.id_platformy, p.ocena, "
+        "m.id_platformy, p.ocena, m.czy_ulubione, "
         "COALESCE(MAX(COALESCE(d.czas_zakonczenia, d.czas_rozpoczecia)) OVER (PARTITION BY p.id), m.data_dodania) AS ostatnia_aktywnosc, "
         "p.numer_podejscia "
         "FROM multimedia m "
@@ -57,7 +57,7 @@ QList<std::shared_ptr<Multimedia>> DatabaseManager::getAllMultimedia() {
         postep.aktualna = query.value(5).toInt();
         postep.docelowa = query.value(6).toInt();
         postep.jednostka = query.value(4).toString();
-        postep.numer_podejscia = query.value(11).toInt();
+        postep.numer_podejscia = query.value(12).toInt();
 
         auto medium = std::make_shared<Multimedia>(
             query.value(0).toInt(), query.value(1).toString(),
@@ -66,7 +66,8 @@ QList<std::shared_ptr<Multimedia>> DatabaseManager::getAllMultimedia() {
             );
         medium->setDataDodania(query.value(7).toDateTime());
         medium->setOcena(query.value(9).toInt());
-        medium->setDataOstatniejAktywnosci(query.value(10).toDateTime());
+        medium->setCzyUlubione(query.value(10).toBool());
+        medium->setDataOstatniejAktywnosci(query.value(11).toDateTime());
         list.append(medium);
     }
     return list;
@@ -210,6 +211,15 @@ QList<QPair<int, QString>> DatabaseManager::pobierzPlatformy() {
     return lista;
 }
 
+QList<QPair<int, QString>> DatabaseManager::pobierzTagi() {
+    QList<QPair<int, QString>> lista;
+    QSqlQuery query("SELECT id, nazwa FROM tagi ORDER BY nazwa");
+    while (query.next()) {
+        lista.append({query.value(0).toInt(), query.value(1).toString()});
+    }
+    return lista;
+}
+
 bool DatabaseManager::aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel) {
     db.transaction();
     QSqlQuery query(db);
@@ -292,6 +302,31 @@ bool DatabaseManager::aktualizujPlatforme(int id, const QString &nazwa) {
     query.prepare("UPDATE platformy SET nazwa = :nazwa WHERE id = :id");
     query.bindValue(":nazwa", nazwa);
     query.bindValue(":id", id);
+    return query.exec();
+}
+
+bool DatabaseManager::aktualizujTag(int id, const QString &nazwa) {
+    QSqlQuery query;
+    query.prepare("UPDATE tagi SET nazwa = :nazwa WHERE id = :id");
+    query.bindValue(":nazwa", nazwa);
+    query.bindValue(":id", id);
+    return query.exec();
+}
+
+int DatabaseManager::dodajTag(const QString &nazwa) {
+    QSqlQuery query;
+    query.prepare("INSERT INTO tagi (nazwa) VALUES (:nazwa) RETURNING id");
+    query.bindValue(":nazwa", nazwa);
+    if (query.exec() && query.next()) {
+        return query.value(0).toInt();
+    }
+    return -1;
+}
+
+bool DatabaseManager::usunTag(int idTagu) {
+    QSqlQuery query;
+    query.prepare("DELETE FROM tagi WHERE id = :id");
+    query.bindValue(":id", idTagu);
     return query.exec();
 }
 
@@ -438,7 +473,14 @@ QList<StatystykaAktywnosci> DatabaseManager::pobierzSuroweDaneStatystyk(int zakr
         return wyniki;
     }
 
-    QString formatDaty = (zakresDni > 60) ? "'YYYY-MM'" : "'MM-DD'";
+    QString formatDaty;
+    if (zakresDni <= 30) {
+        formatDaty = "'DD.MM'";
+    } else if (zakresDni <= 365) {
+        formatDaty = "'MM.YYYY'";
+    } else {
+        formatDaty = "'YYYY-MM'";
+    }
 
     QString sql = QString(R"(
         SELECT
@@ -521,4 +563,283 @@ QList<PodejscieHistoryczne> DatabaseManager::pobierzPelnaHistorie(int idMedium) 
         historia.append(p);
     }
     return historia;
+}
+
+QVariantMap DatabaseManager::pobierzStatystykiPodsumowania() {
+    QVariantMap wynik;
+    QSqlQuery q(db);
+    q.prepare(R"(
+        SELECT
+            (SELECT COUNT(*) FROM multimedia) AS media_total,
+            (SELECT COUNT(*) FROM podejscia) AS podejscia_total,
+            (SELECT COUNT(*) FROM dziennik_aktywnosci) AS sesje_total,
+            COALESCE((SELECT SUM(czas_trwania_sekundy) FROM dziennik_aktywnosci), 0) AS czas_total,
+            COALESCE((SELECT SUM(przyrost_jednostek) FROM dziennik_aktywnosci), 0) AS jednostki_total,
+            COALESCE((
+                SELECT t.nazwa
+                FROM tagi t
+                JOIN multimedia_tagi mt ON mt.id_tagu = t.id
+                JOIN podejscia p ON p.id_medium = mt.id_medium
+                JOIN dziennik_aktywnosci d ON d.id_podejscia = p.id
+                GROUP BY t.id, t.nazwa
+                ORDER BY SUM(d.czas_trwania_sekundy) DESC
+                LIMIT 1
+            ), 'Brak danych') AS ulubiony_tag
+    )");
+
+    if (!q.exec() || !q.next()) {
+        return wynik;
+    }
+
+    wynik["mediaTotal"] = q.value("media_total").toInt();
+    wynik["podejsciaTotal"] = q.value("podejscia_total").toInt();
+    wynik["sesjeTotal"] = q.value("sesje_total").toInt();
+    wynik["czasTotal"] = q.value("czas_total").toLongLong();
+    wynik["jednostkiTotal"] = q.value("jednostki_total").toLongLong();
+    wynik["ulubionyTag"] = q.value("ulubiony_tag").toString();
+    return wynik;
+}
+
+QList<QVariantMap> DatabaseManager::pobierzPodsumowanieKategorii() {
+    QList<QVariantMap> wynik;
+    QSqlQuery q(db);
+    q.prepare(R"(
+        SELECT
+            COALESCE(k.nazwa, 'Brak kategorii') AS kategoria,
+            COALESCE(SUM(d.czas_trwania_sekundy), 0) AS czas_sekundy,
+            COALESCE(SUM(d.przyrost_jednostek), 0) AS przyrost_jednostek
+        FROM multimedia m
+        LEFT JOIN kategorie k ON m.id_kategorii = k.id
+        LEFT JOIN podejscia p ON p.id_medium = m.id
+        LEFT JOIN dziennik_aktywnosci d ON d.id_podejscia = p.id
+        GROUP BY COALESCE(k.nazwa, 'Brak kategorii')
+        ORDER BY czas_sekundy DESC, przyrost_jednostek DESC, kategoria ASC
+    )");
+
+    if (!q.exec()) {
+        return wynik;
+    }
+
+    while (q.next()) {
+        QVariantMap row;
+        row["kategoria"] = q.value("kategoria").toString();
+        row["czasSekundy"] = q.value("czas_sekundy").toLongLong();
+        row["przyrostJednostek"] = q.value("przyrost_jednostek").toLongLong();
+        wynik.append(row);
+    }
+    return wynik;
+}
+
+QList<QVariantMap> DatabaseManager::pobierzPodsumowanieTagow() {
+    QList<QVariantMap> wynik;
+    QSqlQuery q(db);
+    q.prepare(R"(
+        SELECT
+            t.nazwa AS tag,
+            COUNT(DISTINCT mt.id_medium) AS liczba_mediow,
+            COALESCE(SUM(d.czas_trwania_sekundy), 0) AS czas_sekundy
+        FROM tagi t
+        LEFT JOIN multimedia_tagi mt ON mt.id_tagu = t.id
+        LEFT JOIN multimedia m ON m.id = mt.id_medium
+        LEFT JOIN podejscia p ON p.id_medium = m.id
+        LEFT JOIN dziennik_aktywnosci d ON d.id_podejscia = p.id
+        GROUP BY t.id, t.nazwa
+        ORDER BY czas_sekundy DESC, liczba_mediow DESC, t.nazwa ASC
+    )");
+
+    if (!q.exec()) {
+        return wynik;
+    }
+
+    while (q.next()) {
+        QVariantMap row;
+        row["tag"] = q.value("tag").toString();
+        row["liczbaMediow"] = q.value("liczba_mediow").toInt();
+        row["czasSekundy"] = q.value("czas_sekundy").toLongLong();
+        wynik.append(row);
+    }
+    return wynik;
+}
+
+bool DatabaseManager::dodajPodejscie(int idMedium, const QString& status, int docelowa) {
+    db.transaction();
+
+    QSqlQuery qSel(db);
+    qSel.prepare("SELECT COALESCE(MAX(numer_podejscia), 0) + 1 FROM podejscia WHERE id_medium = :id");
+    qSel.bindValue(":id", idMedium);
+    if (!qSel.exec() || !qSel.next()) { db.rollback(); return false; }
+    int nowyNumer = qSel.value(0).toInt();
+
+    QSqlQuery qIns(db);
+    QString sql = "INSERT INTO podejscia (id_medium, numer_podejscia, status, wartosc_aktualna, wartosc_docelowa";
+    if (status == "W trakcie") {
+        sql += ", data_rozpoczecia";
+    }
+    sql += ") VALUES (:id, :nr, :status, 0, :doc";
+    if (status == "W trakcie") {
+        sql += ", CURRENT_TIMESTAMP";
+    }
+    sql += ")";
+
+    qIns.prepare(sql);
+    qIns.bindValue(":id", idMedium);
+    qIns.bindValue(":nr", nowyNumer);
+    qIns.bindValue(":status", status);
+    qIns.bindValue(":doc", docelowa);
+
+    if (!qIns.exec()) { db.rollback(); return false; }
+    db.commit();
+    return true;
+}
+
+bool DatabaseManager::aktualizujPodejscie(int idPodejscia, const QString& status, int aktualna, int docelowa, int ocena, const QString& recenzja) {
+    QSqlQuery q(db);
+    QString sql = "UPDATE podejscia SET status = :status, wartosc_aktualna = :akt, wartosc_docelowa = :doc, ocena = :ocena, recenzja = :rec";
+    if (status == "W trakcie") {
+        sql += ", data_rozpoczecia = COALESCE(data_rozpoczecia, CURRENT_TIMESTAMP)";
+    }
+    if (status == "Ukończone" || status == "Porzucone") {
+        sql += ", data_ukonczenia = CURRENT_TIMESTAMP";
+    }
+    sql += " WHERE id = :id";
+
+    q.prepare(sql);
+    q.bindValue(":status", status);
+    q.bindValue(":akt", aktualna);
+    q.bindValue(":doc", docelowa);
+    q.bindValue(":ocena", ocena > 0 ? QVariant(ocena) : QVariant(QMetaType::fromType<int>()));
+    q.bindValue(":rec", recenzja.trimmed().isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(recenzja));
+    q.bindValue(":id", idPodejscia);
+    return q.exec();
+}
+
+bool DatabaseManager::usunPodejscie(int idPodejscia) {
+    QSqlQuery q(db);
+    q.prepare("DELETE FROM podejscia WHERE id = :id");
+    q.bindValue(":id", idPodejscia);
+    return q.exec();
+}
+
+bool DatabaseManager::dodajSesje(int idPodejscia, int przyrost, int sekundy, const QString& notatka) {
+    db.transaction();
+
+    QSqlQuery qIns(db);
+    qIns.prepare("INSERT INTO dziennik_aktywnosci (id_podejscia, przyrost_jednostek, czas_rozpoczecia, czas_zakonczenia, czas_trwania_sekundy, notatka) "
+                 "VALUES (:idP, :przyrost, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, :sekundy, :notatka)");
+    qIns.bindValue(":idP", idPodejscia);
+    qIns.bindValue(":przyrost", przyrost);
+    qIns.bindValue(":sekundy", sekundy);
+    qIns.bindValue(":notatka", notatka.trimmed().isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(notatka));
+    if (!qIns.exec()) { db.rollback(); return false; }
+
+    QSqlQuery qUpd(db);
+    qUpd.prepare("UPDATE podejscia SET wartosc_aktualna = GREATEST(0, COALESCE(wartosc_aktualna, 0) + :delta) WHERE id = :idP");
+    qUpd.bindValue(":delta", przyrost);
+    qUpd.bindValue(":idP", idPodejscia);
+    if (!qUpd.exec()) { db.rollback(); return false; }
+
+    db.commit();
+    return true;
+}
+
+bool DatabaseManager::aktualizujSesje(int idSesji, int przyrost, int sekundy, const QString& notatka) {
+    db.transaction();
+
+    QSqlQuery qSel(db);
+    qSel.prepare("SELECT id_podejscia, przyrost_jednostek FROM dziennik_aktywnosci WHERE id = :id");
+    qSel.bindValue(":id", idSesji);
+    if (!qSel.exec() || !qSel.next()) { db.rollback(); return false; }
+    int idPodejscia = qSel.value(0).toInt();
+    int staryPrzyrost = qSel.value(1).toInt();
+
+    QSqlQuery qUpdSes(db);
+    qUpdSes.prepare("UPDATE dziennik_aktywnosci SET przyrost_jednostek = :przyrost, czas_trwania_sekundy = :sekundy, notatka = :notatka WHERE id = :id");
+    qUpdSes.bindValue(":przyrost", przyrost);
+    qUpdSes.bindValue(":sekundy", sekundy);
+    qUpdSes.bindValue(":notatka", notatka.trimmed().isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(notatka));
+    qUpdSes.bindValue(":id", idSesji);
+    if (!qUpdSes.exec()) { db.rollback(); return false; }
+
+    const int roznica = przyrost - staryPrzyrost;
+    QSqlQuery qUpdPod(db);
+    qUpdPod.prepare("UPDATE podejscia SET wartosc_aktualna = GREATEST(0, COALESCE(wartosc_aktualna, 0) + :delta) WHERE id = :idP");
+    qUpdPod.bindValue(":delta", roznica);
+    qUpdPod.bindValue(":idP", idPodejscia);
+    if (!qUpdPod.exec()) { db.rollback(); return false; }
+
+    db.commit();
+    return true;
+}
+
+bool DatabaseManager::usunSesje(int idSesji) {
+    db.transaction();
+
+    QSqlQuery qSel(db);
+    qSel.prepare("SELECT id_podejscia, przyrost_jednostek FROM dziennik_aktywnosci WHERE id = :id");
+    qSel.bindValue(":id", idSesji);
+    if (!qSel.exec() || !qSel.next()) { db.rollback(); return false; }
+    int idPodejscia = qSel.value(0).toInt();
+    int przyrost = qSel.value(1).toInt();
+
+    QSqlQuery qDel(db);
+    qDel.prepare("DELETE FROM dziennik_aktywnosci WHERE id = :id");
+    qDel.bindValue(":id", idSesji);
+    if (!qDel.exec()) { db.rollback(); return false; }
+
+    QSqlQuery qUpd(db);
+    qUpd.prepare("UPDATE podejscia SET wartosc_aktualna = GREATEST(0, COALESCE(wartosc_aktualna, 0) - :delta) WHERE id = :idP");
+    qUpd.bindValue(":delta", przyrost);
+    qUpd.bindValue(":idP", idPodejscia);
+    if (!qUpd.exec()) { db.rollback(); return false; }
+
+    db.commit();
+    return true;
+}
+
+bool DatabaseManager::ustawUlubione(int idMedium, bool ulubione) {
+    QSqlQuery q(db);
+    q.prepare("UPDATE multimedia SET czy_ulubione = :ulubione WHERE id = :id");
+    q.bindValue(":ulubione", ulubione);
+    q.bindValue(":id", idMedium);
+    return q.exec();
+}
+
+QVariantMap DatabaseManager::pobierzCiekawostkiStatystyczne() {
+    QVariantMap wynik;
+
+    // 1. Najdłuższa pojedyncza sesja
+    QSqlQuery q1(db);
+    q1.prepare(R"(
+        SELECT m.tytul, d.czas_trwania_sekundy
+        FROM dziennik_aktywnosci d
+        JOIN podejscia p ON d.id_podejscia = p.id
+        JOIN multimedia m ON p.id_medium = m.id
+        ORDER BY d.czas_trwania_sekundy DESC LIMIT 1
+    )");
+    if (q1.exec() && q1.next()) {
+        wynik["najdluzszaSesjaTytul"] = q1.value(0).toString();
+        wynik["najdluzszaSesjaCzas"] = q1.value(1).toLongLong();
+    } else {
+        wynik["najdluzszaSesjaTytul"] = "Brak";
+        wynik["najdluzszaSesjaCzas"] = 0LL;
+    }
+
+    // 2. Najbardziej aktywny dzień tygodnia (ISODOW: 1=Poniedziałek, 7=Niedziela)
+    QSqlQuery q2(db);
+    q2.prepare(R"(
+        SELECT EXTRACT(ISODOW FROM czas_rozpoczecia) as dzien, SUM(czas_trwania_sekundy) as suma
+        FROM dziennik_aktywnosci
+        WHERE czas_rozpoczecia IS NOT NULL
+        GROUP BY dzien
+        ORDER BY suma DESC LIMIT 1
+    )");
+    if (q2.exec() && q2.next()) {
+        int dzien = q2.value(0).toInt();
+        QStringList dni = {"", "Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"};
+        wynik["najlepszyDzien"] = (dzien >= 1 && dzien <= 7) ? dni[dzien] : "Brak danych";
+    } else {
+        wynik["najlepszyDzien"] = "Brak danych";
+    }
+
+    return wynik;
 }

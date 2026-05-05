@@ -37,10 +37,14 @@ public:
 
     QList<QPair<int, QString>> pobierzKategorie();
     QList<QPair<int, QString>> pobierzPlatformy();
+    QList<QPair<int, QString>> pobierzTagi();
     QList<QList<QVariant>> pobierzSuroweKategorie();
 
     bool aktualizujKategorie(int id, const QString &nazwa, const QString &jednostka);
     bool aktualizujPlatforme(int id, const QString &nazwa);
+    bool aktualizujTag(int id, const QString &nazwa);
+    int dodajTag(const QString &nazwa);
+    bool usunTag(int idTagu);
 
     bool usunKategorie(int idKat, bool usunPowiazane);
     bool usunPlatforme(int idPlat, bool usunPowiazane);
@@ -52,6 +56,20 @@ public:
     QList<StatystykaAktywnosci> pobierzSuroweDaneStatystyk(int zakresDni, const QString& metryka);
     QList<int> pobierzOstatnioAktywne(int limit);
     QList<PodejscieHistoryczne> pobierzPelnaHistorie(int idMedium);
+    QVariantMap pobierzStatystykiPodsumowania();
+    QList<QVariantMap> pobierzPodsumowanieKategorii();
+    QList<QVariantMap> pobierzPodsumowanieTagow();
+
+    bool dodajPodejscie(int idMedium, const QString& status, int docelowa);
+    bool aktualizujPodejscie(int idPodejscia, const QString& status, int aktualna, int docelowa, int ocena, const QString& recenzja);
+    bool usunPodejscie(int idPodejscia);
+
+    bool dodajSesje(int idPodejscia, int przyrost, int sekundy, const QString& notatka);
+    bool aktualizujSesje(int idSesji, int przyrost, int sekundy, const QString& notatka);
+    bool usunSesje(int idSesji);
+    bool ustawUlubione(int idMedium, bool ulubione);
+
+    QVariantMap pobierzCiekawostkiStatystyczne();
 };
 
 #endif

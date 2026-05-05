@@ -4,9 +4,7 @@
 #include <QChart>
 #include <QPieSeries>
 #include <QChartView>
-#include <QMessageBox>
 #include <QPushButton>
-#include <QRandomGenerator>
 #include <QLayoutItem>
 #include <QColor>
 
@@ -16,7 +14,6 @@ DashboardWidget::DashboardWidget(AppController& controller, QWidget *parent) :
     appController(controller)
 {
     ui->setupUi(this);
-    connect(ui->btnLosuj, &QPushButton::clicked, this, &DashboardWidget::onBtnLosujClicked);
 }
 
 DashboardWidget::~DashboardWidget() {
@@ -40,21 +37,32 @@ void DashboardWidget::odswiezStatystykiGlowne() {
     series->slices().at(3)->setColor(QColor("#27ae60"));
     series->slices().at(4)->setColor(QColor("#c0392b"));
 
+    double suma = stats.value("Suma", 0);
+
     for(auto slice : series->slices()) {
         if (slice->value() > 0) {
-            slice->setLabelVisible(true);
             slice->setLabel(QString("%1: %2").arg(slice->label()).arg(slice->value()));
+
+            double procent = (slice->value() / suma) * 100.0;
         }
     }
 
     QChart *chart = new QChart();
     chart->addSeries(series);
     chart->setTitle("Status Biblioteki");
-    chart->legend()->hide();
+    chart->legend()->setVisible(true);
+    chart->legend()->setAlignment(Qt::AlignRight);
     chart->setAnimationOptions(QChart::SeriesAnimations);
+
+    chart->setBackgroundVisible(false);
+    chart->setTitleBrush(QBrush(Qt::white));
+    chart->legend()->setLabelColor(Qt::white);
 
     ui->wykresOwalny->setChart(chart);
     ui->wykresOwalny->setRenderHint(QPainter::Antialiasing);
+
+    ui->wykresOwalny->setBackgroundBrush(Qt::NoBrush);
+    ui->wykresOwalny->setStyleSheet("background: transparent; border: none;");
 
     QLayoutItem *child;
     while ((child = ui->gridOstatnie->takeAt(0)) != nullptr) {
@@ -82,17 +90,3 @@ void DashboardWidget::odswiezStatystykiGlowne() {
     }
 }
 
-void DashboardWidget::onBtnLosujClicked() {
-    auto lista = appController.pobierzWszystkieMultimedia();
-    QList<int> doWylosowania;
-    for (const auto& m : lista) {
-        if (m->getStatus() == "Planowane") doWylosowania.append(m->getId());
-    }
-    if (doWylosowania.isEmpty()) {
-        QMessageBox::information(this, "Pusto!", "Nie masz żadnych 'Planowanych' pozycji.");
-        return;
-    }
-    int wylosowaneId = doWylosowania.at(QRandomGenerator::global()->bounded(doWylosowania.size()));
-
-    emit zadaniePokazaniaSzczegolow(wylosowaneId);
-}

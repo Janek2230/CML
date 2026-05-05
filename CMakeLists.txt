@@ -18,6 +18,7 @@ qt_add_executable(CML
     db/databasemanager.cpp
     ui/kategoriedialog.h ui/kategoriedialog.cpp
     ui/platformydialog.h ui/platformydialog.cpp
+    ui/tagidialog.h ui/tagidialog.cpp
 
     ui/statisticswidget.cpp
     ui/statisticswidget.h

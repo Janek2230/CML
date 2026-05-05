@@ -2,6 +2,7 @@
 #define SZCZEGOLYWIDGET_H
 
 #include <QWidget>
+#include <QTreeWidgetItem>
 #include "appcontroller.h"
 
 namespace Ui {
@@ -24,8 +25,25 @@ signals:
 private slots:
     void onBtnZapiszClicked();
     void onBtnZacznijOdNowaClicked();
+    void onHistoriaItemClicked(QTreeWidgetItem *item);
+    void onBtnDodajPodejscieClicked();
+    void onBtnDodajSesjeClicked();
+    void onBtnEdytujZaznaczoneClicked();
+    void onBtnUsunZaznaczoneClicked();
+    void onBtnUlubioneClicked();
 
 private:
+    enum class TypHistoriiElementu {
+        Brak = 0,
+        Podejscie = 1,
+        Sesja = 2
+    };
+
+    void aktualizujStanPrzyciskowHistorii();
+    void odswiezPrzyciskUlubione(bool czyUlubione);
+    bool pokazDialogSesji(int& przyrost, int& sekundy, QString& notatka, const QString& tytul, bool edycja);
+    bool pokazDialogPodejscia(QString& status, int& aktualna, int& docelowa, int& ocena, QString& recenzja, const QString& tytul);
+
     Ui::SzczegolyWidget *ui;
     AppController& appController;
     int aktualneIdMedium = -1;

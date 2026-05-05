@@ -59,7 +59,7 @@
      <x>0</x>
      <y>0</y>
      <width>1101</width>
-     <height>21</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">
@@ -69,6 +69,7 @@
     <addaction name="separator"/>
     <addaction name="actionKategorie"/>
     <addaction name="actionPlatformy"/>
+    <addaction name="actionTagi"/>
    </widget>
    <widget class="QMenu" name="menuWidok">
     <property name="title">
@@ -109,6 +110,11 @@
   <action name="actionStatystyki">
    <property name="text">
     <string>Statystyki</string>
+   </property>
+  </action>
+  <action name="actionTagi">
+   <property name="text">
+    <string>Tagi...</string>
    </property>
   </action>
  </widget>
