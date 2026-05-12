@@ -169,7 +169,7 @@ bool DatabaseManager::zacznijOdNowa(int idMedium) {
 }
 
 
-bool DatabaseManager::dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel) {
+int DatabaseManager::dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel) {
     db.transaction();
 
     QSqlQuery query1(db);
@@ -178,7 +178,7 @@ bool DatabaseManager::dodajNoweMedium(const QString &tytul, int idKat, int idPla
     query1.bindValue(":idKat", idKat > 0 ? QVariant(idKat) : QVariant(QMetaType::fromType<int>()));
     query1.bindValue(":idPlat", idPlatformy > 0 ? QVariant(idPlatformy) : QVariant(QMetaType::fromType<int>()));
 
-    if (!query1.exec() || !query1.next()) { db.rollback(); return false; }
+    if (!query1.exec() || !query1.next()) { db.rollback(); return -1; }
     int noweId = query1.value(0).toInt();
 
     QSqlQuery query2(db);
@@ -186,10 +186,10 @@ bool DatabaseManager::dodajNoweMedium(const QString &tytul, int idKat, int idPla
     query2.bindValue(":id", noweId);
     query2.bindValue(":cel", cel);
 
-    if (!query2.exec()) { db.rollback(); return false; }
+    if (!query2.exec()) { db.rollback(); return -1; }
 
     db.commit();
-    return true;
+    return noweId;
 }
 
 
@@ -478,6 +478,8 @@ QList<StatystykaAktywnosci> DatabaseManager::pobierzSuroweDaneStatystyk(int zakr
         formatDaty = "'DD.MM'";
     } else if (zakresDni <= 365) {
         formatDaty = "'MM.YYYY'";
+    } else if (zakresDni > 1000) {
+        formatDaty = "'YYYY'";
     } else {
         formatDaty = "'YYYY-MM'";
     }
@@ -807,7 +809,7 @@ bool DatabaseManager::ustawUlubione(int idMedium, bool ulubione) {
 QVariantMap DatabaseManager::pobierzCiekawostkiStatystyczne() {
     QVariantMap wynik;
 
-    // 1. Najdłuższa pojedyncza sesja
+    // 1. Maratończyk (Najdłuższa sesja)
     QSqlQuery q1(db);
     q1.prepare(R"(
         SELECT m.tytul, d.czas_trwania_sekundy
@@ -817,29 +819,125 @@ QVariantMap DatabaseManager::pobierzCiekawostkiStatystyczne() {
         ORDER BY d.czas_trwania_sekundy DESC LIMIT 1
     )");
     if (q1.exec() && q1.next()) {
-        wynik["najdluzszaSesjaTytul"] = q1.value(0).toString();
-        wynik["najdluzszaSesjaCzas"] = q1.value(1).toLongLong();
-    } else {
-        wynik["najdluzszaSesjaTytul"] = "Brak";
-        wynik["najdluzszaSesjaCzas"] = 0LL;
+        wynik["rekordSesjaTytul"] = q1.value(0).toString();
+        wynik["rekordSesjaCzas"] = q1.value(1).toLongLong();
     }
 
-    // 2. Najbardziej aktywny dzień tygodnia (ISODOW: 1=Poniedziałek, 7=Niedziela)
+    // 2. Pożeracz Czasu (Najwięcej czasu łącznie)
     QSqlQuery q2(db);
     q2.prepare(R"(
+        SELECT m.tytul, SUM(d.czas_trwania_sekundy) as suma
+        FROM dziennik_aktywnosci d
+        JOIN podejscia p ON d.id_podejscia = p.id
+        JOIN multimedia m ON p.id_medium = m.id
+        GROUP BY m.id, m.tytul
+        ORDER BY suma DESC LIMIT 1
+    )");
+    if (q2.exec() && q2.next()) {
+        wynik["pozeraczTytul"] = q2.value(0).toString();
+        wynik["pozeraczCzas"] = q2.value(1).toLongLong();
+    }
+
+    // 3. Syndrom "Jeszcze jednej tury" (Najwięcej podejść)
+    QSqlQuery q3(db);
+    q3.prepare(R"(
+        SELECT m.tytul, MAX(p.numer_podejscia) as max_podejsc
+        FROM podejscia p
+        JOIN multimedia m ON p.id_medium = m.id
+        GROUP BY m.id, m.tytul
+        ORDER BY max_podejsc DESC LIMIT 1
+    )");
+    if (q3.exec() && q3.next()) {
+        wynik["uparyTytul"] = q3.value(0).toString();
+        wynik["uparyIlosc"] = q3.value(1).toInt();
+    }
+
+    // 4. Najbardziej aktywny dzień tygodnia
+    QSqlQuery q4(db);
+    q4.prepare(R"(
         SELECT EXTRACT(ISODOW FROM czas_rozpoczecia) as dzien, SUM(czas_trwania_sekundy) as suma
         FROM dziennik_aktywnosci
         WHERE czas_rozpoczecia IS NOT NULL
         GROUP BY dzien
         ORDER BY suma DESC LIMIT 1
     )");
-    if (q2.exec() && q2.next()) {
-        int dzien = q2.value(0).toInt();
+    if (q4.exec() && q4.next()) {
+        int dzien = q4.value(0).toInt();
         QStringList dni = {"", "Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"};
         wynik["najlepszyDzien"] = (dzien >= 1 && dzien <= 7) ? dni[dzien] : "Brak danych";
-    } else {
-        wynik["najlepszyDzien"] = "Brak danych";
     }
 
     return wynik;
+}
+
+QMap<int, QStringList> DatabaseManager::pobierzPrzypisaniaTagow() {
+    QMap<int, QStringList> mapa;
+    // Pobieramy pary: ID Medium -> Nazwa Tagu
+    QSqlQuery q("SELECT mt.id_medium, t.nazwa FROM multimedia_tagi mt JOIN tagi t ON mt.id_tagu = t.id");
+    while (q.next()) {
+        mapa[q.value(0).toInt()].append(q.value(1).toString());
+    }
+    return mapa;
+}
+
+//
+QList<PodejscieHistoryczne> DatabaseManager::pobierzWszystkieRecenzje() {
+    QList<PodejscieHistoryczne> lista;
+    QSqlQuery q(db);
+    // Pobieramy tylko te, które są zamknięte i mają ocenę lub recenzję
+    q.prepare(R"(
+        SELECT p.id, p.id_medium, m.tytul, p.status, p.ocena, p.recenzja, p.data_ukonczenia, p.numer_podejscia
+        FROM podejscia p
+        JOIN multimedia m ON p.id_medium = m.id
+        WHERE p.status IN ('Ukończone', 'Porzucone') AND (p.ocena IS NOT NULL OR p.recenzja IS NOT NULL)
+        ORDER BY p.data_ukonczenia DESC
+    )");
+
+    if (q.exec()) {
+        while (q.next()) {
+            PodejscieHistoryczne p;
+            p.id = q.value(0).toInt();
+
+            // POPRAWKA 1: Używamy indeksu 2 (tytuł) i 5 (recenzja) zamiast 1 i 4!
+            p.recenzja = q.value(2).toString() + "|||" + q.value(5).toString();
+
+            p.status = q.value(3).toString();
+            p.ocena = q.value(4).toInt();
+            p.data_rozpoczecia = q.value(6).toDateTime(); // Tu używamy jako daty zakończenia
+
+            // Pobieramy sesje z notatkami dla tego konkretnego podejścia
+            QSqlQuery qS(db);
+            // POPRAWKA 2: Zamiana nieistniejącego 'data_wpisu' na 'czas_rozpoczecia'
+            qS.prepare("SELECT czas_rozpoczecia, notatka FROM dziennik_aktywnosci WHERE id_podejscia = :id AND notatka IS NOT NULL AND notatka != '' ORDER BY czas_rozpoczecia ASC");
+            qS.bindValue(":id", p.id);
+            if (qS.exec()) {
+                while (qS.next()) {
+                    Sesja s;
+                    s.data = qS.value(0).toDateTime();
+                    s.notatka = qS.value(1).toString();
+                    p.sesje.append(s);
+                }
+            }
+            lista.append(p);
+        }
+    }
+    return lista;
+}
+
+bool DatabaseManager::ustawTagiDlaMedium(int idMedium, const QList<int>& idTagow) {
+    db.transaction();
+    QSqlQuery qDel(db);
+    qDel.prepare("DELETE FROM multimedia_tagi WHERE id_medium = :id");
+    qDel.bindValue(":id", idMedium);
+    if (!qDel.exec()) { db.rollback(); return false; }
+
+    QSqlQuery qIns(db);
+    qIns.prepare("INSERT INTO multimedia_tagi (id_medium, id_tagu) VALUES (:idM, :idT)");
+    for (int idT : idTagow) {
+        qIns.bindValue(":idM", idMedium);
+        qIns.bindValue(":idT", idT);
+        if (!qIns.exec()) { db.rollback(); return false; }
+    }
+    db.commit();
+    return true;
 }

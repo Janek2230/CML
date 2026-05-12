@@ -28,6 +28,9 @@ MultimediaFormWidget::MultimediaFormWidget(AppController& controller, QWidget *p
 
     connect(ui->btnDodajPlatforme, &QPushButton::clicked, this, &MultimediaFormWidget::onBtnSzybkaPlatformaClicked);
     connect(ui->btnDodajKategorie, &QPushButton::clicked, this, &MultimediaFormWidget::onBtnSzybkaKategoriaClicked);
+
+    // W konstruktorze MultimediaFormWidget dodaj:
+    connect(ui->btnDodajTag, &QPushButton::clicked, this, &MultimediaFormWidget::onBtnSzybkiTagClicked);
 }
 
 MultimediaFormWidget::~MultimediaFormWidget()
@@ -35,9 +38,20 @@ MultimediaFormWidget::~MultimediaFormWidget()
     delete ui;
 }
 
+void MultimediaFormWidget::onBtnSzybkiTagClicked() {
+    bool ok;
+    QString nazwa = QInputDialog::getText(this, "Nowy Tag", "Podaj nazwę tagu:", QLineEdit::Normal, "", &ok);
+    if (ok && !nazwa.trimmed().isEmpty()) {
+        if (appController.dodajTag(nazwa.trimmed()) > 0) {
+            uzupelnijTagi();
+        }
+    }
+}
+
 
 void MultimediaFormWidget::przygotujFormularz(int idMedium, int idDomyslnejKategorii, int idDomyslnejPlatformy) {
     uzupelnijComboBoxy();
+    uzupelnijTagi();
     if (idMedium == -1) {
         czyTrybEdycji = false;
         ui->btnPotwierdzDodaj->setText("Dodaj do biblioteki");
@@ -83,19 +97,30 @@ void MultimediaFormWidget::onBtnPotwierdzDodajClicked() {
     int cel = ui->spinNowyCel->value();
 
     bool sukces = false;
+    int idDoTagow = -1; // Zmienna na ID do przypisania tagów
+
     if (czyTrybEdycji) {
         sukces = appController.aktualizujDaneMedium(idEdytowanegoMedium, tytul, idKat, idPlat, cel);
-        if (sukces) {
-            ui->lblKomunikatFormularza->setStyleSheet("color: green; font-weight: bold;");
-            ui->lblKomunikatFormularza->setText("Zaktualizowano: " + tytul);
-        }
+        idDoTagow = idEdytowanegoMedium;
     } else {
-        sukces = appController.dodajNoweMedium(tytul, idKat, idPlat, cel);
-        if (sukces) {
-            ui->lblKomunikatFormularza->setStyleSheet("color: green; font-weight: bold;");
-            ui->lblKomunikatFormularza->setText("Dodano do biblioteki: "+ tytul+"!");
-            ui->editNowyTytul->clear();
+        idDoTagow = appController.dodajNoweMedium(tytul, idKat, idPlat, cel);
+        sukces = (idDoTagow > 0);
+    }
+
+    if (sukces) {
+        // --- ZAPIS TAGÓW ---
+        QList<int> wybraneTagi;
+        for(int i = 0; i < ui->listTagi->count(); ++i) {
+            if(ui->listTagi->item(i)->checkState() == Qt::Checked) {
+                wybraneTagi.append(ui->listTagi->item(i)->data(Qt::UserRole).toInt());
+            }
         }
+        appController.ustawTagiDlaMedium(idDoTagow, wybraneTagi);
+        // -------------------
+
+        ui->lblKomunikatFormularza->setStyleSheet("color: green; font-weight: bold;");
+        ui->lblKomunikatFormularza->setText(czyTrybEdycji ? "Zaktualizowano: " + tytul : "Dodano do biblioteki: " + tytul);
+        ui->editNowyTytul->clear();
     }
 
     if (sukces) {
@@ -184,6 +209,27 @@ void MultimediaFormWidget::onComboNowaKategoriaChanged(int index) {
     if (index >= 0) {
         QString jednostka = ui->comboNowaKategoria->itemData(index, Qt::UserRole + 1).toString();
         ui->labJednostka->setText(jednostka.isEmpty() ? "Cel:" : "Cel (" + jednostka + "):");
+    }
+}
+
+void MultimediaFormWidget::uzupelnijTagi() {
+    ui->listTagi->clear();
+    auto wszystkieTagi = appController.pobierzTagi();
+
+    // Pobieramy przypisania, aby wiedzieć co zaznaczyć w trybie edycji
+    QMap<int, QStringList> przypisane = appController.pobierzPrzypisaniaTagow();
+    QStringList tagiTegoMedium = przypisane.value(idEdytowanegoMedium);
+
+    for (const auto& tag : wszystkieTagi) {
+        QListWidgetItem* item = new QListWidgetItem(tag.second, ui->listTagi);
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable); // Pozwala na checkbox
+        item->setData(Qt::UserRole, tag.first); // Przechowujemy ID tagu pod spodem
+
+        if (czyTrybEdycji && tagiTegoMedium.contains(tag.second)) {
+            item->setCheckState(Qt::Checked);
+        } else {
+            item->setCheckState(Qt::Unchecked);
+        }
     }
 }
 

@@ -8,6 +8,7 @@
 #include "szczegolywidget.h"
 #include "dashboardwidget.h"
 #include "panelnawigacjiwidget.h"
+#include "timelineview.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -24,6 +25,7 @@ public:
 private:
     Ui::MainWindow *ui;
     AppController appController;
+    TimelineView* timelineWidget;
 
 
     StatisticsWidget *statsWidget;

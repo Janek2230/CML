@@ -25,6 +25,8 @@ public:
     void odswiezWykresAktywnosci();
     void odswiezDane();
     void odswiezPodsumowanieOgolne();
+    void odswiezPorzucone();
+    void odswiezUlubione();
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -33,7 +35,7 @@ signals:
     void zadaniePokazaniaSzczegolow(int idMedium);
 
 private:
-    QWidget* zbudujKafelek(const std::shared_ptr<Multimedia>& medium, const QMap<int, QString>& mapaPlatform);
+    QWidget* zbudujKafelek(const std::shared_ptr<Multimedia>& medium, const QMap<int, QString>& mapaPlatform, bool pokazWznow = true, bool pokazPorzuc = true);
     int policzDniBezczynnosci(const std::shared_ptr<Multimedia>& medium) const;
     QDateTime wyznaczDateReferencyjna(const std::shared_ptr<Multimedia>& medium) const;
     void wyczyscLayout(QLayout* layout);

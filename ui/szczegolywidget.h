@@ -24,13 +24,16 @@ signals:
 
 private slots:
     void onBtnZapiszClicked();
-    void onBtnZacznijOdNowaClicked();
+    void onBtnNowePodejscieClicked();
     void onHistoriaItemClicked(QTreeWidgetItem *item);
     void onBtnDodajPodejscieClicked();
     void onBtnDodajSesjeClicked();
     void onBtnEdytujZaznaczoneClicked();
     void onBtnUsunZaznaczoneClicked();
     void onBtnUlubioneClicked();
+    void onBtnSzybkaSesjaClicked();
+    void onBtnZakonczPodejscieClicked();
+    void onBtnCofnijZakonczenieClicked();
 
 private:
     enum class TypHistoriiElementu {

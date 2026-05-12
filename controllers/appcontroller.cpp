@@ -153,9 +153,10 @@ bool AppController::zacznijOdNowa(int idMedium) {
     if(dbManager.zacznijOdNowa(idMedium)) { emit daneZmienione(); return true; }
     return false;
 }
-bool AppController::dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel) {
-    if(dbManager.dodajNoweMedium(tytul, idKat, idPlatformy, cel)) { emit daneZmienione(); return true; }
-    return false;
+int AppController::dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel) {
+    int id = dbManager.dodajNoweMedium(tytul, idKat, idPlatformy, cel);
+    if(id > 0) { emit daneZmienione(); }
+    return id;
 }
 bool AppController::aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel) {
     if(dbManager.aktualizujDaneMedium(id, tytul, idKat, idPlatformy, cel)) { emit daneZmienione(); return true; }
@@ -267,8 +268,14 @@ QVariantMap AppController::pobierzCiekawostkiStatystyczne() {
     return dbManager.pobierzCiekawostkiStatystyczne();
 }
 
+QMap<int, QStringList> AppController::pobierzPrzypisaniaTagow() {
+    return dbManager.pobierzPrzypisaniaTagow();
+}
+
 QStringList AppController::pobierzUnikalneJednostki() { return dbManager.pobierzUnikalneJednostki(); }
 QList<QPair<int, QString>> AppController::pobierzKategorie() { return dbManager.pobierzKategorie(); }
 QList<QPair<int, QString>> AppController::pobierzPlatformy() { return dbManager.pobierzPlatformy(); }
 QList<QPair<int, QString>> AppController::pobierzTagi() { return dbManager.pobierzTagi(); }
 QMap<int, QString> AppController::pobierzSlownikJednostek() { return dbManager.pobierzSlownikJednostek(); }
+QList<PodejscieHistoryczne> AppController::pobierzWszystkieRecenzje() {return dbManager.pobierzWszystkieRecenzje();}
+bool AppController::ustawTagiDlaMedium(int idMedium, const QList<int>& idTagow) {return dbManager.ustawTagiDlaMedium(idMedium, idTagow);}

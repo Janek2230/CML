@@ -1,5 +1,6 @@
 #include "szczegolywidget.h"
 #include "ui_szczegolywidget.h"
+#include <QTextBrowser>
 #include <QMessageBox>
 #include <QHeaderView>
 #include <QInputDialog>
@@ -12,6 +13,8 @@
 #include <QTextEdit>
 #include <QLabel>
 #include <QFont>
+#include <QTimer>
+#include <QGroupBox>
 
 namespace {
 constexpr int ROLE_TYP = Qt::UserRole + 1;
@@ -26,7 +29,10 @@ SzczegolyWidget::SzczegolyWidget(AppController& controller, QWidget *parent) :
 {
     ui->setupUi(this);
 
+    ui->btnCofnijZakonczenie->hide();
     ui->treeHistoria->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    ui->btnDodajPodejscie->hide();
+    ui->btnDodajSesje->hide();
 
     if (ui->comboDetaleStatus->count() == 0) {
         ui->comboDetaleStatus->addItems(appController.pobierzDostepneStatusy());
@@ -52,17 +58,19 @@ SzczegolyWidget::SzczegolyWidget(AppController& controller, QWidget *parent) :
         }
     });
 
+
     connect(ui->treeHistoria, &QTreeWidget::itemClicked, this, [this](QTreeWidgetItem *item, int) {
         onHistoriaItemClicked(item);
     });
 
     connect(ui->btnDetaleZapisz, &QPushButton::clicked, this, &SzczegolyWidget::onBtnZapiszClicked);
-    connect(ui->btnZacznijOdNowa, &QPushButton::clicked, this, &SzczegolyWidget::onBtnZacznijOdNowaClicked);
-    connect(ui->btnDodajPodejscie, &QPushButton::clicked, this, &SzczegolyWidget::onBtnDodajPodejscieClicked);
-    connect(ui->btnDodajSesje, &QPushButton::clicked, this, &SzczegolyWidget::onBtnDodajSesjeClicked);
+    connect(ui->btnNowePodejscie, &QPushButton::clicked, this, &SzczegolyWidget::onBtnNowePodejscieClicked);
+    connect(ui->btnCofnijZakonczenie, &QPushButton::clicked, this, &SzczegolyWidget::onBtnCofnijZakonczenieClicked);
+    connect(ui->btnZakonczPodejscie, &QPushButton::clicked, this, &SzczegolyWidget::onBtnZakonczPodejscieClicked);
     connect(ui->btnEdytujZaznaczone, &QPushButton::clicked, this, &SzczegolyWidget::onBtnEdytujZaznaczoneClicked);
     connect(ui->btnUsunZaznaczone, &QPushButton::clicked, this, &SzczegolyWidget::onBtnUsunZaznaczoneClicked);
     connect(ui->btnUlubione, &QPushButton::clicked, this, &SzczegolyWidget::onBtnUlubioneClicked);
+    connect(ui->btnSzybkaSesja, &QPushButton::clicked, this, &SzczegolyWidget::onBtnSzybkaSesjaClicked);
 
     aktualizujStanPrzyciskowHistorii();
 }
@@ -89,41 +97,110 @@ void SzczegolyWidget::ustawMedium(int idMedium) {
             ui->labNazwaPlatformy->setText(nazwaPlat);
             odswiezPrzyciskUlubione(medium->getCzyUlubione());
 
-            if (medium->getStatus() == "Ukończone") {
-                int nr = medium->getPostep().numer_podejscia;
-                QString tekstUkonczenia = (nr > 1) ? QString("UKOŃCZONO (x%1)").arg(nr) : "UKOŃCZONO";
-                ui->lblWielkiStatus->setText(tekstUkonczenia);
+            // 1. Sprawdzamy czy podejście to historia
+            bool czyZakonczone = (medium->getStatus() == "Ukończone" || medium->getStatus() == "Porzucone");
+
+            // 2. Sterowanie widocznością na podstawie statusu
+            if (czyZakonczone) {
+                // ZMIANA: Czysty status, bez dopisków (x4)
+                ui->lblWielkiStatus->setText(medium->getStatus().toUpper());
                 ui->lblWielkiStatus->show();
-                ui->btnZacznijOdNowa->show();
+
+                // --- NOWY PANEL RECENZJI (PRZEWIJALNY) ---
+                auto historia = appController.pobierzHistorie(idMedium);
+                if (!historia.isEmpty() && (!historia.first().recenzja.isEmpty() || historia.first().ocena > 0)) {
+                    auto p = historia.first();
+
+                    QString tekstDoPokazania = p.recenzja;
+                    // Jeśli SQL oddał nam połączenie tytułu i recenzji w "|||", wyciągamy samą recenzję
+                    if (tekstDoPokazania.contains("|||")) {
+                        tekstDoPokazania = tekstDoPokazania.split("|||").last();
+                    }
+                    if (tekstDoPokazania.trimmed() == "0" || tekstDoPokazania.trimmed().isEmpty()) {
+                        tekstDoPokazania = "Brak recenzji tekstowej.";
+                    }
+
+                    // Szukamy QTextBrowser na zakładce
+                    QTextBrowser* textRecenzja = ui->tab->findChild<QTextBrowser*>("dynamicznaRecenzja");
+                    if (!textRecenzja) {
+                        textRecenzja = new QTextBrowser(ui->tab);
+                        textRecenzja->setObjectName("dynamicznaRecenzja");
+                        textRecenzja->setReadOnly(true);
+                        textRecenzja->setMaximumHeight(120); // Ograniczamy wysokość
+                        textRecenzja->setStyleSheet("background: #1a1c1e; padding: 10px; border-radius: 8px; color: #d1d1d1; border-left: 4px solid #2d89ef; font-style: italic;");
+
+                        // Dodajemy widget do gridLayout zakładki pod wierszem statusu (wiersz 7 to aktualnie spacer)
+                        ui->gridLayout->addWidget(textRecenzja, 7, 0);
+                    }
+                    textRecenzja->setHtml(QString("„%1”").arg(tekstDoPokazania));
+                    textRecenzja->show();
+                } else {
+                    // Ukrywamy, jeśli medium nie ma historii lub recenzji (upewniamy się, że to QTextBrowser)
+                    if (QTextBrowser* r = ui->tab->findChild<QTextBrowser*>("dynamicznaRecenzja")) r->hide();
+                }
+
+                ui->btnNowePodejscie->show();
+                ui->btnCofnijZakonczenie->show();
+
+                // Ukrywamy cały "bałagan" operacyjny
                 ui->frameKontrolkiPostepu->hide();
                 ui->progressBarDetale->hide();
                 ui->comboDetaleStatus->hide();
                 ui->label_2->hide();
+                ui->btnSzybkaSesja->hide();
+                ui->btnZakonczPodejscie->hide();
+                ui->btnDetaleZapisz->hide();
+                ui->lblLicznikiZaniedbania->hide();
+
+                // ZMIANA: Zamieniamy pole oceny w statyczny tekst (tylko do odczytu, brak strzałek)
+                ui->lblDetaleOcena->setReadOnly(true);
+                ui->lblDetaleOcena->setButtonSymbols(QAbstractSpinBox::NoButtons);
+                ui->lblDetaleOcena->setStyleSheet("background: transparent; border: none; color: white; font-weight: bold; font-size: 14px;");
             } else {
                 ui->lblWielkiStatus->hide();
-                ui->btnZacznijOdNowa->hide();
+                if (QTextBrowser* r = ui->tab->findChild<QTextBrowser*>("dynamicznaRecenzja")) r->hide();
+
+                ui->btnNowePodejscie->hide();
+                ui->btnCofnijZakonczenie->hide();
+
+                // Pokazujemy kontrolki
                 ui->frameKontrolkiPostepu->show();
                 ui->progressBarDetale->show();
                 ui->comboDetaleStatus->show();
                 ui->label_2->show();
+                ui->btnSzybkaSesja->show();
+                ui->btnZakonczPodejscie->show();
+                ui->btnDetaleZapisz->show();
+                ui->lblLicznikiZaniedbania->show();
+
+                ui->comboDetaleStatus->clear();
+                ui->comboDetaleStatus->addItems({"Planowane", "W trakcie", "Wstrzymane"});
                 ui->comboDetaleStatus->setCurrentText(medium->getStatus());
+
+                // ZMIANA: Przywracamy normalny wygląd i działanie pola oceny dla aktywnych podejść
+                ui->lblDetaleOcena->setReadOnly(false);
+                ui->lblDetaleOcena->setButtonSymbols(QAbstractSpinBox::UpDownArrows);
+                ui->lblDetaleOcena->setStyleSheet(""); // Czyszczenie stylów
             }
 
+            // 3. Wypełnianie pozostałych danych
             int procent = static_cast<int>(medium->getPostep().getProcent());
             ui->progressBarDetale->setValue(procent);
 
+            // Bezpieczne wstawienie oceny (bez wywoływania sygnału zapisu)
+            ui->lblDetaleOcena->blockSignals(true);
             ui->lblDetaleOcena->setValue(medium->getOcena());
-            ui->lblDetaleOcena->show();
-            ui->label_4->show();
+            ui->lblDetaleOcena->blockSignals(false);
 
-            QString dDodania = medium->getDataDodania().toString("dd.MM.yyyy");
-            QString dEdycji = medium->getDataOstatniejAktywnosci().toString("dd.MM.yyyy HH:mm");
+            ui->lblDetaleOcena->show();
+            ui->label_4->show(); // Etykieta "Ocena:" jest zawsze widoczna!
 
             ui->spinDetaleDocelowy->setValue(medium->getPostep().docelowa);
             ui->spinDetaleAktualny->setMaximum(medium->getPostep().docelowa);
             ui->spinDetaleAktualny->setValue(medium->getPostep().aktualna);
             ui->lblDetaleJednostka->setText(medium->getPostep().jednostka);
 
+            // 4. Wyliczanie czasu i zaniedbań
             auto historia = appController.pobierzHistorie(idMedium);
             QDateTime dataStartuPodejscia;
             int sumaSekundCalkowita = 0;
@@ -135,53 +212,31 @@ void SzczegolyWidget::ustawMedium(int idMedium) {
                     }
                 }
             }
-            ui->lblDetaleCzasCalkowity->setText(
-                QString("Łączny czas: %1h %2m")
-                    .arg(sumaSekundCalkowita / 3600)
-                    .arg((sumaSekundCalkowita % 3600) / 60)
-                );
+            ui->lblDetaleCzasCalkowity->setText(QString("Łączny czas: %1h %2m").arg(sumaSekundCalkowita / 3600).arg((sumaSekundCalkowita % 3600) / 60));
 
-            QDateTime teraz = QDateTime::currentDateTime();
-            QString tekstLicznikow;
-
-            QString tooltipDaty = QString("Dodano: %1\nOstatnia aktywność: %2")
-                                      .arg(medium->getDataDodania().toString("dd.MM.yyyy"))
-                                      .arg(medium->getDataOstatniejAktywnosci().toString("dd.MM.yyyy HH:mm"));
-
-            if (medium->getStatus() == "Ukończone") {
-                ui->lblLicznikiZaniedbania->hide();
-            } else {
-                ui->lblLicznikiZaniedbania->show();
+            if (!czyZakonczone) {
+                QDateTime teraz = QDateTime::currentDateTime();
+                QString tekstLicznikow;
+                QString tooltipDaty = QString("Dodano: %1\nOstatnia aktywność: %2").arg(medium->getDataDodania().toString("dd.MM.yyyy")).arg(medium->getDataOstatniejAktywnosci().toString("dd.MM.yyyy HH:mm"));
                 int dniOdDodania = medium->getDataDodania().daysTo(teraz);
-
                 tekstLicznikow = QString("W bibliotece od: <b>%1 dni</b>").arg(dniOdDodania);
 
                 if (medium->getStatus() == "W trakcie" && dataStartuPodejscia.isValid()) {
                     int dniOdStartu = dataStartuPodejscia.daysTo(teraz);
                     int dniBezAkcji = medium->getDataOstatniejAktywnosci().daysTo(teraz);
-
                     QString kolorBrakPostepu = (dniBezAkcji > 30) ? "#e74c3c" : palette().color(QPalette::WindowText).name();
-
-                    tekstLicznikow += QString(" | Podejście aktywne od: <b>%1 dni</b> | Brak postępu od: <b style='color:%2;'>%3 dni</b>")
-                                          .arg(dniOdStartu)
-                                          .arg(kolorBrakPostepu)
-                                          .arg(dniBezAkcji);
-
+                    tekstLicznikow += QString(" | Podejście aktywne od: <b>%1 dni</b> | Brak postępu od: <b style='color:%2;'>%3 dni</b>").arg(dniOdStartu).arg(kolorBrakPostepu).arg(dniBezAkcji);
                     tooltipDaty += QString("\nStart podejścia: %1").arg(dataStartuPodejscia.toString("dd.MM.yyyy HH:mm"));
-
                 } else if (medium->getStatus() == "Wstrzymane") {
-                    int dniPrzestoju = medium->getDataOstatniejAktywnosci().daysTo(teraz);
-                    tekstLicznikow += QString(" | Wstrzymane od: <b>%1 dni</b>").arg(dniPrzestoju);
+                    tekstLicznikow += QString(" | Wstrzymane od: <b>%1 dni</b>").arg(medium->getDataOstatniejAktywnosci().daysTo(teraz));
                 }
+                ui->lblLicznikiZaniedbania->setToolTip(tooltipDaty);
+                ui->lblLicznikiZaniedbania->setText(tekstLicznikow);
             }
-
-            ui->lblLicznikiZaniedbania->setToolTip(tooltipDaty);
-            ui->lblLicznikiZaniedbania->setText(tekstLicznikow);
 
             break;
         }
     }
-
     odswiezHistorie(idMedium);
 }
 
@@ -205,22 +260,6 @@ void SzczegolyWidget::onBtnZapiszClicked() {
         ustawMedium(aktualneIdMedium);
         emit daneZaktualizowane();
         QMessageBox::information(this, "Sukces", "Zapisano zmiany!");
-    }
-}
-
-void SzczegolyWidget::onBtnZacznijOdNowaClicked() {
-    if (aktualneIdMedium == -1) return;
-
-    if (QMessageBox::question(this, "Zacznij od nowa",
-                              "Czy na pewno chcesz wyzerować postęp i zacząć od nowa?\nTa operacja doda +1 do licznika powtórek.",
-                              QMessageBox::Yes | QMessageBox::No) == QMessageBox::No) {
-        return;
-    }
-
-    if (appController.zacznijOdNowa(aktualneIdMedium)) { // ZMIANA
-        ustawMedium(aktualneIdMedium);
-        emit daneZaktualizowane();
-        QMessageBox::information(this, "Sukces", "Licznik wyzerowany. Lecimy od nowa!");
     }
 }
 
@@ -300,7 +339,6 @@ void SzczegolyWidget::onHistoriaItemClicked(QTreeWidgetItem *item) {
 void SzczegolyWidget::aktualizujStanPrzyciskowHistorii() {
     QTreeWidgetItem* item = ui->treeHistoria->currentItem();
     if (!item) {
-        ui->btnDodajSesje->setEnabled(false);
         ui->btnEdytujZaznaczone->setEnabled(false);
         ui->btnUsunZaznaczone->setEnabled(false);
         ui->btnEdytujZaznaczone->setText("Edytuj");
@@ -310,19 +348,18 @@ void SzczegolyWidget::aktualizujStanPrzyciskowHistorii() {
 
     const auto typ = static_cast<TypHistoriiElementu>(item->data(0, ROLE_TYP).toInt());
     if (typ == TypHistoriiElementu::Podejscie) {
-        ui->btnDodajSesje->setEnabled(true);
-        ui->btnEdytujZaznaczone->setEnabled(true);
+        ui->btnEdytujZaznaczone->setEnabled(true); // ODBLOKOWUJEMY
+        ui->btnEdytujZaznaczone->setText("Edytuj recenzję/ocenę");
         ui->btnUsunZaznaczone->setEnabled(true);
-        ui->btnEdytujZaznaczone->setText("Edytuj podejście");
         ui->btnUsunZaznaczone->setText("Usuń podejście");
     } else if (typ == TypHistoriiElementu::Sesja) {
-        ui->btnDodajSesje->setEnabled(true);
+        // Dla sesji pozwalamy na jedno i drugie
         ui->btnEdytujZaznaczone->setEnabled(true);
-        ui->btnUsunZaznaczone->setEnabled(true);
         ui->btnEdytujZaznaczone->setText("Edytuj sesję");
+
+        ui->btnUsunZaznaczone->setEnabled(true);
         ui->btnUsunZaznaczone->setText("Usuń sesję");
     } else {
-        ui->btnDodajSesje->setEnabled(false);
         ui->btnEdytujZaznaczone->setEnabled(false);
         ui->btnUsunZaznaczone->setEnabled(false);
     }
@@ -331,29 +368,138 @@ void SzczegolyWidget::aktualizujStanPrzyciskowHistorii() {
 bool SzczegolyWidget::pokazDialogSesji(int& przyrost, int& sekundy, QString& notatka, const QString& tytul, bool edycja) {
     QDialog dialog(this);
     dialog.setWindowTitle(tytul);
-    auto* layout = new QVBoxLayout(&dialog);
-    auto* form = new QFormLayout();
+    dialog.setMinimumWidth(380);
+    auto* mainLayout = new QVBoxLayout(&dialog);
 
+    // --- Sekcja: Przyrost Jednostek ---
+    auto* formPrzyrost = new QFormLayout();
     auto* spinPrzyrost = new QSpinBox(&dialog);
     spinPrzyrost->setRange(-9999, 9999);
     spinPrzyrost->setValue(przyrost);
 
-    auto* spinMinuty = new QSpinBox(&dialog);
-    spinMinuty->setRange(0, 24 * 60);
-    spinMinuty->setValue(sekundy / 60);
+    // Pobieramy jednostkę z widgetu detali żeby ładnie wyglądało
+    QString nazwaJednostki = ui->lblDetaleJednostka->text();
+    if(nazwaJednostki.isEmpty()) nazwaJednostki = "jednostek";
 
+    formPrzyrost->addRow(QString("Zdobyte (%1):").arg(nazwaJednostki), spinPrzyrost);
+    mainLayout->addLayout(formPrzyrost);
+
+    // --- Sekcja: Czas (Stoper + Ręcznie) ---
+    auto* groupCzas = new QGroupBox("Czas sesji", &dialog);
+    auto* layoutCzas = new QVBoxLayout(groupCzas);
+
+    // 1. Wielki wyświetlacz stopera
+    auto* layoutStoper = new QHBoxLayout();
+    auto* lblStoper = new QLabel("00:00:00", &dialog);
+    lblStoper->setFont(QFont("Consolas", 28, QFont::Bold)); // Consolas daje równą szerokość cyfr
+    lblStoper->setAlignment(Qt::AlignCenter);
+    lblStoper->setStyleSheet("color: #2d89ef; margin: 10px 0;");
+
+    // 2. Przyciski stopera
+    auto* layoutPrzyciskiStopera = new QHBoxLayout();
+    auto* btnStart = new QPushButton("▶ Start", &dialog);
+    auto* btnReset = new QPushButton("↺ Reset", &dialog);
+    btnStart->setMinimumHeight(35);
+    btnReset->setMinimumHeight(35);
+
+    layoutPrzyciskiStopera->addWidget(btnStart);
+    layoutPrzyciskiStopera->addWidget(btnReset);
+
+    layoutCzas->addWidget(lblStoper);
+    layoutCzas->addLayout(layoutPrzyciskiStopera);
+
+    // 3. Ręczne wprowadzenie (zsynchronizowane z stoperem)
+    auto* layoutManual = new QHBoxLayout();
+    auto* spinH = new QSpinBox(&dialog); spinH->setRange(0, 999); spinH->setSuffix(" h");
+    auto* spinM = new QSpinBox(&dialog); spinM->setRange(0, 59); spinM->setSuffix(" m");
+    auto* spinS = new QSpinBox(&dialog); spinS->setRange(0, 59); spinS->setSuffix(" s");
+
+    layoutManual->addWidget(new QLabel("Korekta ręczna:", &dialog));
+    layoutManual->addStretch();
+    layoutManual->addWidget(spinH);
+    layoutManual->addWidget(spinM);
+    layoutManual->addWidget(spinS);
+    layoutCzas->addLayout(layoutManual);
+
+    mainLayout->addWidget(groupCzas);
+
+    // --- Sekcja: Notatka ---
+    auto* formNotatka = new QFormLayout();
     auto* txtNotatka = new QTextEdit(&dialog);
     txtNotatka->setPlainText(notatka);
-    txtNotatka->setPlaceholderText("Opcjonalna notatka do sesji...");
-    txtNotatka->setMinimumHeight(90);
+    txtNotatka->setPlaceholderText("Coś ciekawego się wydarzyło? (Opcjonalnie)");
+    txtNotatka->setMinimumHeight(80);
+    formNotatka->addRow("Notatka:", txtNotatka);
+    mainLayout->addLayout(formNotatka);
 
-    form->addRow("Przyrost jednostek:", spinPrzyrost);
-    form->addRow("Czas trwania [min]:", spinMinuty);
-    form->addRow("Notatka:", txtNotatka);
-    layout->addLayout(form);
+    // --- Przyciski Zapisz/Anuluj ---
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel, &dialog);
+    mainLayout->addWidget(buttons);
 
-    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-    layout->addWidget(buttons);
+    // ==========================================
+    // LOGIKA STOPERA I SYNCHRONIZACJI
+    // ==========================================
+    int totalSeconds = sekundy;
+
+    // Funkcja odświeżająca cały interfejs czasu (wyświetlacz + spinboxy)
+    auto updateDisplay = [&]() {
+        int h = totalSeconds / 3600;
+        int m = (totalSeconds % 3600) / 60;
+        int s = totalSeconds % 60;
+
+        // Blokujemy sygnały w SpinBoxach żeby nie wywołać nieskończonej pętli aktualizacji
+        spinH->blockSignals(true); spinM->blockSignals(true); spinS->blockSignals(true);
+        spinH->setValue(h); spinM->setValue(m); spinS->setValue(s);
+        spinH->blockSignals(false); spinM->blockSignals(false); spinS->blockSignals(false);
+
+        lblStoper->setText(QString("%1:%2:%3")
+                               .arg(h, 2, 10, QChar('0'))
+                               .arg(m, 2, 10, QChar('0'))
+                               .arg(s, 2, 10, QChar('0')));
+    };
+    updateDisplay(); // Ustawienie wartości początkowej
+
+    // Silnik stopera
+    QTimer* timer = new QTimer(&dialog);
+    connect(timer, &QTimer::timeout, [&]() {
+        totalSeconds++;
+        updateDisplay();
+    });
+
+    // Przycisk Start/Pauza
+    connect(btnStart, &QPushButton::clicked, [&]() {
+        if (timer->isActive()) {
+            timer->stop();
+            btnStart->setText("▶ Start");
+            btnStart->setStyleSheet("");
+        } else {
+            timer->start(1000); // Tyknięcie co 1000 ms = 1 sekunda
+            btnStart->setText("⏸ Pauza");
+            btnStart->setStyleSheet("background-color: #c0392b; color: white;");
+        }
+    });
+
+    // Przycisk Reset
+    connect(btnReset, &QPushButton::clicked, [&]() {
+        totalSeconds = 0;
+        updateDisplay();
+        if (!timer->isActive()) {
+            btnStart->setText("▶ Start");
+        }
+    });
+
+    // Reakcja na ręczną zmianę czasu (strzałkami w SpinBoxach)
+    auto manualChanged = [&]() {
+        totalSeconds = spinH->value() * 3600 + spinM->value() * 60 + spinS->value();
+        updateDisplay();
+    };
+    connect(spinH, QOverload<int>::of(&QSpinBox::valueChanged), manualChanged);
+    connect(spinM, QOverload<int>::of(&QSpinBox::valueChanged), manualChanged);
+    connect(spinS, QOverload<int>::of(&QSpinBox::valueChanged), manualChanged);
+
+    // ==========================================
+    // ZATWIERDZANIE
+    // ==========================================
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
@@ -361,11 +507,13 @@ bool SzczegolyWidget::pokazDialogSesji(int& przyrost, int& sekundy, QString& not
         return false;
     }
 
+    // Przypisanie wyników do zmiennych wyjściowych
     przyrost = spinPrzyrost->value();
-    sekundy = spinMinuty->value() * 60;
+    sekundy = totalSeconds;
     notatka = txtNotatka->toPlainText().trimmed();
+
     if (!edycja && przyrost == 0 && sekundy == 0 && notatka.isEmpty()) {
-        QMessageBox::warning(this, "Puste dane", "Sesja nie może być całkowicie pusta.");
+        QMessageBox::warning(this, "Puste dane", "Sesja nie może być całkowicie pusta.\nMusisz spędzić chociaż sekundę, zrobić postęp lub dodać notatkę.");
         return false;
     }
     return true;
@@ -486,45 +634,51 @@ void SzczegolyWidget::onBtnDodajSesjeClicked() {
 
 void SzczegolyWidget::onBtnEdytujZaznaczoneClicked() {
     QTreeWidgetItem* item = ui->treeHistoria->currentItem();
-    if (!item) {
-        return;
-    }
+    if (!item) return;
 
     const auto typ = static_cast<TypHistoriiElementu>(item->data(0, ROLE_TYP).toInt());
+
     if (typ == TypHistoriiElementu::Podejscie) {
         const int idPodejscia = item->data(0, ROLE_ID).toInt();
         auto historia = appController.pobierzHistorie(aktualneIdMedium);
+
         for (const auto& p : historia) {
-            if (p.id != idPodejscia) {
-                continue;
-            }
-            QString status = p.status;
-            int aktualna = p.aktualna;
-            int docelowa = p.docelowa;
-            int ocena = p.ocena;
-            QString recenzja = p.recenzja;
-            if (!pokazDialogPodejscia(status, aktualna, docelowa, ocena, recenzja, "Edytuj podejście")) {
+            if (p.id == idPodejscia) {
+                // Szybki dialog edycji
+                QDialog d(this);
+                d.setWindowTitle("Edytuj podsumowanie");
+                QFormLayout f(&d);
+                QSpinBox s; s.setRange(0, 10); s.setValue(p.ocena);
+                QTextEdit t; t.setPlainText(p.recenzja);
+                f.addRow("Ocena:", &s);
+                f.addRow("Recenzja:", &t);
+                QDialogButtonBox b(QDialogButtonBox::Save | QDialogButtonBox::Cancel);
+                f.addRow(&b);
+                connect(&b, &QDialogButtonBox::accepted, &d, &QDialog::accept);
+                connect(&b, &QDialogButtonBox::rejected, &d, &QDialog::reject);
+
+                if (d.exec() == QDialog::Accepted) {
+                    appController.aktualizujPodejscie(idPodejscia, p.status, p.aktualna, p.docelowa, s.value(), t.toPlainText().trimmed());
+                    ustawMedium(aktualneIdMedium);
+                    emit daneZaktualizowane();
+                }
                 return;
             }
-            if (!appController.aktualizujPodejscie(idPodejscia, status, aktualna, docelowa, ocena, recenzja)) {
-                QMessageBox::warning(this, "Błąd", "Nie udało się zaktualizować podejścia.");
-                return;
-            }
-            ustawMedium(aktualneIdMedium);
-            emit daneZaktualizowane();
-            return;
         }
-    } else if (typ == TypHistoriiElementu::Sesja) {
+    } else if (typ == TypHistoriiElementu::Sesja)
+    {
         const int idSesji = item->data(0, ROLE_ID).toInt();
         auto historia = appController.pobierzHistorie(aktualneIdMedium);
+
         for (const auto& p : historia) {
             for (const auto& s : p.sesje) {
-                if (s.id != idSesji) {
-                    continue;
-                }
+                if (s.id != idSesji) continue;
+
                 int przyrost = s.przyrost;
                 int sekundy = s.sekundy;
                 QString notatka = s.notatka;
+
+                // Otwieramy nasz mądry formularz ze stoperem (w trybie edycji)
                 if (!pokazDialogSesji(przyrost, sekundy, notatka, "Edytuj sesję", true)) {
                     return;
                 }
@@ -597,4 +751,127 @@ void SzczegolyWidget::onBtnUlubioneClicked() {
     }
 
     odswiezPrzyciskUlubione(nowyStan);
+}
+
+void SzczegolyWidget::onBtnSzybkaSesjaClicked() {
+    // Pobieramy ID aktualnego (ostatniego) podejścia z historii
+    auto historia = appController.pobierzHistorie(aktualneIdMedium);
+    if (historia.isEmpty()) return;
+
+    int idPodejscia = historia.first().id; // Najnowsze podejście
+    int przyrost = 0; int sekundy = 0; QString notatka;
+
+    if (pokazDialogSesji(przyrost, sekundy, notatka, "Szybkie dodawanie aktywności", false)) {
+        if (appController.dodajSesje(idPodejscia, przyrost, sekundy, notatka)) {
+            ustawMedium(aktualneIdMedium);
+            emit daneZaktualizowane();
+        }
+    }
+}
+
+
+void SzczegolyWidget::onBtnNowePodejscieClicked() {
+    if (aktualneIdMedium == -1) return;
+
+    bool ok;
+    int nowyCel = QInputDialog::getInt(
+        this, "Nowe podejście",
+        "Świetnie, że dajesz temu tytułowi nową szansę!\nPodaj cel dla nowego podejścia:",
+        ui->spinDetaleDocelowy->value(), 1, 9999, 1, &ok
+        );
+
+    if (ok) {
+        // Tworzy czyste, nowe podejście w bazie ze statusem 'W trakcie'
+        if (appController.dodajPodejscie(aktualneIdMedium, "W trakcie", nowyCel)) {
+            ustawMedium(aktualneIdMedium);
+            emit daneZaktualizowane();
+        }
+    }
+}
+
+void SzczegolyWidget::onBtnCofnijZakonczenieClicked() {
+    auto historia = appController.pobierzHistorie(aktualneIdMedium);
+    if (historia.isEmpty()) return;
+
+    int idPodejscia = historia.first().id;
+
+    if (QMessageBox::question(this, "Cofnij zakończenie",
+                              "Czy na pewno chcesz cofnąć zakończenie i przywrócić to podejście do statusu 'W trakcie'?",
+                              QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes)
+    {
+        // Przywracamy status, zachowując aktualne statystyki
+        if (appController.aktualizujPodejscie(idPodejscia, "W trakcie", historia.first().aktualna, historia.first().docelowa, historia.first().ocena, historia.first().recenzja)) {
+            ustawMedium(aktualneIdMedium);
+            emit daneZaktualizowane();
+        }
+    }
+}
+
+void SzczegolyWidget::onBtnZakonczPodejscieClicked() {
+    int akt = ui->spinDetaleAktualny->value();
+    int doc = ui->spinDetaleDocelowy->value();
+    bool osiagnietoCel = (akt >= doc && doc > 0);
+
+    auto historia = appController.pobierzHistorie(aktualneIdMedium);
+    QString istniejącaRecenzja = "";
+    if (!historia.isEmpty()) istniejącaRecenzja = historia.first().recenzja;
+
+    // Budowa okna dialogowego
+    QDialog dialog(this);
+    dialog.setWindowTitle("Podsumowanie podejścia");
+    dialog.resize(450, 350);
+    QVBoxLayout layout(&dialog);
+
+    QLabel lblKomunikat;
+    if (osiagnietoCel) {
+        lblKomunikat.setText("<span style='font-size: 14px; color: #27ae60;'><b>Gratulacje!</b> Osiągnąłeś założony cel.</span><br>Podsumuj swoje doświadczenie:");
+    } else {
+        lblKomunikat.setText("<span style='font-size: 14px; color: #e74c3c;'><b>Nie osiągnąłeś celu.</b></span><br>Oznacz podejście jako porzucone lub wymuś ukończenie:");
+    }
+    lblKomunikat.setTextFormat(Qt::RichText);
+    layout.addWidget(&lblKomunikat);
+
+    QFormLayout form;
+
+    QComboBox comboStatus;
+    comboStatus.addItems({"Ukończone", "Porzucone"});
+    comboStatus.setCurrentText(osiagnietoCel ? "Ukończone" : "Porzucone");
+
+    QSpinBox spinOcena;
+    spinOcena.setRange(0, 10);
+    spinOcena.setSpecialValueText("Brak oceny"); // Jeśli użytkownik zostawi 0, zapisze się w bazie jako NULL/0
+    spinOcena.setValue(ui->lblDetaleOcena->value());
+
+    QTextEdit txtRecenzja;
+    txtRecenzja.setPlainText(istniejącaRecenzja); // WSTAWIAMY STARY TEKST
+    txtRecenzja.setPlaceholderText("Dopisz coś lub zmień podsumowanie...");
+
+    form.addRow("Status końcowy:", &comboStatus);
+    form.addRow("Ostateczna ocena (1-10):", &spinOcena);
+    form.addRow("Recenzja:", &txtRecenzja);
+    layout.addLayout(&form);
+
+    QDialogButtonBox buttons(QDialogButtonBox::Save | QDialogButtonBox::Cancel);
+    buttons.button(QDialogButtonBox::Save)->setText("Zapieczętuj podejście");
+    layout.addWidget(&buttons);
+
+    connect(&buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(&buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    // Przechwycenie danych po kliknięciu "Zapieczętuj"
+    if (dialog.exec() == QDialog::Accepted) {
+        auto historia = appController.pobierzHistorie(aktualneIdMedium);
+        if (historia.isEmpty()) return;
+
+        int idPodejscia = historia.first().id;
+        QString finalStatus = comboStatus.currentText();
+        int finalOcena = spinOcena.value();
+        QString finalRecenzja = txtRecenzja.toPlainText().trimmed();
+
+        // Zapis do bazy
+        if (appController.aktualizujPodejscie(idPodejscia, finalStatus, akt, doc, finalOcena, finalRecenzja)) {
+            ustawMedium(aktualneIdMedium);
+            emit daneZaktualizowane();
+        }
+    }
 }

@@ -185,6 +185,84 @@
       </layout>
      </item>
      <item>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <item>
+          <spacer name="horizontalSpacer">
+           <property name="orientation">
+            <enum>Qt::Orientation::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QListWidget" name="listTagi">
+           <property name="minimumSize">
+            <size>
+             <width>585</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">padding: 15px;</string>
+           </property>
+           <property name="textElideMode">
+            <enum>Qt::TextElideMode::ElideMiddle</enum>
+           </property>
+           <property name="flow">
+            <enum>QListView::Flow::LeftToRight</enum>
+           </property>
+           <property name="isWrapping" stdset="0">
+            <bool>true</bool>
+           </property>
+           <property name="resizeMode">
+            <enum>QListView::ResizeMode::Adjust</enum>
+           </property>
+           <property name="spacing">
+            <number>10</number>
+           </property>
+           <property name="gridSize">
+            <size>
+             <width>135</width>
+             <height>35</height>
+            </size>
+           </property>
+           <property name="itemAlignment">
+            <set>Qt::AlignmentFlag::AlignHCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Orientation::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnDodajTag">
+         <property name="text">
+          <string>Dodaj tag</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
       <layout class="QHBoxLayout" name="horizontalLayout_8">
        <item>
         <spacer name="horizontalSpacer_7">

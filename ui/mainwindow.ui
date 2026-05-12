@@ -77,6 +77,7 @@
     </property>
     <addaction name="actionStronaGlowna"/>
     <addaction name="actionStatystyki"/>
+    <addaction name="actionMojeRecenzje"/>
    </widget>
    <addaction name="menu"/>
    <addaction name="menuWidok"/>
@@ -115,6 +116,11 @@
   <action name="actionTagi">
    <property name="text">
     <string>Tagi...</string>
+   </property>
+  </action>
+  <action name="actionMojeRecenzje">
+   <property name="text">
+    <string>Moje Recenzje</string>
    </property>
   </action>
  </widget>

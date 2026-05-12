@@ -28,10 +28,12 @@ private slots:
 
     void onBtnSzybkaPlatformaClicked();
     void onBtnSzybkaKategoriaClicked();
+    void onBtnSzybkiTagClicked();
 
 private:
     Ui::MultimediaFormWidget *ui;
     AppController& appController;
+    void uzupelnijTagi();
 
     bool czyTrybEdycji = false;
     int idEdytowanegoMedium = -1;

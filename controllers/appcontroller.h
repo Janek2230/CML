@@ -35,7 +35,7 @@ public:
     QList<KategoriaModel> pobierzPelneKategorie();
 
     bool zacznijOdNowa(int idMedium);
-    bool dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel);
+    int dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel);
     bool aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel);
     bool usunMedium(int idMedium);
     int dodajPlatforme(const QString &nazwa);
@@ -58,6 +58,10 @@ public:
     bool ustawUlubione(int idMedium, bool ulubione);
 
     QVariantMap pobierzCiekawostkiStatystyczne();
+
+    QMap<int, QStringList> pobierzPrzypisaniaTagow();
+    QList<PodejscieHistoryczne> pobierzWszystkieRecenzje();
+    bool ustawTagiDlaMedium(int idMedium, const QList<int>& idTagow);
 
 
 signals:

@@ -26,8 +26,9 @@ public:
 
     bool aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa, int ocena);
     bool zacznijOdNowa(int idMedium);
+    QMap<int, QStringList> pobierzPrzypisaniaTagow();
 
-    bool dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel);
+    int dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel);
     bool aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel);
     bool usunMedium(int id);
 
@@ -38,6 +39,7 @@ public:
     QList<QPair<int, QString>> pobierzKategorie();
     QList<QPair<int, QString>> pobierzPlatformy();
     QList<QPair<int, QString>> pobierzTagi();
+    bool ustawTagiDlaMedium(int idMedium, const QList<int>& idTagow);
     QList<QList<QVariant>> pobierzSuroweKategorie();
 
     bool aktualizujKategorie(int id, const QString &nazwa, const QString &jednostka);
@@ -70,6 +72,8 @@ public:
     bool ustawUlubione(int idMedium, bool ulubione);
 
     QVariantMap pobierzCiekawostkiStatystyczne();
+
+    QList<PodejscieHistoryczne> pobierzWszystkieRecenzje();
 };
 
 #endif

@@ -15,6 +15,9 @@ MainWindow::MainWindow(QWidget *parent)
         qDebug() << "Błąd krytyczny: Baza danych nie wystartowała.";
     }
 
+    timelineWidget = new TimelineView(appController, this);
+    ui->daneSzczegolowe->addWidget(timelineWidget);
+
     statsWidget = new StatisticsWidget(appController, this);
     ui->daneSzczegolowe->addWidget(statsWidget);
 
@@ -109,6 +112,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&appController, &AppController::daneZmienione, this, [this]() {
         panelNawigacji->odswiezDrzewo();
         dashboardWidget->odswiezStatystykiGlowne();
+    });
+
+    connect(ui->actionMojeRecenzje, &QAction::triggered, this, [this]() {
+        panelNawigacji->hide(); // Chowamy lewe drzewo dla pełnego efektu
+        ui->daneSzczegolowe->setCurrentWidget(timelineWidget);
+        timelineWidget->renderujTimeline(); // Odświeżamy kafelki
     });
 
 

@@ -10,6 +10,18 @@
 #include <QInputDialog>
 #include <QLocale>
 
+#include "panelnawigacjiwidget.h"
+#include "ui_panelnawigacjiwidget.h"
+
+#include <QDialog>
+#include <QFormLayout>
+#include <QComboBox>
+#include <QLineEdit>
+#include <QDialogButtonBox>
+#include <QMessageBox>
+#include <QInputDialog>
+#include <QLocale>
+
 PanelNawigacjiWidget::PanelNawigacjiWidget(AppController& controller, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::PanelNawigacjiWidget),
@@ -17,13 +29,15 @@ PanelNawigacjiWidget::PanelNawigacjiWidget(AppController& controller, QWidget *p
 {
     ui->setupUi(this);
 
-    ui->comboGrupowanie->addItems({"Kategoria", "Status", "Platforma", "Data dodania"});
+    // FIX 1: Czyścimy listę i wrzucamy dokładnie 5 unikalnych opcji
+    ui->comboGrupowanie->clear();
+    ui->comboGrupowanie->addItems({"Kategoria", "Status", "Platforma", "Data dodania", "Tagi"});
+
     ui->kategorie->setContextMenuPolicy(Qt::CustomContextMenu);
     ui->kategorie->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
-    connect(ui->comboGrupowanie, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index) {
-        zaladujDaneDoDrzewa();
-    });
+    // FIX 2: Podłączamy akcję zmiany w liście rozwijanej do odświeżania drzewa!
+    connect(ui->comboGrupowanie, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PanelNawigacjiWidget::odswiezDrzewo);
 
     connect(ui->btnPowrot, &QPushButton::clicked, this, [this]() {
         emit zadaniePowrotuDoDashboardu();
@@ -89,11 +103,15 @@ void PanelNawigacjiWidget::zaladujDaneDoDrzewa() {
     int trybGrupowania = ui->comboGrupowanie->currentIndex();
     QMap<int, QString> slownikKategorii;
     QList<QPair<int, QString>> listaPlatform;
+    QMap<int, QStringList> mapaTagow; // NOWE: Słownik tagów
+
     if (trybGrupowania == 0) slownikKategorii = appController.getCategories();
     if (trybGrupowania == 2) listaPlatform = appController.pobierzPlatformy();
+    if (trybGrupowania == 4) mapaTagow = appController.pobierzPrzypisaniaTagow(); // Pobieramy tagi jeśli wybrany indeks 4
 
     QMap<QString, QTreeWidgetItem*> wezlyGlowne;
 
+    // --- Wstępne ładowanie głównych folderów (gałęzi) ---
     if (trybGrupowania == 0) {
         auto q = appController.pobierzKategorie();
         for(const auto& kat : q) {
@@ -111,9 +129,39 @@ void PanelNawigacjiWidget::zaladujDaneDoDrzewa() {
             wezel->setData(0, Qt::UserRole, plat.first);
             wezlyGlowne.insert(nazwa, wezel);
         }
+    } else if (trybGrupowania == 4) {
+        // Ładujemy wszystkie istniejące tagi do drzewa, żeby puste tagi też były widoczne
+        for (const auto& tag : appController.pobierzTagi()) {
+            QString nazwa = tag.second;
+            QTreeWidgetItem *wezel = new QTreeWidgetItem(ui->kategorie);
+            wezel->setText(0, nazwa);
+            wezel->setData(0, Qt::UserRole, tag.first);
+            wezlyGlowne.insert(nazwa, wezel);
+        }
     }
 
+    // --- Przypisywanie multimediów do folderów ---
     for (const auto& medium : std::as_const(listaMultimediow)) {
+
+        // NOWA LOGIKA: Specjalna obsługa dla Tagów (jedno medium może być w wielu folderach)
+        if (trybGrupowania == 4) {
+            QStringList tagiMedium = mapaTagow.value(medium->getId(), QStringList{"Brak tagów"});
+            if (tagiMedium.isEmpty()) tagiMedium << "Brak tagów"; // Zabezpieczenie dla pustych list
+
+            for (const QString& nazwaGrupy : tagiMedium) {
+                if (!wezlyGlowne.contains(nazwaGrupy)) {
+                    QTreeWidgetItem *nowyWezel = new QTreeWidgetItem(ui->kategorie);
+                    nowyWezel->setText(0, nazwaGrupy);
+                    wezlyGlowne.insert(nazwaGrupy, nowyWezel);
+                }
+                QTreeWidgetItem *item = new QTreeWidgetItem(wezlyGlowne[nazwaGrupy]);
+                item->setText(0, medium->getTytul());
+                item->setData(0, Qt::UserRole, medium->getId());
+            }
+            continue; // Użyto tagów, przeskakujemy do kolejnego medium!
+        }
+
+        // STARA LOGIKA: Dla 1:1 relacji (Kategoria, Status, Platforma, Data)
         QString nazwaGrupy;
         switch (trybGrupowania) {
         case 0: nazwaGrupy = slownikKategorii.value(medium->getIdKategorii(), "Brak kategorii"); break;
