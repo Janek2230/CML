@@ -8,31 +8,20 @@ qt_standard_project_setup()
 qt_add_executable(CML
     WIN32 MACOSX_BUNDLE
     main.cpp
-    ui/mainwindow.cpp
-    ui/mainwindow.h
-    ui/mainwindow.ui
-    models/multimedia.h
-    models/platformy.h
-    models/postep.h
-    db/databasemanager.h
-    db/databasemanager.cpp
-    ui/kategoriedialog.h ui/kategoriedialog.cpp
-    ui/platformydialog.h ui/platformydialog.cpp
-    ui/tagidialog.h ui/tagidialog.cpp
-
-    ui/statisticswidget.cpp
-    ui/statisticswidget.h
-    ui/statisticswidget.ui
+    ui/mainwindow.cpp ui/mainwindow.h ui/mainwindow.ui
+    db/databasemanager.h db/databasemanager.cpp
+    ui/kategoriedialog.h ui/kategoriedialog.cpp ui/kategoriedialog.ui
+    ui/platformydialog.h ui/platformydialog.cpp ui/platformydialog.ui
+    ui/tagidialog.h ui/tagidialog.cpp ui/tagidialog.ui
+    ui/statisticswidget.h ui/statisticswidget.cpp ui/statisticswidget.ui
     ui/multimediaformwidget.h ui/multimediaformwidget.cpp ui/multimediaformwidget.ui
     ui/szczegolywidget.h ui/szczegolywidget.cpp ui/szczegolywidget.ui
     ui/dashboardwidget.h ui/dashboardwidget.cpp ui/dashboardwidget.ui
     ui/panelnawigacjiwidget.h ui/panelnawigacjiwidget.cpp ui/panelnawigacjiwidget.ui
-    models/aktywnosc_statystyki.h
-    controllers/appcontroller.h
-    controllers/appcontroller.cpp
-    models/historia.h
     ui/timelineview.h ui/timelineview.cpp
-    ui/kategoriedialog.ui
+    controllers/appcontroller.h controllers/appcontroller.cpp
+    models/multimedia.h models/platformy.h models/postep.h
+    models/historia.h models/aktywnosc_statystyki.h
 
 
 )

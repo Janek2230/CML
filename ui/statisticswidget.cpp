@@ -1,4 +1,4 @@
-#include "statisticswidget.h"
+﻿#include "statisticswidget.h"
 #include "ui_statisticswidget.h"
 
 #include <QChartView>
@@ -36,9 +36,6 @@ StatisticsWidget::StatisticsWidget(AppController& controller, QWidget *parent) :
     ui->verticalLayout_8->setStretch(1, 5);
     ui->verticalLayout_8->setStretch(2, 4);
 
-    ui->comboZakresCzasu->clear();
-    ui->comboZakresCzasu->addItems({"Ostatnie 7 dni", "Ostatnie 30 dni", "Ostatnie 6 miesięcy", "Ostatnie 12 miesięcy", "Cała historia"});
-
     ui->wykresSlupkowyAktywnosci->setMouseTracking(true);
     ui->wykresSlupkowyAktywnosci->viewport()->setMouseTracking(true);
     ui->wykresSlupkowyAktywnosci->viewport()->installEventFilter(this);
@@ -51,18 +48,8 @@ StatisticsWidget::StatisticsWidget(AppController& controller, QWidget *parent) :
     connect(ui->comboZakresCzasu, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &StatisticsWidget::odswiezWykresAktywnosci);
     connect(ui->comboMetryka, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &StatisticsWidget::odswiezWykresAktywnosci);
 
-    connect(ui->tabWidget, &QTabWidget::currentChanged, this, [this](int index) {
-        if (index == 0) {
-            odswiezPodsumowanieOgolne();
-        } else if (index == 1) {
-            odswiezWykresAktywnosci();
-        } else if (index == 2) {
-            odswiezKupkeWstydu();
-        } else if (index == 3) {
-            odswiezPorzucone(); // Zakładka "Nigdy nieukończone" (indeks 3)
-        } else if (index == 4) {
-            odswiezUlubione();  // Zakładka "Ulubione" (indeks 4)
-        }
+    connect(ui->tabWidget, &QTabWidget::currentChanged, this, [this](int) {
+        odswiezDane();
     });
 
 }
@@ -75,7 +62,6 @@ StatisticsWidget::~StatisticsWidget()
 void StatisticsWidget::odswiezWykresAktywnosci() {
     if (!ui->comboZakresCzasu || !ui->comboMetryka) return;
 
-    // 1. Zmapowanie nowych zakresów na dni
     int indexZakresu = ui->comboZakresCzasu->currentIndex();
     int zakres = 30;
     if (indexZakresu == 0) zakres = 7;
@@ -92,25 +78,23 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
 
     auto dane = appController.pobierzDaneDlaWykresu(zakres, metryka);
 
-    // --- NOWE ZABEZPIECZENIE: BRAK DANYCH ---
     if (dane.isEmpty()) {
         QChart *pustyChart = new QChart();
         pustyChart->setTitle(QString("Brak aktywności w wybranym okresie (%1)")
                                  .arg(ui->comboZakresCzasu->currentText().toLower()));
 
-        // Ustawiamy ładną czcionkę i kolor na biały, żeby pasował do ciemnego motywu
         QFont font = pustyChart->titleFont();
         font.setPointSize(14);
         font.setBold(true);
         pustyChart->setTitleFont(font);
-        pustyChart->setTitleBrush(QBrush(QColor(150, 150, 150))); // Lekko wyszarzony tekst
+        pustyChart->setTitleBrush(QBrush(QColor(150, 150, 150)));
 
         pustyChart->legend()->hide();
         pustyChart->setBackgroundVisible(false);
 
         ui->wykresSlupkowyAktywnosci->setChart(pustyChart);
         ui->wykresSlupkowyAktywnosci->setRenderHint(QPainter::Antialiasing);
-        return; // Przerwanie metody - nie robimy całej reszty pętli dla pustych danych
+        return;
     }
 
     QStringList unikalneDaty;
@@ -172,7 +156,6 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
     QStringList tooltipyInne;
     bool czyBylyJakiesInne = false;
 
-    // Pakowanie danych słupkami
     for (const QString& d : unikalneDaty) {
         double sumaInneWDanymDniu = 0.0;
         QString detaleInneDlaDnia = "";
@@ -293,8 +276,8 @@ void StatisticsWidget::odswiezDane() {
     if (index == 0) odswiezPodsumowanieOgolne();
     else if (index == 1) odswiezWykresAktywnosci();
     else if (index == 2) odswiezKupkeWstydu();
-    else if (index == 3) odswiezPorzucone(); // Nowa metoda
-    else if (index == 4) odswiezUlubione();  // Nowa metoda
+    else if (index == 3) odswiezPorzucone();
+    else if (index == 4) odswiezUlubione();
 }
 
 void StatisticsWidget::odswiezPorzucone() {
@@ -435,7 +418,7 @@ QString StatisticsWidget::sformatujCzas(long long sekundy) const {
 void StatisticsWidget::odswiezPodsumowanieOgolne() {
     const QVariantMap stats = appController.pobierzStatystykiPodsumowania();
 
-    // 1. Bardzo kompaktowy HTML (mała czcionka, brak marginesów, usunięte ikony)
+    // Lambda formatuje pojedynczy kafel KPI jako wycentrowany HTML.
     auto formatujKPI = [](const QString& tytul, const QString& wartosc) {
         return QString(
                    "<div style='text-align: center; margin-top: 5px;'>"
@@ -445,7 +428,6 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
                    ).arg(tytul, wartosc);
     };
 
-    // 2. Wstrzykujemy nowe, odchudzone teksty
     ui->lblSummaryMediaTotal->setText(formatujKPI("W bibliotece", QString::number(stats.value("mediaTotal", 0).toInt())));
     ui->lblSummaryPodejsciaTotal->setText(formatujKPI("Podejścia", QString::number(stats.value("podejsciaTotal", 0).toInt())));
     ui->lblSummarySesjeTotal->setText(formatujKPI("Rozegrane sesje", QString::number(stats.value("sesjeTotal", 0).toInt())));
@@ -453,7 +435,6 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
     ui->lblSummaryJednostkiTotal->setText(formatujKPI("Zdobyte jednostki", QString::number(stats.value("jednostkiTotal", 0).toLongLong())));
     ui->lblSummaryUlubionyTag->setText(formatujKPI("Ulubiony tag", stats.value("ulubionyTag", "Brak danych").toString()));
 
-    // 3. Wyśrodkowanie
     ui->lblSummaryMediaTotal->setAlignment(Qt::AlignCenter);
     ui->lblSummaryPodejsciaTotal->setAlignment(Qt::AlignCenter);
     ui->lblSummarySesjeTotal->setAlignment(Qt::AlignCenter);
@@ -461,8 +442,7 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
     ui->lblSummaryJednostkiTotal->setAlignment(Qt::AlignCenter);
     ui->lblSummaryUlubionyTag->setAlignment(Qt::AlignCenter);
 
-    // 4. BRUTALNE ROZWIĄZANIE: Blokujemy wysokość górnego panelu na 75 pikseli!
-    // To zmusi wykresy do powrotu na swoje właściwe miejsce.
+    // Ograniczenie wysokości panelu KPI zapobiega rozciąganiu się go kosztem wykresów poniżej.
     ui->groupBoxKPI->setMaximumHeight(75);
 
     // ==========================================
@@ -510,7 +490,7 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
     int nTagow = topTagi.size();
     auto* axisAngular = new QCategoryAxis();
     axisAngular->setLabelsColor(Qt::white);
-    // TO KLUCZ: Wymusza etykiety na wierzchołkach, a nie pomiędzy nimi!
+    // Wymusza etykiety na wierzchołkach, a nie pomiędzy nimi!
     axisAngular->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
     axisAngular->setStartValue(0);
 
@@ -522,7 +502,7 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
             axisAngular->append(topTagi[i].value("tag").toString(), i);
         }
 
-        // TO KLUCZ 2: Aby zamknąć figurę poprawnie, musimy podać zduplikowany pierwszy punkt
+        // Aby zamknąć figurę poprawnie, musimy podać zduplikowany pierwszy punkt
         // na kącie odpowiadającym 360 stopni (w naszej skali to 'nTagow', a nie 0).
         const qreal normZamkniecie = (static_cast<qreal>(topTagi[0].value("czasSekundy").toLongLong()) / static_cast<qreal>(maxCzasTagu)) * 100.0;
         radarSeries->append(nTagow, normZamkniecie);
@@ -598,7 +578,7 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
     // ==========================================
     QVariantMap ciekawostki = appController.pobierzCiekawostkiStatystyczne();
 
-    // FIX: Całkowite i bezpieczne czyszczenie starego układu z Qt Designera
+    // groupBox ma domyślny layout z Qt Designera — czyścimy go przed ponownym wypełnieniem.
     QLayout* staryLayout = ui->groupBox->layout();
     if (staryLayout) {
         QLayoutItem* item;
@@ -612,12 +592,10 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
         delete staryLayout;
     }
 
-    // Tworzymy świeżutki, czysty układ pionowy
     QVBoxLayout* layoutOsiagniec = new QVBoxLayout(ui->groupBox);
     layoutOsiagniec->setContentsMargins(15, 20, 15, 15);
     layoutOsiagniec->setSpacing(10);
 
-    // Tworzymy strukturę danych dla naszych "Osiągnięć"
     struct Osiagniecie { QString ikona; QString tytul; QString wartosc; QString podtytul; };
     QList<Osiagniecie> osiagniecia = {
         {"", "Maratończyk (Najdłuższa sesja)",
@@ -637,7 +615,6 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
          "Najbardziej aktywny dzień tygodnia"}
     };
 
-    // Wrzucamy wygenerowane, sformatowane teksty HTML do nowego układu
     for (const auto& os : osiagniecia) {
         QLabel* lbl = new QLabel(ui->groupBox);
         QString html = QString(
@@ -653,7 +630,6 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
         layoutOsiagniec->addWidget(lbl);
     }
 
-    // Dodajemy "sprężynę", która wypchnie wszystkie kafelki ładnie do góry
     layoutOsiagniec->addStretch();
 }
 
@@ -686,14 +662,12 @@ void StatisticsWidget::wyczyscLayout(QLayout* layout) {
     QLayoutItem* item = nullptr;
     while ((item = layout->takeAt(0)) != nullptr) {
         if (item->widget()) {
-            // Zmiana z 'delete' na bezpieczne dla wątków interfejsu 'deleteLater()'
+            // deleteLater() zamiast delete — bezpieczne podczas aktywnego event loop Qt.
             item->widget()->deleteLater();
         } else if (item->layout()) {
             wyczyscLayout(item->layout());
-            // Bezpieczne usuwanie zagnieżdżonych layoutów
             item->layout()->deleteLater();
         }
-        // Usunięcie samego kontenera QLayoutItem (to jest bezpieczne dla 'delete')
         delete item;
     }
 }
@@ -732,7 +706,6 @@ QWidget* StatisticsWidget::zbudujKafelek(const std::shared_ptr<Multimedia>& medi
     auto* labelBezczynnosc = new QLabel(QString("Brak aktywności od: %1 dni").arg(policzDniBezczynnosci(medium)), kafelek);
     layout->addWidget(labelBezczynnosc);
 
-    // Dynamiczne tworzenie przycisków akcji
     auto* wierszAkcji = new QHBoxLayout();
     bool dodanoCokolwiek = false;
 
@@ -743,7 +716,7 @@ QWidget* StatisticsWidget::zbudujKafelek(const std::shared_ptr<Multimedia>& medi
             const Postep postep = medium->getPostep();
             if (appController.aktualizujPostep(medium->getId(), "W trakcie", postep.aktualna, postep.docelowa, medium->getOcena())) {
                 emit zadaniePokazaniaSzczegolow(medium->getId());
-                odswiezDane(); // Uniwersalne odświeżenie zamiast sztywnego dla Kupki Wstydu
+                odswiezDane();
             }
         });
         dodanoCokolwiek = true;
@@ -755,7 +728,7 @@ QWidget* StatisticsWidget::zbudujKafelek(const std::shared_ptr<Multimedia>& medi
         connect(btnPorzuc, &QPushButton::clicked, this, [this, medium]() {
             const Postep postep = medium->getPostep();
             if (appController.aktualizujPostep(medium->getId(), "Porzucone", postep.aktualna, postep.docelowa, medium->getOcena())) {
-                odswiezDane(); // Uniwersalne odświeżenie
+                odswiezDane();
             }
         });
         dodanoCokolwiek = true;

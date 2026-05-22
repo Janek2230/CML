@@ -1,22 +1,24 @@
 #include "timelineview.h"
 #include <QLocale>
+#include <QScrollArea>
+#include <QLabel>
+#include <QPushButton>
+#include <QDialog>
+#include <QTextBrowser>
 
 TimelineView::TimelineView(AppController& controller, QWidget *parent)
     : QWidget(parent), appController(controller)
 {
-    // Główny layout widoku
     QVBoxLayout* baseLayout = new QVBoxLayout(this);
     baseLayout->setContentsMargins(0, 0, 0, 0);
 
-    // Przewijalny obszar (ScrollArea)
     QScrollArea* scrollArea = new QScrollArea(this);
     scrollArea->setWidgetResizable(true);
     scrollArea->setStyleSheet("QScrollArea { border: none; background-color: transparent; }");
 
-    // Wewnętrzny kontener na kafelki
     QWidget* scrollContent = new QWidget(scrollArea);
     mainLayout = new QVBoxLayout(scrollContent);
-    mainLayout->setAlignment(Qt::AlignTop); // Kafelki trzymają się góry
+    mainLayout->setAlignment(Qt::AlignTop);
     mainLayout->setContentsMargins(20, 20, 20, 20);
     mainLayout->setSpacing(15);
 
@@ -42,7 +44,7 @@ void TimelineView::renderujTimeline() {
     auto recenzje = appController.pobierzWszystkieRecenzje();
 
     QString obecnyMiesiacRok = "";
-    QLocale polski(QLocale::Polish, QLocale::Poland); // Ustawienie polskiego kalendarza
+    QLocale polski(QLocale::Polish, QLocale::Poland);
 
     if (recenzje.isEmpty()) {
         QLabel* puste = new QLabel("Nie masz jeszcze żadnych zakończonych tytułów z recenzją.");
@@ -53,7 +55,6 @@ void TimelineView::renderujTimeline() {
     }
 
     for (const auto& p : recenzje) {
-        // Grupowanie z poprawnymi, polskimi nazwami miesięcy
         QString nazwaMiesiaca = polski.standaloneMonthName(p.data_rozpoczecia.date().month());
         QString dataStr = QString("%1 %2").arg(nazwaMiesiaca).arg(p.data_rozpoczecia.date().year()).toUpper();
 
@@ -74,22 +75,19 @@ void TimelineView::renderujTimeline() {
             wlasciwaRecenzja = "Brak recenzji tekstowej.";
         }
 
-        // --- ZABEZPIECZENIE PRZED WYLEWANIEM SIĘ TEKSTU ---
-        // Metoda .simplified() "spłaszcza" tekst - zamienia entery i wielokrotne spacje na jedną spację.
+        // simplified() spłaszcza tekst — zamienia entery i wielokrotne spacje w jedną spację.
         QString plaskiTekst = wlasciwaRecenzja.simplified();
         QString podgladTekstu;
 
         if (plaskiTekst.length() > 90) {
-            // Ucinamy krócej (90 znaków) i dodajemy estetyczny, mniejszy link
             podgladTekstu = plaskiTekst.left(90) + "... <span style='color: #2d89ef; font-style: normal; font-size: 11px;'>(Kliknij, by czytać więcej)</span>";
         } else {
             podgladTekstu = plaskiTekst;
         }
 
-        // Kafelek (wymuszona wysokość by layout się nie zgniatał)
         QPushButton* karta = new QPushButton();
         karta->setCursor(Qt::PointingHandCursor);
-        karta->setMinimumHeight(90); // <--- TO ROZWIĄZUJE PROBLEM ŚCIŚNIĘTYCH KAFELKÓW
+        karta->setMinimumHeight(90); // Wymuszona minimalna wysokość — bez tego layout zgniata kafelki.
         karta->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         karta->setStyleSheet(
             "QPushButton {"
@@ -102,7 +100,7 @@ void TimelineView::renderujTimeline() {
             );
 
         QVBoxLayout* l = new QVBoxLayout(karta);
-        l->setContentsMargins(15, 15, 15, 15); // Dodane marginesy wewnątrz kafelka
+        l->setContentsMargins(15, 15, 15, 15);
         l->setSpacing(5);
 
         QLabel* tytul = new QLabel(QString("<span style='font-size: 16px; font-weight: bold; color: white;'>%1</span> <span style='color: #f1c40f; font-weight: bold;'>(Ocena: %2/10)</span>").arg(tytulMedium).arg(p.ocena));
@@ -162,7 +160,6 @@ void TimelineView::pokazDetaleRecenzji(const PodejscieHistoryczne& p) {
             notesLayout->addWidget(n);
         }
     }
-    // Dodanie elastycznej przestrzeni, aby notatki ułożyły się od góry
     notesLayout->addStretch();
 
     sa->setWidget(content);

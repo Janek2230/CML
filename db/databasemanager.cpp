@@ -4,6 +4,8 @@
 DatabaseManager::DatabaseManager() {
     db = QSqlDatabase::addDatabase("QPSQL");
 
+    // Dane połączenia z pliku config.ini, klucze w sekcji [database].
+    // Plik musi istnieć obok pliku wykonywalnego; wartości domyślne działają lokalnie.
     QSettings settings("config.ini", QSettings::IniFormat);
 
     db.setHostName(settings.value("database/host", "localhost").toString());
@@ -38,6 +40,19 @@ QMap<int, QString> DatabaseManager::getCategories() {
 QList<std::shared_ptr<Multimedia>> DatabaseManager::getAllMultimedia() {
     QList<std::shared_ptr<Multimedia>> list;
 
+    // DISTINCT ON (m.id) to składnia specyficzna dla PostgreSQL.
+    // Działa tak: wiersze są najpierw sortowane przez ORDER BY (m.id ASC, p.numer_podejscia DESC),
+    // a następnie dla każdej unikalnej wartości m.id zostaje tylko PIERWSZY wiersz z grupy.
+    // Efekt: dla każdego medium dostajemy dane NAJNOWSZEGO podejścia.
+    //
+    // Okno MAX(...) OVER (PARTITION BY p.id) wyznacza datę ostatniej sesji w ramach
+    // danego podejścia. COALESCE z m.data_dodania służy jako fallback gdy brak sesji.
+    //
+    // Mapa kolumn wynikowych:
+    //  0: m.id          1: m.tytul        2: p.status       3: k.id (kategoria)
+    //  4: k.jednostka   5: p.wartosc_akt  6: p.wartosc_doc  7: m.data_dodania
+    //  8: m.id_platformy  9: p.ocena     10: m.czy_ulubione 11: ostatnia_aktywnosc
+    // 12: p.numer_podejscia
     QSqlQuery query(
         "SELECT DISTINCT ON (m.id) "
         "m.id, m.tytul, p.status, k.id, k.jednostka, "
@@ -54,15 +69,18 @@ QList<std::shared_ptr<Multimedia>> DatabaseManager::getAllMultimedia() {
 
     while (query.next()) {
         Postep postep;
-        postep.aktualna = query.value(5).toInt();
-        postep.docelowa = query.value(6).toInt();
-        postep.jednostka = query.value(4).toString();
+        postep.aktualna       = query.value(5).toInt();
+        postep.docelowa       = query.value(6).toInt();
+        postep.jednostka      = query.value(4).toString();
         postep.numer_podejscia = query.value(12).toInt();
 
         auto medium = std::make_shared<Multimedia>(
-            query.value(0).toInt(), query.value(1).toString(),
-            query.value(3).toInt(), query.value(8).toInt(),
-            query.value(2).toString(), postep
+            query.value(0).toInt(),  // id
+            query.value(1).toString(), // tytul
+            query.value(3).toInt(),  // id_kategorii
+            query.value(8).toInt(),  // id_platformy
+            query.value(2).toString(), // status
+            postep
             );
         medium->setDataDodania(query.value(7).toDateTime());
         medium->setOcena(query.value(9).toInt());
@@ -76,6 +94,9 @@ QList<std::shared_ptr<Multimedia>> DatabaseManager::getAllMultimedia() {
 
 QMap<QString, int> DatabaseManager::getGlobalStats() {
     QMap<QString, int> stats;
+
+    // Podzapytanie z DISTINCT ON pobiera aktualny status każdego medium (z najnowszego podejścia).
+    // Zewnętrzne GROUP BY zlicza ile mediów jest w każdym statusie.
     QSqlQuery query(
         "SELECT status, COUNT(*) FROM ("
         "  SELECT DISTINCT ON (id_medium) status "
@@ -99,17 +120,22 @@ QMap<QString, int> DatabaseManager::getGlobalStats() {
 bool DatabaseManager::aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa, int ocena) {
     db.transaction();
 
+    // Odczytujemy aktualne dane podejścia, żeby:
+    // a) obliczyć przyrost (różnicę) do wpisu w dzienniku,
+    // b) sprawdzić czy data_rozpoczecia jeszcze nie była ustawiona.
     QSqlQuery qSel(db);
     qSel.prepare("SELECT id, wartosc_aktualna, data_rozpoczecia FROM podejscia WHERE id_medium = :id ORDER BY numer_podejscia DESC LIMIT 1");
     qSel.bindValue(":id", idMedium);
     if (!qSel.exec() || !qSel.next()) { db.rollback(); return false; }
 
-    int idPodejscia = qSel.value(0).toInt();
-    int staraWartosc = qSel.value(1).toInt();
+    int idPodejscia        = qSel.value(0).toInt();
+    int staraWartosc       = qSel.value(1).toInt();
     bool brakDatyRozpoczecia = qSel.value(2).isNull();
 
     int przyrost = aktualna - staraWartosc;
 
+    // Dynamicznie budujemy UPDATE — daty są ustawiane jednorazowo przy pierwszym przejściu
+    // w dany status, a nie nadpisywane przy każdym zapisie.
     QSqlQuery qP(db);
     QString qpSql = "UPDATE podejscia SET wartosc_aktualna = :akt, wartosc_docelowa = :doc, status = :status, ocena = :ocena";
 
@@ -124,16 +150,20 @@ bool DatabaseManager::aktualizujPostep(int idMedium, const QString& status, int 
     qP.bindValue(":akt", aktualna);
     qP.bindValue(":doc", docelowa);
     qP.bindValue(":status", status);
-    qP.bindValue(":ocena", ocena > 0 ? ocena : QVariant(QMetaType::fromType<int>()));
+    // QVariant(QMetaType::fromType<int>()) to Qt6-owy sposób bindowania NULL dla kolumny INT.
+    qP.bindValue(":ocena", ocena > 0 ? QVariant(ocena) : QVariant(QMetaType::fromType<int>()));
     qP.bindValue(":id", idPodejscia);
     if (!qP.exec()) { db.rollback(); return false; }
 
+    // Jeśli wartość się zmieniła, logujemy automatyczny wpis w dzienniku.
     if (przyrost != 0) {
         QSqlQuery qLog(db);
         qLog.prepare("INSERT INTO dziennik_aktywnosci (id_podejscia, przyrost_jednostek, czas_rozpoczecia, czas_zakonczenia, czas_trwania_sekundy) "
                      "VALUES (:id, :przyrost, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, :sekundy)");
         qLog.bindValue(":id", idPodejscia);
         qLog.bindValue(":przyrost", przyrost);
+        // UWAGA: czas_trwania_sekundy jest tu szacowany jako przyrost * 3600 (1 jednostka = 1h).
+        // To przybliżenie wynikające z braku stopera w tej ścieżce zapisu.
         qLog.bindValue(":sekundy", przyrost * 3600);
 
         if (!qLog.exec()) { db.rollback(); return false; }
@@ -170,12 +200,15 @@ bool DatabaseManager::zacznijOdNowa(int idMedium) {
 
 
 int DatabaseManager::dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel) {
+    // Dodanie medium to zawsze dwa INSERT-y w jednej transakcji:
+    // najpierw wiersz w multimedia (RETURNING id), potem pierwsze podejście ze statusem 'Planowane'.
+    // id=0 oznacza brak wyboru, bindujemy NULL żeby FK nie wskazywał na nieistniejący rekord.
     db.transaction();
 
     QSqlQuery query1(db);
     query1.prepare("INSERT INTO multimedia (tytul, id_kategorii, id_platformy) VALUES (:tytul, :idKat, :idPlat) RETURNING id");
     query1.bindValue(":tytul", tytul);
-    query1.bindValue(":idKat", idKat > 0 ? QVariant(idKat) : QVariant(QMetaType::fromType<int>()));
+    query1.bindValue(":idKat",  idKat      > 0 ? QVariant(idKat)      : QVariant(QMetaType::fromType<int>()));
     query1.bindValue(":idPlat", idPlatformy > 0 ? QVariant(idPlatformy) : QVariant(QMetaType::fromType<int>()));
 
     if (!query1.exec() || !query1.next()) { db.rollback(); return -1; }
@@ -183,7 +216,7 @@ int DatabaseManager::dodajNoweMedium(const QString &tytul, int idKat, int idPlat
 
     QSqlQuery query2(db);
     query2.prepare("INSERT INTO podejscia (id_medium, numer_podejscia, wartosc_aktualna, wartosc_docelowa, status) VALUES (:id, 1, 0, :cel, 'Planowane')");
-    query2.bindValue(":id", noweId);
+    query2.bindValue(":id",  noweId);
     query2.bindValue(":cel", cel);
 
     if (!query2.exec()) { db.rollback(); return -1; }
@@ -251,7 +284,7 @@ bool DatabaseManager::aktualizujDaneMedium(int id, const QString &tytul, int idK
     return true;
 }
 int DatabaseManager::dodajKategorie(const QString &nazwa, const QString &jednostka) {
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare("INSERT INTO kategorie (nazwa, jednostka) VALUES (:nazwa, :jednostka) RETURNING id");
     query.bindValue(":nazwa", nazwa);
     query.bindValue(":jednostka", jednostka.isEmpty() ? "szt." : jednostka);
@@ -263,10 +296,10 @@ int DatabaseManager::dodajKategorie(const QString &nazwa, const QString &jednost
 }
 
 int DatabaseManager::dodajPlatforme(const QString &nazwa) {
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare("INSERT INTO platformy (nazwa, typ_nosnika) VALUES (:nazwa, :typ) RETURNING id");
     query.bindValue(":nazwa", nazwa);
-    query.bindValue(":typ", "Cyfrowa"); // Domyślna wartość
+    query.bindValue(":typ", "Cyfrowa"); // Kolumna NOT NULL w schemacie — zawsze domyślnie "Cyfrowa".
 
     if (query.exec() && query.next()) {
         return query.value(0).toInt();
@@ -282,6 +315,7 @@ QStringList DatabaseManager::pobierzUnikalneJednostki() {
         lista.append(query.value(0).toString());
     }
 
+    // Gdy baza jest pusta (np. świeża instalacja), zwracamy sensowny zestaw podpowiedzi.
     if (lista.isEmpty()) {
         lista << "szt." << "strony" << "odcinki" << "seanse" << "godziny";
     }
@@ -289,7 +323,7 @@ QStringList DatabaseManager::pobierzUnikalneJednostki() {
 }
 
 bool DatabaseManager::aktualizujKategorie(int id, const QString &nazwa, const QString &jednostka) {
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare("UPDATE kategorie SET nazwa = :nazwa, jednostka = :jednostka WHERE id = :id");
     query.bindValue(":nazwa", nazwa);
     query.bindValue(":jednostka", jednostka);
@@ -298,7 +332,7 @@ bool DatabaseManager::aktualizujKategorie(int id, const QString &nazwa, const QS
 }
 
 bool DatabaseManager::aktualizujPlatforme(int id, const QString &nazwa) {
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare("UPDATE platformy SET nazwa = :nazwa WHERE id = :id");
     query.bindValue(":nazwa", nazwa);
     query.bindValue(":id", id);
@@ -306,7 +340,7 @@ bool DatabaseManager::aktualizujPlatforme(int id, const QString &nazwa) {
 }
 
 bool DatabaseManager::aktualizujTag(int id, const QString &nazwa) {
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare("UPDATE tagi SET nazwa = :nazwa WHERE id = :id");
     query.bindValue(":nazwa", nazwa);
     query.bindValue(":id", id);
@@ -314,7 +348,7 @@ bool DatabaseManager::aktualizujTag(int id, const QString &nazwa) {
 }
 
 int DatabaseManager::dodajTag(const QString &nazwa) {
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare("INSERT INTO tagi (nazwa) VALUES (:nazwa) RETURNING id");
     query.bindValue(":nazwa", nazwa);
     if (query.exec() && query.next()) {
@@ -324,7 +358,7 @@ int DatabaseManager::dodajTag(const QString &nazwa) {
 }
 
 bool DatabaseManager::usunTag(int idTagu) {
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare("DELETE FROM tagi WHERE id = :id");
     query.bindValue(":id", idTagu);
     return query.exec();
@@ -365,7 +399,7 @@ QMap<int, QString> DatabaseManager::pobierzSlownikJednostek() {
 
 QList<int> DatabaseManager::pobierzOstatnioAktywne(int limit) {
     QList<int> lista;
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare(R"(
         SELECT m.id
         FROM multimedia m
@@ -385,7 +419,7 @@ QList<int> DatabaseManager::pobierzOstatnioAktywne(int limit) {
 }
 
 bool DatabaseManager::usunMedium(int id) {
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare("DELETE FROM multimedia WHERE id = :id");
     query.bindValue(":id", id);
     return query.exec();
@@ -414,21 +448,23 @@ bool DatabaseManager::usunKategorie(int idKat, bool usunPowiazane) {
     db.transaction();
 
     if (usunPowiazane) {
+        // Tryb "usuń wszystko": kasujemy multimedia należące do tej kategorii.
         QSqlQuery q2(db);
         q2.prepare("DELETE FROM multimedia WHERE id_kategorii = :id");
         q2.bindValue(":id", idKat);
-        if(!q2.exec()) { db.rollback(); return false; }
+        if (!q2.exec()) { db.rollback(); return false; }
     } else {
+        // Tryb "osierocenie": multimedia zostają, ale tracą powiązanie z kategorią (NULL).
         QSqlQuery q3(db);
         q3.prepare("UPDATE multimedia SET id_kategorii = NULL WHERE id_kategorii = :id");
         q3.bindValue(":id", idKat);
-        if(!q3.exec()) { db.rollback(); return false; }
+        if (!q3.exec()) { db.rollback(); return false; }
     }
 
     QSqlQuery q4(db);
     q4.prepare("DELETE FROM kategorie WHERE id = :id");
     q4.bindValue(":id", idKat);
-    if(!q4.exec()) { db.rollback(); return false; }
+    if (!q4.exec()) { db.rollback(); return false; }
 
     db.commit();
     return true;
@@ -438,21 +474,23 @@ bool DatabaseManager::usunPlatforme(int idPlat, bool usunPowiazane) {
     db.transaction();
 
     if (usunPowiazane) {
+        // Tryb "usuń wszystko": kasujemy multimedia przypisane do tej platformy.
         QSqlQuery q2(db);
         q2.prepare("DELETE FROM multimedia WHERE id_platformy = :id");
         q2.bindValue(":id", idPlat);
-        if(!q2.exec()) { db.rollback(); return false; }
+        if (!q2.exec()) { db.rollback(); return false; }
     } else {
+        // Tryb "osierocenie": multimedia zostają, id_platformy ustawiane na NULL.
         QSqlQuery q3(db);
         q3.prepare("UPDATE multimedia SET id_platformy = NULL WHERE id_platformy = :id");
         q3.bindValue(":id", idPlat);
-        if(!q3.exec()) { db.rollback(); return false; }
+        if (!q3.exec()) { db.rollback(); return false; }
     }
 
     QSqlQuery q4(db);
     q4.prepare("DELETE FROM platformy WHERE id = :id");
     q4.bindValue(":id", idPlat);
-    if(!q4.exec()) { db.rollback(); return false; }
+    if (!q4.exec()) { db.rollback(); return false; }
 
     db.commit();
     return true;
@@ -462,9 +500,11 @@ QList<StatystykaAktywnosci> DatabaseManager::pobierzSuroweDaneStatystyk(int zakr
     QList<StatystykaAktywnosci> wyniki;
     QSqlQuery query(db);
 
+    // Funkcja agregująca zależy od wybranej metryki.
+    // "czas" zwraca sekundy (konwersja na godziny odbywa się w AppController).
     QString funkcjaAgregujaca;
     if (metryka == "czas") {
-        funkcjaAgregujaca = "SUM(d.czas_trwania_sekundy)"; // SUROWE SEKUNDY!
+        funkcjaAgregujaca = "SUM(d.czas_trwania_sekundy)";
     } else if (metryka == "sesje") {
         funkcjaAgregujaca = "COUNT(d.id)";
     } else if (metryka == "jednostki") {
@@ -473,6 +513,11 @@ QList<StatystykaAktywnosci> DatabaseManager::pobierzSuroweDaneStatystyk(int zakr
         return wyniki;
     }
 
+    // Format daty na osi X dobieramy do rozdzielczości wybranego zakresu:
+    //  ≤ 30 dni  → "DD.MM"   (widoczne pojedyncze dni)
+    //  ≤ 365 dni → "MM.YYYY" (widoczne miesiące)
+    //  > 1000    → "YYYY"    (Cała historia — granulacja roczna)
+    //  pozostałe → "YYYY-MM" (zakres kilku miesięcy)
     QString formatDaty;
     if (zakresDni <= 30) {
         formatDaty = "'DD.MM'";
@@ -525,27 +570,29 @@ QList<QList<QVariant>> DatabaseManager::pobierzSuroweKategorie() {
 QList<PodejscieHistoryczne> DatabaseManager::pobierzPelnaHistorie(int idMedium) {
     QList<PodejscieHistoryczne> historia;
 
-    // 1. Pobieramy wszystkie podejścia dla danego medium
+    // Dwa osobne zapytania zamiast jednego JOIN-a, żeby uniknąć duplikowania wierszy podejść.
+    // Dla każdego podejścia wykonywane jest osobne SELECT na dziennik — wzorzec N+1.
+    // Przy typowych rozmiarach biblioteki (kilkaset tytułów) nie stanowi to problemu wydajnościowego.
+
     QSqlQuery qP(db);
     qP.prepare("SELECT id, numer_podejscia, status, wartosc_aktualna, wartosc_docelowa, ocena, recenzja, data_rozpoczecia "
                "FROM podejscia WHERE id_medium = :id ORDER BY numer_podejscia DESC");
-
     qP.bindValue(":id", idMedium);
-
     if (!qP.exec()) return historia;
 
     while (qP.next()) {
         PodejscieHistoryczne p;
-        p.id = qP.value(0).toInt();
-        p.numer = qP.value(1).toInt();
-        p.status = qP.value(2).toString();
-        p.aktualna = qP.value(3).toInt();
-        p.docelowa = qP.value(4).toInt();
-        p.ocena = qP.value(5).toInt();
-        p.recenzja = qP.value(6).toString();
+        p.id             = qP.value(0).toInt();
+        p.numer          = qP.value(1).toInt();
+        p.status         = qP.value(2).toString();
+        p.aktualna       = qP.value(3).toInt();
+        p.docelowa       = qP.value(4).toInt();
+        p.ocena          = qP.value(5).toInt();
+        p.recenzja       = qP.value(6).toString();
         p.data_rozpoczecia = qP.value(7).toDateTime();
 
-        // 2. Dla każdego podejścia pobieramy jego sesje z dziennika
+        // COALESCE(czas_zakonczenia, czas_rozpoczecia) — używamy daty zakończenia sesji
+        // jeśli istnieje, w przeciwnym razie daty jej rozpoczęcia.
         QSqlQuery qS(db);
         qS.prepare("SELECT id, COALESCE(czas_zakonczenia, czas_rozpoczecia), przyrost_jednostek, czas_trwania_sekundy, notatka "
                    "FROM dziennik_aktywnosci WHERE id_podejscia = :idP ORDER BY czas_rozpoczecia DESC");
@@ -554,11 +601,11 @@ QList<PodejscieHistoryczne> DatabaseManager::pobierzPelnaHistorie(int idMedium) 
         if (qS.exec()) {
             while (qS.next()) {
                 Sesja s;
-                s.id = qS.value(0).toInt();
-                s.data = qS.value(1).toDateTime();
+                s.id       = qS.value(0).toInt();
+                s.data     = qS.value(1).toDateTime();
                 s.przyrost = qS.value(2).toInt();
-                s.sekundy = qS.value(3).toInt();
-                s.notatka = qS.value(4).toString();
+                s.sekundy  = qS.value(3).toInt();
+                s.notatka  = qS.value(4).toString();
                 p.sesje.append(s);
             }
         }
@@ -723,21 +770,25 @@ bool DatabaseManager::usunPodejscie(int idPodejscia) {
 }
 
 bool DatabaseManager::dodajSesje(int idPodejscia, int przyrost, int sekundy, const QString& notatka) {
+    // Dodanie sesji to zawsze dwa kroki w jednej transakcji:
+    // 1. INSERT do dziennika_aktywnosci,
+    // 2. UPDATE wartosc_aktualna w podejsciu o wynikający przyrost.
+    // GREATEST(0, ...) chroni przed zejściem poniżej zera przy ujemnych przyrostach.
     db.transaction();
 
     QSqlQuery qIns(db);
     qIns.prepare("INSERT INTO dziennik_aktywnosci (id_podejscia, przyrost_jednostek, czas_rozpoczecia, czas_zakonczenia, czas_trwania_sekundy, notatka) "
                  "VALUES (:idP, :przyrost, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, :sekundy, :notatka)");
-    qIns.bindValue(":idP", idPodejscia);
+    qIns.bindValue(":idP",     idPodejscia);
     qIns.bindValue(":przyrost", przyrost);
-    qIns.bindValue(":sekundy", sekundy);
-    qIns.bindValue(":notatka", notatka.trimmed().isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(notatka));
+    qIns.bindValue(":sekundy",  sekundy);
+    qIns.bindValue(":notatka",  notatka.trimmed().isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(notatka));
     if (!qIns.exec()) { db.rollback(); return false; }
 
     QSqlQuery qUpd(db);
     qUpd.prepare("UPDATE podejscia SET wartosc_aktualna = GREATEST(0, COALESCE(wartosc_aktualna, 0) + :delta) WHERE id = :idP");
     qUpd.bindValue(":delta", przyrost);
-    qUpd.bindValue(":idP", idPodejscia);
+    qUpd.bindValue(":idP",   idPodejscia);
     if (!qUpd.exec()) { db.rollback(); return false; }
 
     db.commit();
@@ -745,28 +796,31 @@ bool DatabaseManager::dodajSesje(int idPodejscia, int przyrost, int sekundy, con
 }
 
 bool DatabaseManager::aktualizujSesje(int idSesji, int przyrost, int sekundy, const QString& notatka) {
+    // Edycja sesji wymaga korekty wartosc_aktualna w podejściu.
+    // Odczytujemy stary przyrost, liczymy różnicę i aplikujemy ją jako delta — zamiast przeliczać sumę od nowa.
     db.transaction();
 
     QSqlQuery qSel(db);
     qSel.prepare("SELECT id_podejscia, przyrost_jednostek FROM dziennik_aktywnosci WHERE id = :id");
     qSel.bindValue(":id", idSesji);
     if (!qSel.exec() || !qSel.next()) { db.rollback(); return false; }
-    int idPodejscia = qSel.value(0).toInt();
+    int idPodejscia   = qSel.value(0).toInt();
     int staryPrzyrost = qSel.value(1).toInt();
 
     QSqlQuery qUpdSes(db);
     qUpdSes.prepare("UPDATE dziennik_aktywnosci SET przyrost_jednostek = :przyrost, czas_trwania_sekundy = :sekundy, notatka = :notatka WHERE id = :id");
     qUpdSes.bindValue(":przyrost", przyrost);
-    qUpdSes.bindValue(":sekundy", sekundy);
-    qUpdSes.bindValue(":notatka", notatka.trimmed().isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(notatka));
+    qUpdSes.bindValue(":sekundy",  sekundy);
+    qUpdSes.bindValue(":notatka",  notatka.trimmed().isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(notatka));
     qUpdSes.bindValue(":id", idSesji);
     if (!qUpdSes.exec()) { db.rollback(); return false; }
 
+    // Aktualizujemy postęp podejścia o różnicę między nową a starą wartością.
     const int roznica = przyrost - staryPrzyrost;
     QSqlQuery qUpdPod(db);
     qUpdPod.prepare("UPDATE podejscia SET wartosc_aktualna = GREATEST(0, COALESCE(wartosc_aktualna, 0) + :delta) WHERE id = :idP");
     qUpdPod.bindValue(":delta", roznica);
-    qUpdPod.bindValue(":idP", idPodejscia);
+    qUpdPod.bindValue(":idP",   idPodejscia);
     if (!qUpdPod.exec()) { db.rollback(); return false; }
 
     db.commit();
@@ -774,6 +828,8 @@ bool DatabaseManager::aktualizujSesje(int idSesji, int przyrost, int sekundy, co
 }
 
 bool DatabaseManager::usunSesje(int idSesji) {
+    // Usunięcie sesji "cofa" jej wkład w postęp podejścia.
+    // Odczytujemy przyrost przed DELETE, żeby wiedzieć o ile skorygować wartosc_aktualna.
     db.transaction();
 
     QSqlQuery qSel(db);
@@ -781,7 +837,7 @@ bool DatabaseManager::usunSesje(int idSesji) {
     qSel.bindValue(":id", idSesji);
     if (!qSel.exec() || !qSel.next()) { db.rollback(); return false; }
     int idPodejscia = qSel.value(0).toInt();
-    int przyrost = qSel.value(1).toInt();
+    int przyrost    = qSel.value(1).toInt();
 
     QSqlQuery qDel(db);
     qDel.prepare("DELETE FROM dziennik_aktywnosci WHERE id = :id");
@@ -791,7 +847,7 @@ bool DatabaseManager::usunSesje(int idSesji) {
     QSqlQuery qUpd(db);
     qUpd.prepare("UPDATE podejscia SET wartosc_aktualna = GREATEST(0, COALESCE(wartosc_aktualna, 0) - :delta) WHERE id = :idP");
     qUpd.bindValue(":delta", przyrost);
-    qUpd.bindValue(":idP", idPodejscia);
+    qUpd.bindValue(":idP",   idPodejscia);
     if (!qUpd.exec()) { db.rollback(); return false; }
 
     db.commit();
@@ -871,8 +927,9 @@ QVariantMap DatabaseManager::pobierzCiekawostkiStatystyczne() {
 }
 
 QMap<int, QStringList> DatabaseManager::pobierzPrzypisaniaTagow() {
+    // Zwraca mapę: id_medium → lista nazw przypisanych tagów.
+    // Używane do filtrowania drzewa nawigacji i zaznaczania checkboxów w formularzu.
     QMap<int, QStringList> mapa;
-    // Pobieramy pary: ID Medium -> Nazwa Tagu
     QSqlQuery q("SELECT mt.id_medium, t.nazwa FROM multimedia_tagi mt JOIN tagi t ON mt.id_tagu = t.id");
     while (q.next()) {
         mapa[q.value(0).toInt()].append(q.value(1).toString());
@@ -880,11 +937,14 @@ QMap<int, QStringList> DatabaseManager::pobierzPrzypisaniaTagow() {
     return mapa;
 }
 
-//
 QList<PodejscieHistoryczne> DatabaseManager::pobierzWszystkieRecenzje() {
+    // Zwraca zakończone podejścia z oceną lub recenzją, posortowane od najnowszych.
+    // UWAGA: pole p.recenzja jest tu nadpisywane stringiem "tytuł|||treść recenzji".
+    // To celowy hack — struktura PodejscieHistoryczne nie ma osobnego pola na tytuł medium,
+    // więc pakujemy dwa stringi w jedno, rozdzielone sekwencją "|||".
+    // Konsumenci (TimelineView, SzczegolyWidget) muszą go rozdzielić przez split("|||").
     QList<PodejscieHistoryczne> lista;
     QSqlQuery q(db);
-    // Pobieramy tylko te, które są zamknięte i mają ocenę lub recenzję
     q.prepare(R"(
         SELECT p.id, p.id_medium, m.tytul, p.status, p.ocena, p.recenzja, p.data_ukonczenia, p.numer_podejscia
         FROM podejscia p
@@ -896,24 +956,26 @@ QList<PodejscieHistoryczne> DatabaseManager::pobierzWszystkieRecenzje() {
     if (q.exec()) {
         while (q.next()) {
             PodejscieHistoryczne p;
-            p.id = q.value(0).toInt();
+            p.id      = q.value(0).toInt();
+            p.status  = q.value(3).toString();
+            p.ocena   = q.value(4).toInt();
 
-            // POPRAWKA 1: Używamy indeksu 2 (tytuł) i 5 (recenzja) zamiast 1 i 4!
+            // Pakujemy tytuł i recenzję w jedno pole — patrz komentarz przy deklaracji funkcji.
             p.recenzja = q.value(2).toString() + "|||" + q.value(5).toString();
 
-            p.status = q.value(3).toString();
-            p.ocena = q.value(4).toInt();
-            p.data_rozpoczecia = q.value(6).toDateTime(); // Tu używamy jako daty zakończenia
+            // data_ukonczenia traktujemy jako data_rozpoczecia (PodejscieHistoryczne nie ma osobnego pola).
+            p.data_rozpoczecia = q.value(6).toDateTime();
 
-            // Pobieramy sesje z notatkami dla tego konkretnego podejścia
+            // Sesje z notatkami — używane jako "oś czasu" w widoku recenzji.
             QSqlQuery qS(db);
-            // POPRAWKA 2: Zamiana nieistniejącego 'data_wpisu' na 'czas_rozpoczecia'
-            qS.prepare("SELECT czas_rozpoczecia, notatka FROM dziennik_aktywnosci WHERE id_podejscia = :id AND notatka IS NOT NULL AND notatka != '' ORDER BY czas_rozpoczecia ASC");
+            qS.prepare("SELECT czas_rozpoczecia, notatka FROM dziennik_aktywnosci "
+                       "WHERE id_podejscia = :id AND notatka IS NOT NULL AND notatka != '' "
+                       "ORDER BY czas_rozpoczecia ASC");
             qS.bindValue(":id", p.id);
             if (qS.exec()) {
                 while (qS.next()) {
                     Sesja s;
-                    s.data = qS.value(0).toDateTime();
+                    s.data    = qS.value(0).toDateTime();
                     s.notatka = qS.value(1).toString();
                     p.sesje.append(s);
                 }
@@ -925,7 +987,11 @@ QList<PodejscieHistoryczne> DatabaseManager::pobierzWszystkieRecenzje() {
 }
 
 bool DatabaseManager::ustawTagiDlaMedium(int idMedium, const QList<int>& idTagow) {
+    // Pełna wymiana tagów strategią DELETE → INSERT.
+    // Zamiast śledzić które tagi dodano/usunięto, kasujemy wszystkie powiązania
+    // i wstawiamy nowe. Prosto i bezpiecznie w ramach jednej transakcji.
     db.transaction();
+
     QSqlQuery qDel(db);
     qDel.prepare("DELETE FROM multimedia_tagi WHERE id_medium = :id");
     qDel.bindValue(":id", idMedium);
@@ -938,6 +1004,7 @@ bool DatabaseManager::ustawTagiDlaMedium(int idMedium, const QList<int>& idTagow
         qIns.bindValue(":idT", idT);
         if (!qIns.exec()) { db.rollback(); return false; }
     }
+
     db.commit();
     return true;
 }

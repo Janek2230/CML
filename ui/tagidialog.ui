@@ -1,29 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>KategorieDialog</class>
- <widget class="QDialog" name="KategorieDialog">
+ <class>TagiDialog</class>
+ <widget class="QDialog" name="TagiDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>500</width>
+    <width>451</width>
     <height>400</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Zarządzanie Kategoriami</string>
+   <string>Zarządzanie Tagami</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QTableWidget" name="tabela">
+     <property name="editTriggers">
+      <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+     </property>
      <property name="selectionMode">
-      <enum>QAbstractItemView::SingleSelection</enum>
+      <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
      </property>
      <property name="selectionBehavior">
-      <enum>QAbstractItemView::SelectRows</enum>
-     </property>
-     <property name="editTriggers">
-      <set>QAbstractItemView::NoEditTriggers</set>
+      <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
      </property>
      <column>
       <property name="text">
@@ -35,11 +35,6 @@
        <string>Nazwa</string>
       </property>
      </column>
-     <column>
-      <property name="text">
-       <string>Jednostka</string>
-      </property>
-     </column>
     </widget>
    </item>
    <item>
@@ -47,26 +42,39 @@
      <item>
       <widget class="QPushButton" name="btnDodaj">
        <property name="text">
-        <string>Dodaj nową</string>
+        <string>Dodaj nowy</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="btnEdytuj">
        <property name="text">
-        <string>Edytuj wybraną</string>
+        <string>Edytuj wybrany</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="btnUsun">
        <property name="text">
-        <string>Usuń wybraną</string>
+        <string>Usuń wybrany</string>
        </property>
       </widget>
      </item>
      <item>
       <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_2">
        <property name="orientation">
         <enum>Qt::Orientation::Horizontal</enum>
        </property>
@@ -94,15 +102,15 @@
   <connection>
    <sender>btnZamknij</sender>
    <signal>clicked()</signal>
-   <receiver>KategorieDialog</receiver>
+   <receiver>TagiDialog</receiver>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>420</x>
+     <x>320</x>
      <y>380</y>
     </hint>
     <hint type="destinationlabel">
-     <x>250</x>
+     <x>200</x>
      <y>200</y>
     </hint>
    </hints>

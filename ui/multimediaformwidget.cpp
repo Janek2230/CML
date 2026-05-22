@@ -29,7 +29,6 @@ MultimediaFormWidget::MultimediaFormWidget(AppController& controller, QWidget *p
     connect(ui->btnDodajPlatforme, &QPushButton::clicked, this, &MultimediaFormWidget::onBtnSzybkaPlatformaClicked);
     connect(ui->btnDodajKategorie, &QPushButton::clicked, this, &MultimediaFormWidget::onBtnSzybkaKategoriaClicked);
 
-    // W konstruktorze MultimediaFormWidget dodaj:
     connect(ui->btnDodajTag, &QPushButton::clicked, this, &MultimediaFormWidget::onBtnSzybkiTagClicked);
 }
 
@@ -108,33 +107,26 @@ void MultimediaFormWidget::onBtnPotwierdzDodajClicked() {
     }
 
     if (sukces) {
-        // --- ZAPIS TAGÓW ---
+        // Zapisujemy tagi dla nowo dodanego lub edytowanego medium.
         QList<int> wybraneTagi;
-        for(int i = 0; i < ui->listTagi->count(); ++i) {
-            if(ui->listTagi->item(i)->checkState() == Qt::Checked) {
+        for (int i = 0; i < ui->listTagi->count(); ++i) {
+            if (ui->listTagi->item(i)->checkState() == Qt::Checked) {
                 wybraneTagi.append(ui->listTagi->item(i)->data(Qt::UserRole).toInt());
             }
         }
         appController.ustawTagiDlaMedium(idDoTagow, wybraneTagi);
-        // -------------------
 
-        ui->lblKomunikatFormularza->setStyleSheet("color: green; font-weight: bold;");
-        ui->lblKomunikatFormularza->setText(czyTrybEdycji ? "Zaktualizowano: " + tytul : "Dodano do biblioteki: " + tytul);
-        ui->editNowyTytul->clear();
-    }
-
-    if (sukces) {
+        // Zapamiętujemy aktualny wybór przed przeładowaniem comboboxów.
         int zapisaneIdKat = ui->comboNowaKategoria->currentData().toInt();
         int zapisaneIdPlat = ui->comboNowyTyp->currentData().toInt();
-
         uzupelnijComboBoxy();
-
         int idxKat = ui->comboNowaKategoria->findData(zapisaneIdKat);
         if (idxKat != -1) ui->comboNowaKategoria->setCurrentIndex(idxKat);
-
         int idxPlat = ui->comboNowyTyp->findData(zapisaneIdPlat);
         if (idxPlat != -1) ui->comboNowyTyp->setCurrentIndex(idxPlat);
 
+        ui->lblKomunikatFormularza->setStyleSheet("color: green; font-weight: bold;");
+        ui->lblKomunikatFormularza->setText(czyTrybEdycji ? "Zaktualizowano: " + tytul : "Dodano do biblioteki: " + tytul);
         ui->editNowyTytul->clear();
     } else {
         ui->lblKomunikatFormularza->setStyleSheet("color: red; font-weight: bold;");
@@ -150,9 +142,8 @@ void MultimediaFormWidget::uzupelnijComboBoxy() {
     ui->comboNowaKategoria->addItem("--- Wybierz kategorię ---", 0);
     ui->comboNowaKategoria->setItemData(0, "jednostka", Qt::UserRole + 1);
 
-    auto kategorie = appController.pobierzKategorie(); // ZMIANA
-    auto jednostki = appController.pobierzSlownikJednostek(); // ZMIANA
-
+    auto kategorie = appController.pobierzKategorie();
+    auto jednostki = appController.pobierzSlownikJednostek();
     for (const auto& kat : std::as_const(kategorie)) {
         if (kat.first != 0) {
             ui->comboNowaKategoria->addItem(kat.second, kat.first);
@@ -163,7 +154,7 @@ void MultimediaFormWidget::uzupelnijComboBoxy() {
     }
 
     ui->comboNowyTyp->addItem("--- Wybierz platformę ---", 0);
-    auto platformy = appController.pobierzPlatformy(); // ZMIANA
+    auto platformy = appController.pobierzPlatformy();
     for (const auto& plat : std::as_const(platformy)) {
         if (plat.first != 0) ui->comboNowyTyp->addItem(plat.second, plat.first);
     }
@@ -173,7 +164,7 @@ void MultimediaFormWidget::onBtnSzybkaPlatformaClicked() {
     bool ok;
     QString nowaNazwa = QInputDialog::getText(this, "Nowa Platforma", "Podaj nazwę:", QLineEdit::Normal, "", &ok);
     if (ok && !nowaNazwa.trimmed().isEmpty()) {
-        int noweId = appController.dodajPlatforme(nowaNazwa.trimmed()); // ZMIANA
+        int noweId = appController.dodajPlatforme(nowaNazwa.trimmed());
         if (noweId > 0) {
             uzupelnijComboBoxy();
         }
@@ -186,8 +177,7 @@ void MultimediaFormWidget::onBtnSzybkaKategoriaClicked() {
     QLineEdit editNazwa(&dialog);
     QComboBox comboJednostka(&dialog);
     comboJednostka.setEditable(true);
-    comboJednostka.addItems(appController.pobierzUnikalneJednostki()); // ZMIANA
-
+    comboJednostka.addItems(appController.pobierzUnikalneJednostki());
     form.addRow("Nazwa kategorii:", &editNazwa);
     form.addRow("Jednostka:", &comboJednostka);
 
@@ -199,7 +189,7 @@ void MultimediaFormWidget::onBtnSzybkaKategoriaClicked() {
 
     if (dialog.exec() == QDialog::Accepted && !editNazwa.text().trimmed().isEmpty()) {
         QString jednostka = comboJednostka.currentText().trimmed();
-        if (appController.dodajKategorie(editNazwa.text().trimmed(), jednostka)) { // ZMIANA
+        if (appController.dodajKategorie(editNazwa.text().trimmed(), jednostka)) {
             uzupelnijComboBoxy();
         }
     }
@@ -222,8 +212,8 @@ void MultimediaFormWidget::uzupelnijTagi() {
 
     for (const auto& tag : wszystkieTagi) {
         QListWidgetItem* item = new QListWidgetItem(tag.second, ui->listTagi);
-        item->setFlags(item->flags() | Qt::ItemIsUserCheckable); // Pozwala na checkbox
-        item->setData(Qt::UserRole, tag.first); // Przechowujemy ID tagu pod spodem
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setData(Qt::UserRole, tag.first);
 
         if (czyTrybEdycji && tagiTegoMedium.contains(tag.second)) {
             item->setCheckState(Qt::Checked);

@@ -10,18 +10,6 @@
 #include <QInputDialog>
 #include <QLocale>
 
-#include "panelnawigacjiwidget.h"
-#include "ui_panelnawigacjiwidget.h"
-
-#include <QDialog>
-#include <QFormLayout>
-#include <QComboBox>
-#include <QLineEdit>
-#include <QDialogButtonBox>
-#include <QMessageBox>
-#include <QInputDialog>
-#include <QLocale>
-
 PanelNawigacjiWidget::PanelNawigacjiWidget(AppController& controller, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::PanelNawigacjiWidget),
@@ -29,15 +17,12 @@ PanelNawigacjiWidget::PanelNawigacjiWidget(AppController& controller, QWidget *p
 {
     ui->setupUi(this);
 
-    // FIX 1: Czyścimy listę i wrzucamy dokładnie 5 unikalnych opcji
-    ui->comboGrupowanie->clear();
-    ui->comboGrupowanie->addItems({"Kategoria", "Status", "Platforma", "Data dodania", "Tagi"});
-
     ui->kategorie->setContextMenuPolicy(Qt::CustomContextMenu);
     ui->kategorie->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
-    // FIX 2: Podłączamy akcję zmiany w liście rozwijanej do odświeżania drzewa!
-    connect(ui->comboGrupowanie, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PanelNawigacjiWidget::odswiezDrzewo);
+    // Przebudowanie drzewa przy każdej zmianie trybu grupowania.
+    connect(ui->comboGrupowanie, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &PanelNawigacjiWidget::odswiezDrzewo);
 
     connect(ui->btnPowrot, &QPushButton::clicked, this, [this]() {
         emit zadaniePowrotuDoDashboardu();
@@ -47,9 +32,12 @@ PanelNawigacjiWidget::PanelNawigacjiWidget(AppController& controller, QWidget *p
         emit zadanieDodaniaMedium(0, 0);
     });
 
-    connect(ui->kategorie, &QTreeWidget::itemClicked, this, &PanelNawigacjiWidget::onWybieranieElementuDrzewa);
-    connect(ui->wyszukiwarka, &QLineEdit::textChanged, this, &PanelNawigacjiWidget::onWyszukiwanie);
-    connect(ui->kategorie, &QTreeWidget::customContextMenuRequested, this, &PanelNawigacjiWidget::pokazMenuDrzewa);
+    connect(ui->kategorie, &QTreeWidget::itemClicked,
+            this, &PanelNawigacjiWidget::onWybieranieElementuDrzewa);
+    connect(ui->wyszukiwarka, &QLineEdit::textChanged,
+            this, &PanelNawigacjiWidget::onWyszukiwanie);
+    connect(ui->kategorie, &QTreeWidget::customContextMenuRequested,
+            this, &PanelNawigacjiWidget::pokazMenuDrzewa);
 
     zaladujDaneDoDrzewa();
 }
@@ -59,34 +47,39 @@ PanelNawigacjiWidget::~PanelNawigacjiWidget()
     delete ui;
 }
 
-void PanelNawigacjiWidget::odswiezDrzewo() {
+void PanelNawigacjiWidget::odswiezDrzewo()
+{
     zaladujDaneDoDrzewa();
 }
 
-void PanelNawigacjiWidget::onWybieranieElementuDrzewa(QTreeWidgetItem *item, int column) {
+void PanelNawigacjiWidget::onWybieranieElementuDrzewa(QTreeWidgetItem *item, int /*column*/)
+{
     if (!item || item->parent() == nullptr) {
+        // Kliknięcie w węzeł-folder (gałąź) zwija/rozwija go i wraca do dashboardu.
         if (item) item->setExpanded(!item->isExpanded());
         emit zadaniePowrotuDoDashboardu();
         return;
     }
+    // Kliknięcie w liść — emitujemy ID przechowywanego medium.
     int idWybranegoElementu = item->data(0, Qt::UserRole).toInt();
     emit zadaniePokazaniaSzczegolow(idWybranegoElementu);
 }
 
-void PanelNawigacjiWidget::onWyszukiwanie(const QString &text) {
+void PanelNawigacjiWidget::onWyszukiwanie(const QString &text)
+{
     if (ui->kategorie->topLevelItemCount() == 0) return;
+
     for (int i = 0; i < ui->kategorie->topLevelItemCount(); ++i) {
         QTreeWidgetItem *kategoria = ui->kategorie->topLevelItem(i);
         bool maPasujaceElementy = false;
+
         for (int j = 0; j < kategoria->childCount(); ++j) {
             QTreeWidgetItem *dziecko = kategoria->child(j);
-            if (dziecko->text(0).contains(text, Qt::CaseInsensitive)) {
-                dziecko->setHidden(false);
-                maPasujaceElementy = true;
-            } else {
-                dziecko->setHidden(true);
-            }
+            const bool pasuje = dziecko->text(0).contains(text, Qt::CaseInsensitive);
+            dziecko->setHidden(!pasuje);
+            if (pasuje) maPasujaceElementy = true;
         }
+
         if (text.isEmpty()) {
             kategoria->setHidden(false);
         } else {
@@ -96,57 +89,58 @@ void PanelNawigacjiWidget::onWyszukiwanie(const QString &text) {
     }
 }
 
-void PanelNawigacjiWidget::zaladujDaneDoDrzewa() {
+void PanelNawigacjiWidget::zaladujDaneDoDrzewa()
+{
     ui->kategorie->clear();
     listaMultimediow = appController.pobierzWszystkieMultimedia();
 
-    int trybGrupowania = ui->comboGrupowanie->currentIndex();
-    QMap<int, QString> slownikKategorii;
-    QList<QPair<int, QString>> listaPlatform;
-    QMap<int, QStringList> mapaTagow; // NOWE: Słownik tagów
+    const int trybGrupowania = ui->comboGrupowanie->currentIndex();
+
+    // Pobieramy tylko te dane słownikowe, których aktualnie potrzebujemy.
+    QMap<int, QString>          slownikKategorii;
+    QList<QPair<int, QString>>  listaPlatform;
+    QMap<int, QStringList>      mapaTagow;
 
     if (trybGrupowania == 0) slownikKategorii = appController.getCategories();
-    if (trybGrupowania == 2) listaPlatform = appController.pobierzPlatformy();
-    if (trybGrupowania == 4) mapaTagow = appController.pobierzPrzypisaniaTagow(); // Pobieramy tagi jeśli wybrany indeks 4
+    if (trybGrupowania == 2) listaPlatform    = appController.pobierzPlatformy();
+    if (trybGrupowania == 4) mapaTagow        = appController.pobierzPrzypisaniaTagow();
 
+    // Mapa istniejących węzłów-folderów, by nie tworzyć duplikatów.
     QMap<QString, QTreeWidgetItem*> wezlyGlowne;
 
-    // --- Wstępne ładowanie głównych folderów (gałęzi) ---
+    // Etap 1: Tworzymy foldery dla trybów ze stałą listą grup (Kategoria, Platforma, Tagi).
+    // Dla Status i Data foldery tworzone są dynamicznie podczas przetwarzania multimediów.
     if (trybGrupowania == 0) {
-        auto q = appController.pobierzKategorie();
-        for(const auto& kat : q) {
-            QString nazwa = kat.second;
+        for (const auto& kat : appController.pobierzKategorie()) {
             QTreeWidgetItem *wezel = new QTreeWidgetItem(ui->kategorie);
-            wezel->setText(0, nazwa);
+            wezel->setText(0, kat.second);
             wezel->setData(0, Qt::UserRole, kat.first);
-            wezlyGlowne.insert(nazwa, wezel);
+            wezlyGlowne.insert(kat.second, wezel);
         }
     } else if (trybGrupowania == 2) {
         for (const auto& plat : listaPlatform) {
-            QString nazwa = plat.second;
             QTreeWidgetItem *wezel = new QTreeWidgetItem(ui->kategorie);
-            wezel->setText(0, nazwa);
+            wezel->setText(0, plat.second);
             wezel->setData(0, Qt::UserRole, plat.first);
-            wezlyGlowne.insert(nazwa, wezel);
+            wezlyGlowne.insert(plat.second, wezel);
         }
     } else if (trybGrupowania == 4) {
-        // Ładujemy wszystkie istniejące tagi do drzewa, żeby puste tagi też były widoczne
+        // Ładujemy wszystkie tagi z bazy, żeby puste tagi też pojawiły się w drzewie.
         for (const auto& tag : appController.pobierzTagi()) {
-            QString nazwa = tag.second;
             QTreeWidgetItem *wezel = new QTreeWidgetItem(ui->kategorie);
-            wezel->setText(0, nazwa);
+            wezel->setText(0, tag.second);
             wezel->setData(0, Qt::UserRole, tag.first);
-            wezlyGlowne.insert(nazwa, wezel);
+            wezlyGlowne.insert(tag.second, wezel);
         }
     }
 
-    // --- Przypisywanie multimediów do folderów ---
+    // Etap 2: Przypisujemy każde medium do odpowiedniego folderu.
     for (const auto& medium : std::as_const(listaMultimediow)) {
 
-        // NOWA LOGIKA: Specjalna obsługa dla Tagów (jedno medium może być w wielu folderach)
+        // Tagi to relacja wiele-do-wielu — jedno medium może trafić do kilku folderów.
         if (trybGrupowania == 4) {
-            QStringList tagiMedium = mapaTagow.value(medium->getId(), QStringList{"Brak tagów"});
-            if (tagiMedium.isEmpty()) tagiMedium << "Brak tagów"; // Zabezpieczenie dla pustych list
+            QStringList tagiMedium = mapaTagow.value(medium->getId());
+            if (tagiMedium.isEmpty()) tagiMedium << "Brak tagów";
 
             for (const QString& nazwaGrupy : tagiMedium) {
                 if (!wezlyGlowne.contains(nazwaGrupy)) {
@@ -158,40 +152,43 @@ void PanelNawigacjiWidget::zaladujDaneDoDrzewa() {
                 item->setText(0, medium->getTytul());
                 item->setData(0, Qt::UserRole, medium->getId());
             }
-            continue; // Użyto tagów, przeskakujemy do kolejnego medium!
+            continue;
         }
 
-        // STARA LOGIKA: Dla 1:1 relacji (Kategoria, Status, Platforma, Data)
+        // Pozostałe tryby — relacja jeden-do-jednego z folderem.
         QString nazwaGrupy;
         switch (trybGrupowania) {
-        case 0: nazwaGrupy = slownikKategorii.value(medium->getIdKategorii(), "Brak kategorii"); break;
-        case 1: nazwaGrupy = medium->getStatus(); break;
+        case 0:
+            nazwaGrupy = slownikKategorii.value(medium->getIdKategorii(), "Brak kategorii");
+            break;
+        case 1:
+            nazwaGrupy = medium->getStatus();
+            break;
         case 2:
             nazwaGrupy = "Nieznana platforma";
             for (const auto& plat : listaPlatform) {
                 if (plat.first == medium->getIdPlatformy()) { nazwaGrupy = plat.second; break; }
             }
             break;
-        case 3:
+        case 3: {
             QLocale polski(QLocale::Polish, QLocale::Poland);
             QDate data = medium->getDataDodania().date();
-            if (data.isValid()) {
-                QString miesiac = polski.standaloneMonthName(data.month());
-                nazwaGrupy = QString("%1 %2").arg(miesiac).arg(data.year()).toUpper();
-            } else {
-                nazwaGrupy = "BRAK DATY";
-            }
+            nazwaGrupy = data.isValid()
+                ? QString("%1 %2").arg(polski.standaloneMonthName(data.month())).arg(data.year()).toUpper()
+                : "BRAK DATY";
+            break;
+        }
+        default:
             break;
         }
 
         if (!wezlyGlowne.contains(nazwaGrupy)) {
             QTreeWidgetItem *nowyWezel = new QTreeWidgetItem(ui->kategorie);
             nowyWezel->setText(0, nazwaGrupy);
-            if (trybGrupowania == 0) {
+            if (trybGrupowania == 0)
                 nowyWezel->setData(0, Qt::UserRole, medium->getIdKategorii());
-            } else if (trybGrupowania == 2) {
+            else if (trybGrupowania == 2)
                 nowyWezel->setData(0, Qt::UserRole, medium->getIdPlatformy());
-            }
             wezlyGlowne.insert(nazwaGrupy, nowyWezel);
         }
 
@@ -199,26 +196,26 @@ void PanelNawigacjiWidget::zaladujDaneDoDrzewa() {
         item->setText(0, medium->getTytul());
         item->setData(0, Qt::UserRole, medium->getId());
     }
+
     ui->kategorie->expandAll();
 }
 
-void PanelNawigacjiWidget::pokazMenuDrzewa(const QPoint &pos) {
+void PanelNawigacjiWidget::pokazMenuDrzewa(const QPoint &pos)
+{
     QList<QTreeWidgetItem*> zaznaczone = ui->kategorie->selectedItems();
     if (zaznaczone.isEmpty()) return;
 
-    // Filtrujemy tylko te elementy, które są mediami (mają rodzica)
+    // Zbieramy ID tylko z liści (elementów z rodzicem) — węzły-foldery ignorujemy.
     QList<int> wybraneId;
     for (auto *item : zaznaczone) {
         if (item->parent() != nullptr) {
             wybraneId.append(item->data(0, Qt::UserRole).toInt());
         }
     }
-
     if (wybraneId.isEmpty()) return;
 
     QMenu menu(this);
 
-    // 1. Opcja Edycji (tylko dla pojedynczego elementu)
     if (wybraneId.size() == 1) {
         QAction *akcjaEdytuj = menu.addAction("Edytuj wpis");
         connect(akcjaEdytuj, &QAction::triggered, this, [this, id = wybraneId.first()]() {
@@ -227,47 +224,42 @@ void PanelNawigacjiWidget::pokazMenuDrzewa(const QPoint &pos) {
         menu.addSeparator();
     }
 
-    // 2. Dynamiczne podmenu "Zmień kategorię na..." (logika z archiwalnego mainwindow.cpp)
+    // Podmenu zmiany kategorii — budowane dynamicznie z aktualnej listy kategorii.
     QMenu *submenuKategorii = menu.addMenu("Zmień kategorię na...");
-    auto kategorieMap = appController.getCategories();
-
+    const auto kategorieMap = appController.getCategories();
     for (auto it = kategorieMap.begin(); it != kategorieMap.end(); ++it) {
-        int idKat = it.key();
-        QString nazwaKat = it.value();
-
-        QAction *akt = submenuKategorii->addAction(nazwaKat);
+        const int idKat = it.key();
+        QAction *akt = submenuKategorii->addAction(it.value());
         connect(akt, &QAction::triggered, this, [this, wybraneId, idKat]() {
-            if (appController.zmienKategorieWielu(wybraneId, idKat)) {
-                // Po zmianie drzewo odświeży się automatycznie dzięki sygnałowi daneZmienione()
-            } else {
+            if (!appController.zmienKategorieWielu(wybraneId, idKat)) {
                 QMessageBox::critical(this, "Błąd", "Nie udało się zmienić kategorii w bazie danych.");
             }
+            // Drzewo odświeży się automatycznie przez sygnał daneZmienione().
         });
     }
 
     menu.addSeparator();
 
-    // 3. Usuwanie (Pojedyncze lub Masowe)
-    QString tekstUsun = (wybraneId.size() > 1)
-                            ? QString("Usuń zaznaczone elementy (%1)").arg(wybraneId.size())
-                            : "Usuń z biblioteki";
+    const QString tekstUsun = (wybraneId.size() > 1)
+        ? QString("Usuń zaznaczone elementy (%1)").arg(wybraneId.size())
+        : "Usuń z biblioteki";
 
     QAction *akcjaUsun = menu.addAction(tekstUsun);
     connect(akcjaUsun, &QAction::triggered, this, [this, wybraneId]() {
-        QString pyt = (wybraneId.size() > 1)
-        ? QString("Czy na pewno chcesz usunąć %1 elementów?").arg(wybraneId.size())
-        : "Czy na pewno chcesz usunąć ten wpis?";
+        const QString pytanie = (wybraneId.size() > 1)
+            ? QString("Czy na pewno chcesz usunąć %1 elementów?").arg(wybraneId.size())
+            : "Czy na pewno chcesz usunąć ten wpis?";
 
-        if (QMessageBox::question(this, "Potwierdzenie", pyt, QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes) {
-            if (wybraneId.size() == 1) {
-                appController.usunMedium(wybraneId.first());
-            } else {
-                appController.usunWieleMultimediow(wybraneId);
-            }
-            emit zadaniePowrotuDoDashboardu();
+        if (QMessageBox::question(this, "Potwierdzenie", pytanie,
+                                  QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes) return;
+
+        if (wybraneId.size() == 1) {
+            appController.usunMedium(wybraneId.first());
+        } else {
+            appController.usunWieleMultimediow(wybraneId);
         }
+        emit zadaniePowrotuDoDashboardu();
     });
 
     menu.exec(ui->kategorie->viewport()->mapToGlobal(pos));
 }
-

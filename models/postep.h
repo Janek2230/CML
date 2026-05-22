@@ -2,6 +2,9 @@
 #define POSTEP_H
 
 #include <QString>
+
+// Stan bieżącego podejścia do medium — osadzony bezpośrednio w obiekcie Multimedia,
+// żeby widoki nie musiały osobno odpytywać tabeli podejść.
 struct Postep {
     int aktualna;
     int docelowa;

@@ -22,7 +22,6 @@ signals:
     void zadanieDodaniaMedium(int idKategorii, int idPlatformy);
     void zadanieEdycjiMedium(int idMedium);
     void zadaniePowrotuDoDashboardu();
-    void drzewoZmieniloBaze();
 
 private slots:
     void onWybieranieElementuDrzewa(QTreeWidgetItem *item, int column);

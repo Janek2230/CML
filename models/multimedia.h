@@ -5,6 +5,10 @@
 #include <QDateTime>
 #include "postep.h"
 
+// Pojedyncze medium w bibliotece — książka, gra, serial, film itp.
+// Obiekt jest tworzony przez getAllMultimedia() i przekazywany jako shared_ptr.
+// Pola uzupełniane setterami (dataDodania, ocena, ulubione...) są opcjonalne
+// i ustawiane zaraz po konstrukcji na podstawie kolejnych kolumn zapytania SQL.
 class Multimedia {
 private:
     int id;
@@ -14,7 +18,7 @@ private:
     Postep postep;
     QDateTime dataDodania;
     QDateTime dataOstatniejAktywnosci;
-    int ocena;
+    int ocena = 0; // Inicjalizacja chroni przed UB gdy setOcena() nie zostało wywołane.
 
     int idPlatformy;
     bool ulubione = false;
@@ -39,8 +43,8 @@ public:
     void setDataOstatniejAktywnosci(const QDateTime &d) { dataOstatniejAktywnosci = d; }
 
     void setDataDodania(const QDateTime &data) { dataDodania = data; }
-    void setPostep(Postep nowyPostep) {postep = nowyPostep;}
-    void setStatus(QString nowyStatus) {status = nowyStatus;}
+    void setPostep(Postep nowyPostep) { postep = nowyPostep; }
+    void setStatus(QString nowyStatus) { status = nowyStatus; }
 };
 
 #endif

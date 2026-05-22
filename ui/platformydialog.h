@@ -2,10 +2,15 @@
 #define PLATFORMYDIALOG_H
 
 #include <QDialog>
-#include <QTableWidget>
-#include <QPushButton>
 #include "appcontroller.h"
 
+QT_BEGIN_NAMESPACE
+namespace Ui { class PlatformyDialog; }
+QT_END_NAMESPACE
+
+// Dialog zarządzania platformami dystrybucji (np. Netflix, Steam, Fizyczna).
+// Platformy służą wyłącznie jako etykieta — usunięcie platformy nie kasuje
+// multimedia, tylko zeruje pole id_platformy (lub kasuje razem, zależnie od wyboru).
 class PlatformyDialog : public QDialog {
     Q_OBJECT
 
@@ -19,12 +24,8 @@ private slots:
     void onBtnUsunClicked();
 
 private:
+    Ui::PlatformyDialog *ui;
     AppController& appController;
-    QTableWidget *tabela;
-    QPushButton *btnDodaj;
-    QPushButton *btnEdytuj;
-    QPushButton *btnUsun;
-    QPushButton *btnZamknij;
 
     void wypelnijTabele();
 };

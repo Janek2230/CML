@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>CML — Biblioteka Multimediów</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_3">
@@ -83,16 +83,6 @@
    <addaction name="menuWidok"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="actionZarz_dzaj_Kategoriami">
-   <property name="text">
-    <string>Zarządzaj Kategoriami...</string>
-   </property>
-  </action>
-  <action name="actionZarz_dzaj_Platformami">
-   <property name="text">
-    <string>Zarządzaj Platformami...</string>
-   </property>
-  </action>
   <action name="actionKategorie">
    <property name="text">
     <string>Kategorie...</string>

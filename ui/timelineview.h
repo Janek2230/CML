@@ -3,11 +3,6 @@
 
 #include <QWidget>
 #include <QVBoxLayout>
-#include <QScrollArea>
-#include <QLabel>
-#include <QPushButton>
-#include <QDialog>
-#include <QTextBrowser> // DODANE: Wymagane do renderowania recenzji
 #include "appcontroller.h"
 
 class TimelineView : public QWidget

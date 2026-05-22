@@ -26,8 +26,6 @@ private slots:
     void onBtnZapiszClicked();
     void onBtnNowePodejscieClicked();
     void onHistoriaItemClicked(QTreeWidgetItem *item);
-    void onBtnDodajPodejscieClicked();
-    void onBtnDodajSesjeClicked();
     void onBtnEdytujZaznaczoneClicked();
     void onBtnUsunZaznaczoneClicked();
     void onBtnUlubioneClicked();

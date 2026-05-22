@@ -60,6 +60,11 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
+         <item><property name="text"><string>Kategoria</string></property></item>
+         <item><property name="text"><string>Status</string></property></item>
+         <item><property name="text"><string>Platforma</string></property></item>
+         <item><property name="text"><string>Data dodania</string></property></item>
+         <item><property name="text"><string>Tagi</string></property></item>
         </widget>
        </item>
       </layout>

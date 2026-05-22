@@ -1,117 +1,109 @@
 #include "kategoriedialog.h"
-#include <QVBoxLayout>
-#include <QHBoxLayout>
+#include "ui_kategoriedialog.h"
 #include <QHeaderView>
 #include <QMessageBox>
-#include <QSqlQuery>
 #include <QFormLayout>
 #include <QLineEdit>
 #include <QComboBox>
 #include <QDialogButtonBox>
 
 KategorieDialog::KategorieDialog(AppController& controller, QWidget *parent)
-    : QDialog(parent), appController(controller)
+    : QDialog(parent), ui(new Ui::KategorieDialog), appController(controller)
 {
-    setWindowTitle("Zarządzanie Kategoriami");
-    resize(500, 400);
+    ui->setupUi(this);
 
-    QVBoxLayout *layout = new QVBoxLayout(this);
+    // Kolumna ID (indeks 0) jest potrzebna w kodzie do identyfikacji wiersza,
+    // ale nie ma wartości informacyjnej dla użytkownika.
+    ui->tabela->hideColumn(0);
 
-    tabela = new QTableWidget(0, 3, this);
-    tabela->setHorizontalHeaderLabels({"ID", "Nazwa", "Jednostka"});
-    tabela->setSelectionBehavior(QAbstractItemView::SelectRows);
-    tabela->setSelectionMode(QAbstractItemView::SingleSelection);
-    tabela->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    tabela->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-    tabela->hideColumn(0);
+    // Kolumna "Nazwa" rozciąga się na całą dostępną szerokość.
+    ui->tabela->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
 
     wypelnijTabele();
-    layout->addWidget(tabela);
 
-    QHBoxLayout *btnLayout = new QHBoxLayout();
-    btnDodaj = new QPushButton("Dodaj nową", this);
-    btnEdytuj = new QPushButton("Edytuj wybraną", this);
-    btnUsun = new QPushButton("Usuń wybraną", this);
-    btnZamknij = new QPushButton("Zamknij", this);
-
-    btnLayout->addWidget(btnDodaj);
-    btnLayout->addWidget(btnEdytuj);
-    btnLayout->addWidget(btnUsun);
-    btnLayout->addStretch();
-    btnLayout->addWidget(btnZamknij);
-    layout->addLayout(btnLayout);
-
-    connect(btnZamknij, &QPushButton::clicked, this, &QDialog::accept);
-    connect(btnDodaj, &QPushButton::clicked, this, &KategorieDialog::onBtnDodajClicked);
-    connect(btnEdytuj, &QPushButton::clicked, this, &KategorieDialog::onBtnEdytujClicked);
-    connect(btnUsun, &QPushButton::clicked, this, &KategorieDialog::onBtnUsunClicked);
+    connect(ui->btnDodaj,  &QPushButton::clicked, this, &KategorieDialog::onBtnDodajClicked);
+    connect(ui->btnEdytuj, &QPushButton::clicked, this, &KategorieDialog::onBtnEdytujClicked);
+    connect(ui->btnUsun,   &QPushButton::clicked, this, &KategorieDialog::onBtnUsunClicked);
+    // btnZamknij accept() jest podłączony w pliku .ui
 }
 
-KategorieDialog::~KategorieDialog() {}
+KategorieDialog::~KategorieDialog()
+{
+    delete ui;
+}
 
-void KategorieDialog::wypelnijTabele() {
-    tabela->setRowCount(0);
-    auto kategorie = appController.pobierzPelneKategorie();
+void KategorieDialog::wypelnijTabele()
+{
+    ui->tabela->setRowCount(0);
+    const auto kategorie = appController.pobierzPelneKategorie();
+
     int wiersz = 0;
-    for(const auto& kat : std::as_const(kategorie)) {
-        tabela->insertRow(wiersz);
-        tabela->setItem(wiersz, 0, new QTableWidgetItem(QString::number(kat.id)));
-        tabela->setItem(wiersz, 1, new QTableWidgetItem(kat.nazwa));
-        tabela->setItem(wiersz, 2, new QTableWidgetItem(kat.jednostka));
+    for (const auto& kat : kategorie) {
+        ui->tabela->insertRow(wiersz);
+        ui->tabela->setItem(wiersz, 0, new QTableWidgetItem(QString::number(kat.id)));
+        ui->tabela->setItem(wiersz, 1, new QTableWidgetItem(kat.nazwa));
+        ui->tabela->setItem(wiersz, 2, new QTableWidgetItem(kat.jednostka));
         wiersz++;
     }
 }
 
-void KategorieDialog::onBtnDodajClicked() {
+void KategorieDialog::onBtnDodajClicked()
+{
     QDialog dialog(this);
     dialog.setWindowTitle("Nowa Kategoria");
-    dialog.resize(300, 100);
+    dialog.resize(300, 120);
 
     QFormLayout form(&dialog);
+
     QLineEdit editNazwa(&dialog);
     editNazwa.setPlaceholderText("np. Komiksy");
 
+    // Combo jest edytowalne — użytkownik może wpisać własną jednostkę
+    // zamiast wybierać z listy istniejących.
     QComboBox comboJednostka(&dialog);
     comboJednostka.setEditable(true);
     comboJednostka.addItems(appController.pobierzUnikalneJednostki());
 
-    form.addRow("Nazwa kategorii:", &editNazwa);
-    form.addRow("Jednostka:", &comboJednostka);
-
     QDialogButtonBox buttonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, &dialog);
+
+    form.addRow("Nazwa kategorii:", &editNazwa);
+    form.addRow("Jednostka:",       &comboJednostka);
     form.addRow(&buttonBox);
 
     connect(&buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(&buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
-    if (dialog.exec() == QDialog::Accepted) {
-        QString nazwa = editNazwa.text().trimmed();
-        QString jednostka = comboJednostka.currentText().trimmed();
+    if (dialog.exec() != QDialog::Accepted) return;
 
-        if (!nazwa.isEmpty()) {
-            if (jednostka.isEmpty()) jednostka = "szt.";
-            if (appController.dodajKategorie(nazwa, jednostka)) {
-                wypelnijTabele();
-            } else {
-                QMessageBox::warning(this, "Błąd", "Baza odrzuciła kategorię.");
-            }
-        }
+    const QString nazwa     = editNazwa.text().trimmed();
+    const QString jednostka = comboJednostka.currentText().trimmed();
+
+    if (nazwa.isEmpty()) return;
+
+    // Fallback na "szt." gdy użytkownik zostawił pole jednostki puste.
+    if (!appController.dodajKategorie(nazwa, jednostka.isEmpty() ? "szt." : jednostka)) {
+        QMessageBox::warning(this, "Błąd", "Nie udało się dodać kategorii.");
+        return;
     }
+
+    wypelnijTabele();
 }
 
-void KategorieDialog::onBtnEdytujClicked() {
-    int wiersz = tabela->currentRow();
+void KategorieDialog::onBtnEdytujClicked()
+{
+    const int wiersz = ui->tabela->currentRow();
     if (wiersz < 0) {
         QMessageBox::warning(this, "Brak wyboru", "Zaznacz najpierw kategorię na liście.");
         return;
     }
 
-    int idKat = tabela->item(wiersz, 0)->text().toInt();
-    QString obecnaNazwa = tabela->item(wiersz, 1)->text();
-    QString obecnaJednostka = tabela->item(wiersz, 2)->text();
+    const int     idKat           = ui->tabela->item(wiersz, 0)->text().toInt();
+    const QString obecnaNazwa     = ui->tabela->item(wiersz, 1)->text();
+    const QString obecnaJednostka = ui->tabela->item(wiersz, 2)->text();
 
     QDialog editDialog(this);
     editDialog.setWindowTitle("Edytuj: " + obecnaNazwa);
+
     QFormLayout form(&editDialog);
 
     QLineEdit editNazwa(&editDialog);
@@ -122,42 +114,49 @@ void KategorieDialog::onBtnEdytujClicked() {
     comboJednostka.addItems(appController.pobierzUnikalneJednostki());
     comboJednostka.setCurrentText(obecnaJednostka);
 
-    form.addRow("Nazwa:", &editNazwa);
-    form.addRow("Jednostka:", &comboJednostka);
-
     QDialogButtonBox bb(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, &editDialog);
+
+    form.addRow("Nazwa:",     &editNazwa);
+    form.addRow("Jednostka:", &comboJednostka);
     form.addRow(&bb);
 
     connect(&bb, &QDialogButtonBox::accepted, &editDialog, &QDialog::accept);
     connect(&bb, &QDialogButtonBox::rejected, &editDialog, &QDialog::reject);
 
-    if (editDialog.exec() == QDialog::Accepted && !editNazwa.text().trimmed().isEmpty()) {
-        if (appController.aktualizujKategorie(idKat, editNazwa.text().trimmed(), comboJednostka.currentText().trimmed())) {
-            wypelnijTabele();
-        }
+    if (editDialog.exec() != QDialog::Accepted) return;
+
+    const QString nowaNazwa = editNazwa.text().trimmed();
+    if (nowaNazwa.isEmpty()) return;
+
+    if (appController.aktualizujKategorie(idKat, nowaNazwa, comboJednostka.currentText().trimmed())) {
+        wypelnijTabele();
     }
 }
 
-void KategorieDialog::onBtnUsunClicked() {
-    int wiersz = tabela->currentRow();
+void KategorieDialog::onBtnUsunClicked()
+{
+    const int wiersz = ui->tabela->currentRow();
     if (wiersz < 0) return;
 
-    int idKat = tabela->item(wiersz, 0)->text().toInt();
-    QString nazwa = tabela->item(wiersz, 1)->text();
+    const int     idKat = ui->tabela->item(wiersz, 0)->text().toInt();
+    const QString nazwa = ui->tabela->item(wiersz, 1)->text();
 
     QMessageBox msgBox(this);
-    msgBox.setWindowTitle("Usuwanie");
-    msgBox.setText("Usuwasz kategorię: " + nazwa + "\nCo robimy z zawartością?");
+    msgBox.setWindowTitle("Usuwanie kategorii");
+    msgBox.setText("Usuwasz kategorię: <b>" + nazwa + "</b><br>Co robimy z przypisaną zawartością?");
 
-    QPushButton *btnPrzenies = msgBox.addButton("Przenieś do 'Brak'", QMessageBox::ActionRole);
-    QPushButton *btnUsunWszystko = msgBox.addButton("Usuń wszystko", QMessageBox::DestructiveRole);
-    QPushButton *btnAnuluj = msgBox.addButton("Anuluj", QMessageBox::RejectRole);
+    // Musimy zachować wskaźniki do przycisków, żeby później sprawdzić który
+    // został kliknięty przez msgBox.clickedButton().
+    QPushButton *btnPrzenies     = msgBox.addButton("Przenieś do 'Brak'", QMessageBox::ActionRole);
+    QPushButton *btnUsunWszystko = msgBox.addButton("Usuń wszystko",      QMessageBox::DestructiveRole);
+    msgBox.addButton("Anuluj", QMessageBox::RejectRole);
 
     msgBox.exec();
 
-    if (msgBox.clickedButton() == btnAnuluj) return;
+    QAbstractButton *clicked = msgBox.clickedButton();
+    if (clicked != btnPrzenies && clicked != btnUsunWszystko) return;
 
-    bool usunZDetalami = (msgBox.clickedButton() == btnUsunWszystko);
+    const bool usunZDetalami = (clicked == btnUsunWszystko);
     if (appController.usunKategorie(idKat, usunZDetalami)) {
         wypelnijTabele();
     }

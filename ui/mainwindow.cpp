@@ -3,7 +3,7 @@
 #include "kategoriedialog.h"
 #include "platformydialog.h"
 #include "tagidialog.h"
-#include <QDebug>
+#include <QMessageBox>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -12,7 +12,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     if (!appController.inicjalizujBaze()) {
-        qDebug() << "Błąd krytyczny: Baza danych nie wystartowała.";
+        QMessageBox::critical(this, "Błąd krytyczny",
+            "Nie udało się połączyć z bazą danych.\nSprawdź plik config.ini.");
     }
 
     timelineWidget = new TimelineView(appController, this);
@@ -82,10 +83,6 @@ MainWindow::MainWindow(QWidget *parent)
         ui->daneSzczegolowe->setCurrentWidget(formularzWidget);
     });
 
-    connect(panelNawigacji, &PanelNawigacjiWidget::drzewoZmieniloBaze, this, [this]() {
-        dashboardWidget->odswiezStatystykiGlowne();
-    });
-
     connect(formularzWidget, &MultimediaFormWidget::daneZapisane, this, [this]() {
         dashboardWidget->odswiezStatystykiGlowne();
         ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
@@ -115,9 +112,9 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     connect(ui->actionMojeRecenzje, &QAction::triggered, this, [this]() {
-        panelNawigacji->hide(); // Chowamy lewe drzewo dla pełnego efektu
+        panelNawigacji->hide(); // Chowamy panel nawigacji dla pełnoekranowego efektu osi czasu.
         ui->daneSzczegolowe->setCurrentWidget(timelineWidget);
-        timelineWidget->renderujTimeline(); // Odświeżamy kafelki
+        timelineWidget->renderujTimeline();
     });
 
 

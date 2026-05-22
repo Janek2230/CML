@@ -21,7 +21,7 @@ QList<QVariantMap> AppController::pobierzDaneDlaWykresu(int zakres, const QStrin
         mapa["seria"] = s.nazwaSerii;
 
         if (metryka == "czas") {
-            mapa["wartosc"] = s.wartosc / 3600.0;
+            mapa["wartosc"] = s.wartosc / 3600.0; // DB przechowuje sekundy; wykres używa godzin.
         } else {
             mapa["wartosc"] = s.wartosc;
         }
@@ -57,6 +57,7 @@ bool AppController::czyOsiagnietoCel(int aktualna, int docelowa) {
 }
 
 bool AppController::aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa, int ocena) {
+    // Celowo nie emituje daneZmienione() — drzewo i dashboard odświeżają się tylko na żądanie wywołującego.
     return dbManager.aktualizujPostep(idMedium, status, aktualna, docelowa, ocena);
 }
 
@@ -119,6 +120,7 @@ QList<AppController::KategoriaModel> AppController::pobierzPelneKategorie() {
 }
 
 QStringList AppController::pobierzDostepneStatusy() {
+    // Hardkodowana lista — statusy są stałą częścią logiki biznesowej, nie parametrem konfiguracyjnym.
     return {"Planowane", "W trakcie", "Wstrzymane", "Ukończone", "Porzucone"};
 }
 
@@ -127,21 +129,21 @@ QMap<int, QString> AppController::getCategories() {
 }
 
 QList<std::shared_ptr<Multimedia>> AppController::pobierzKupkeWstydu() {
+    // Progi bezczynności: Planowane > 180 dni od dodania, aktywne/wstrzymane > 30 dni bez aktywności.
+    constexpr int PROG_PLANOWANE_DNI  = 180;
+    constexpr int PROG_AKTYWNE_DNI    = 30;
+
     auto wszystko = pobierzWszystkieMultimedia();
     QList<std::shared_ptr<Multimedia>> pobraneDane;
     QDateTime teraz = QDateTime::currentDateTime();
 
     for (const auto& m : wszystko) {
         if (m->getStatus() == "Planowane") {
-            if (m->getDataDodania().daysTo(teraz) > 180) {
+            if (m->getDataDodania().daysTo(teraz) > PROG_PLANOWANE_DNI) {
                 pobraneDane.append(m);
             }
-        } else if (m->getStatus() == "W trakcie") {
-            if (m->getDataOstatniejAktywnosci().isValid() && m->getDataOstatniejAktywnosci().daysTo(teraz) > 30) {
-                pobraneDane.append(m);
-            }
-        } else if (m->getStatus() == "Wstrzymane") {
-            if (m->getDataOstatniejAktywnosci().isValid() && m->getDataOstatniejAktywnosci().daysTo(teraz) > 30) {
+        } else if (m->getStatus() == "W trakcie" || m->getStatus() == "Wstrzymane") {
+            if (m->getDataOstatniejAktywnosci().isValid() && m->getDataOstatniejAktywnosci().daysTo(teraz) > PROG_AKTYWNE_DNI) {
                 pobraneDane.append(m);
             }
         }
@@ -150,21 +152,24 @@ QList<std::shared_ptr<Multimedia>> AppController::pobierzKupkeWstydu() {
 }
 
 bool AppController::zacznijOdNowa(int idMedium) {
-    if(dbManager.zacznijOdNowa(idMedium)) { emit daneZmienione(); return true; }
+    if (dbManager.zacznijOdNowa(idMedium)) { emit daneZmienione(); return true; }
     return false;
 }
+
 int AppController::dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel) {
     int id = dbManager.dodajNoweMedium(tytul, idKat, idPlatformy, cel);
-    if(id > 0) { emit daneZmienione(); }
+    if (id > 0) { emit daneZmienione(); }
     return id;
 }
+
 bool AppController::aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel) {
-    if(dbManager.aktualizujDaneMedium(id, tytul, idKat, idPlatformy, cel)) { emit daneZmienione(); return true; }
+    if (dbManager.aktualizujDaneMedium(id, tytul, idKat, idPlatformy, cel)) { emit daneZmienione(); return true; }
     return false;
 }
+
 int AppController::dodajPlatforme(const QString &nazwa) {
     int id = dbManager.dodajPlatforme(nazwa);
-    if(id > 0) { emit daneZmienione(); }
+    if (id > 0) { emit daneZmienione(); }
     return id;
 }
 int AppController::dodajTag(const QString &nazwa) {
@@ -272,10 +277,10 @@ QMap<int, QStringList> AppController::pobierzPrzypisaniaTagow() {
     return dbManager.pobierzPrzypisaniaTagow();
 }
 
-QStringList AppController::pobierzUnikalneJednostki() { return dbManager.pobierzUnikalneJednostki(); }
-QList<QPair<int, QString>> AppController::pobierzKategorie() { return dbManager.pobierzKategorie(); }
-QList<QPair<int, QString>> AppController::pobierzPlatformy() { return dbManager.pobierzPlatformy(); }
-QList<QPair<int, QString>> AppController::pobierzTagi() { return dbManager.pobierzTagi(); }
-QMap<int, QString> AppController::pobierzSlownikJednostek() { return dbManager.pobierzSlownikJednostek(); }
-QList<PodejscieHistoryczne> AppController::pobierzWszystkieRecenzje() {return dbManager.pobierzWszystkieRecenzje();}
-bool AppController::ustawTagiDlaMedium(int idMedium, const QList<int>& idTagow) {return dbManager.ustawTagiDlaMedium(idMedium, idTagow);}
+QStringList AppController::pobierzUnikalneJednostki()                              { return dbManager.pobierzUnikalneJednostki(); }
+QList<QPair<int, QString>> AppController::pobierzKategorie()                       { return dbManager.pobierzKategorie(); }
+QList<QPair<int, QString>> AppController::pobierzPlatformy()                       { return dbManager.pobierzPlatformy(); }
+QList<QPair<int, QString>> AppController::pobierzTagi()                            { return dbManager.pobierzTagi(); }
+QMap<int, QString> AppController::pobierzSlownikJednostek()                        { return dbManager.pobierzSlownikJednostek(); }
+QList<PodejscieHistoryczne> AppController::pobierzWszystkieRecenzje()              { return dbManager.pobierzWszystkieRecenzje(); }
+bool AppController::ustawTagiDlaMedium(int idMedium, const QList<int>& idTagow)    { return dbManager.ustawTagiDlaMedium(idMedium, idTagow); }

@@ -71,7 +71,6 @@ void DashboardWidget::odswiezStatystykiGlowne() {
             if (m->getId() == id) {
                 QPushButton *btnKafel = new QPushButton(m->getTytul(), this);
 
-                // Przechwycenie ID przez wyrażenie lambda i wyemitowanie sygnału do reszty aplikacji
                 connect(btnKafel, &QPushButton::clicked, this, [this, id]() {
                     emit zadaniePokazaniaSzczegolow(id);
                 });

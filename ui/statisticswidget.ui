@@ -233,12 +233,17 @@
              </item>
              <item>
               <property name="text">
-               <string>Ten rok</string>
+               <string>Ostatnie 6 miesięcy</string>
               </property>
              </item>
              <item>
               <property name="text">
-               <string>Poprzedni rok</string>
+               <string>Ostatnie 12 miesięcy</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Cała historia</string>
               </property>
              </item>
             </widget>

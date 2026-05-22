@@ -23,16 +23,15 @@ public:
     ~MainWindow() override;
 
 private:
-    Ui::MainWindow *ui;
-    AppController appController;
-    TimelineView* timelineWidget;
+    Ui::MainWindow      *ui;
+    AppController        appController;
 
-
-    StatisticsWidget *statsWidget;
+    TimelineView         *timelineWidget;
+    StatisticsWidget     *statsWidget;
     MultimediaFormWidget *formularzWidget;
-    DashboardWidget *dashboardWidget;
+    DashboardWidget      *dashboardWidget;
     PanelNawigacjiWidget *panelNawigacji;
-    SzczegolyWidget *szczegolyWidget;
+    SzczegolyWidget      *szczegolyWidget;
 
     void pokazSzczegolyMedium(int idMedium);
 };
