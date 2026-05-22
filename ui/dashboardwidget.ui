@@ -13,11 +13,21 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true">QPushButton { min-height: 50px; }</string>
+  </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0">
     <layout class="QVBoxLayout" name="verticalLayout_4">
      <item>
-      <widget class="QChartView" name="wykresOwalny"/>
+      <widget class="QChartView" name="wykresOwalny">
+       <property name="styleSheet">
+        <string notr="true">background: transparent; border: none;</string>
+       </property>
+       <property name="renderHints">
+        <set>QPainter::RenderHint::Antialiasing|QPainter::RenderHint::TextAntialiasing</set>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QLabel" name="label">

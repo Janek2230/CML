@@ -32,6 +32,7 @@ qt_add_executable(CML
     controllers/appcontroller.cpp
     models/historia.h
     ui/timelineview.h ui/timelineview.cpp
+    ui/kategoriedialog.ui
 
 
 )

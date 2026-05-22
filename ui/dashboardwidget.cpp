@@ -31,62 +31,61 @@ void DashboardWidget::odswiezStatystykiGlowne() {
     series->append("Ukończone", stats.value("Ukończone", 0));
     series->append("Porzucone", stats.value("Porzucone", 0));
 
-    series->slices().at(0)->setColor(QColor("#7f8c8d"));
-    series->slices().at(1)->setColor(QColor("#2980b9"));
-    series->slices().at(2)->setColor(QColor("#f1c40f")); // Wstrzymane
-    series->slices().at(3)->setColor(QColor("#27ae60"));
-    series->slices().at(4)->setColor(QColor("#c0392b"));
+    series->slices().at(0)->setColor(QColor(0x7f, 0x8c, 0x8d));
+    series->slices().at(1)->setColor(QColor(0x29, 0x80, 0xb9));
+    series->slices().at(2)->setColor(QColor(0xf1, 0xc4, 0x0f));
+    series->slices().at(3)->setColor(QColor(0x27, 0xae, 0x60));
+    series->slices().at(4)->setColor(QColor(0xc0, 0x39, 0x2b));
 
-    double suma = stats.value("Suma", 0);
-
-    for(auto slice : series->slices()) {
-        if (slice->value() > 0) {
-            slice->setLabel(QString("%1: %2").arg(slice->label()).arg(slice->value()));
-
-            double procent = (slice->value() / suma) * 100.0;
-        }
+    // Aktualizacja etykiet legendy, by pokazywały konkretne wartości (np. "Planowane (15)")
+    for (auto slice : series->slices()) {
+        slice->setLabel(QString("%1 (%2)").arg(slice->label()).arg(slice->value()));
     }
 
     QChart *chart = new QChart();
     chart->addSeries(series);
     chart->setTitle("Status Biblioteki");
+
     chart->legend()->setVisible(true);
     chart->legend()->setAlignment(Qt::AlignRight);
     chart->setAnimationOptions(QChart::SeriesAnimations);
-
     chart->setBackgroundVisible(false);
     chart->setTitleBrush(QBrush(Qt::white));
     chart->legend()->setLabelColor(Qt::white);
 
     ui->wykresOwalny->setChart(chart);
-    ui->wykresOwalny->setRenderHint(QPainter::Antialiasing);
 
-    ui->wykresOwalny->setBackgroundBrush(Qt::NoBrush);
-    ui->wykresOwalny->setStyleSheet("background: transparent; border: none;");
-
+    // Czyszczenie układu siatki ze starych kafelków przed wygenerowaniem nowych
     QLayoutItem *child;
     while ((child = ui->gridOstatnie->takeAt(0)) != nullptr) {
         delete child->widget();
         delete child;
     }
 
-    QList<int> ostatnieId = appController.pobierzOstatnioAktywne(6);
+    const QList<int> ostatnieId = appController.pobierzOstatnioAktywne(6);
     int wiersz = 0, kolumna = 0;
-
-    auto lista = appController.pobierzWszystkieMultimedia();
+    const auto lista = appController.pobierzWszystkieMultimedia();
 
     for (int id : ostatnieId) {
         for (const auto& m : lista) {
             if (m->getId() == id) {
                 QPushButton *btnKafel = new QPushButton(m->getTytul(), this);
-                btnKafel->setMinimumHeight(50);
-                connect(btnKafel, &QPushButton::clicked, this, [this, id]() { emit zadaniePokazaniaSzczegolow(id); });
+
+                // Przechwycenie ID przez wyrażenie lambda i wyemitowanie sygnału do reszty aplikacji
+                connect(btnKafel, &QPushButton::clicked, this, [this, id]() {
+                    emit zadaniePokazaniaSzczegolow(id);
+                });
+
                 ui->gridOstatnie->addWidget(btnKafel, wiersz, kolumna);
+
+                // Logika łamania wierszy (maks. 2 elementy w rzędzie)
                 kolumna++;
-                if (kolumna > 1) { kolumna = 0; wiersz++; }
+                if (kolumna > 1) {
+                    kolumna = 0;
+                    wiersz++;
+                }
                 break;
             }
         }
     }
 }
-
