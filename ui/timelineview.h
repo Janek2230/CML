@@ -5,15 +5,20 @@
 #include <QVBoxLayout>
 #include "appcontroller.h"
 
+namespace Ui { class TimelineView; }
+
 class TimelineView : public QWidget
 {
     Q_OBJECT
 
 public:
     explicit TimelineView(AppController& controller, QWidget *parent = nullptr);
+    ~TimelineView();
+
     void renderujTimeline();
 
 private:
+    Ui::TimelineView *ui;
     AppController& appController;
     QVBoxLayout* mainLayout;
 

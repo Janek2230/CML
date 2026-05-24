@@ -1,35 +1,33 @@
 #include "timelineview.h"
+#include "ui_timelineview.h"
 #include <QLocale>
-#include <QScrollArea>
 #include <QLabel>
 #include <QPushButton>
 #include <QDialog>
 #include <QTextBrowser>
 
 TimelineView::TimelineView(AppController& controller, QWidget *parent)
-    : QWidget(parent), appController(controller)
+    : QWidget(parent), appController(controller), ui(new Ui::TimelineView)
 {
-    QVBoxLayout* baseLayout = new QVBoxLayout(this);
-    baseLayout->setContentsMargins(0, 0, 0, 0);
-
-    QScrollArea* scrollArea = new QScrollArea(this);
-    scrollArea->setWidgetResizable(true);
-    scrollArea->setStyleSheet("QScrollArea { border: none; background-color: transparent; }");
-
-    QWidget* scrollContent = new QWidget(scrollArea);
-    mainLayout = new QVBoxLayout(scrollContent);
+    ui->setupUi(this);
+    mainLayout = qobject_cast<QVBoxLayout*>(ui->scrollAreaWidgetContents->layout());
     mainLayout->setAlignment(Qt::AlignTop);
-    mainLayout->setContentsMargins(20, 20, 20, 20);
-    mainLayout->setSpacing(15);
-
-    scrollArea->setWidget(scrollContent);
-    baseLayout->addWidget(scrollArea);
 }
 
+TimelineView::~TimelineView()
+{
+    delete ui;
+}
+
+// Usuwa wszystkie widgety z layoutu przed ponownym renderowaniem timeline.
+// takeAt(0) wyrywa elementy jeden po jednym; bez tego renderujTimeline() dokładałoby
+// karty na koniec zamiast odświeżać listę od zera.
 void TimelineView::wyczyscLayout(QLayout* layout) {
     if (!layout) return;
     QLayoutItem* item;
     while ((item = layout->takeAt(0)) != nullptr) {
+        // QLayoutItem to opakowanie — sprawdzamy co trzyma w środku,
+        // bo widget i sub-layout usuwa się inaczej.
         if (QWidget* w = item->widget()) {
             w->deleteLater();
         } else if (QLayout* childLayout = item->layout()) {
@@ -40,12 +38,17 @@ void TimelineView::wyczyscLayout(QLayout* layout) {
 }
 
 void TimelineView::renderujTimeline() {
+    // Czyścimy ekran przed ponownym rysowaniem — żeby nie dokładać kart
+    // na już istniejące gdy użytkownik wraca do tej zakładki.
     wyczyscLayout(mainLayout);
     const auto recenzje = appController.pobierzWszystkieRecenzje();
 
+    // obecnyMiesiacRok śledzi jaki miesiąc był ostatnio narysowany —
+    // dzięki temu nagłówki z miesiącami pojawiają się tylko raz.
     QString obecnyMiesiacRok = "";
     QLocale polski(QLocale::Polish, QLocale::Poland);
 
+    // Pusty stan — zabezpieczenie.
     if (recenzje.isEmpty()) {
         QLabel* puste = new QLabel("Nie masz jeszcze żadnych zakończonych tytułów z recenzją.");
         puste->setStyleSheet("color: #8a8f98; font-size: 16px;");
@@ -55,6 +58,7 @@ void TimelineView::renderujTimeline() {
     }
 
     for (const auto& p : recenzje) {
+        // Budujemy napis "STYCZEŃ 2025" i porównujemy z poprzednim.
         QString nazwaMiesiaca = polski.standaloneMonthName(p.data_rozpoczecia.date().month());
         QString dataStr = QString("%1 %2").arg(nazwaMiesiaca).arg(p.data_rozpoczecia.date().year()).toUpper();
 
@@ -65,29 +69,31 @@ void TimelineView::renderujTimeline() {
             mainLayout->addWidget(naglowek);
         }
 
-        // Zabezpieczone parsowanie haka "|||"
-        QStringList daneRecenzji = p.recenzja.split("|||");
-        QString tytulMedium = (daneRecenzji.size() > 1) ? daneRecenzji.first() : "Nieznany tytuł";
-        QString wlasciwaRecenzja = (daneRecenzji.size() > 1) ? daneRecenzji.last() : p.recenzja;
+        QString tytulMedium = p.tytulMedium.isEmpty() ? "Nieznany tytuł" : p.tytulMedium;
+        QString wlasciwaRecenzja = p.recenzja;
 
-        // Tłumienie "0" jeśli recenzja tekstowa jest pusta
         if (wlasciwaRecenzja.trimmed().isEmpty() || wlasciwaRecenzja.trimmed() == QString::number(p.ocena)) {
             wlasciwaRecenzja = "Brak recenzji tekstowej.";
         }
 
-        // simplified() spłaszcza tekst — zamienia entery i wielokrotne spacje w jedną spację.
+        // simplified() spłaszcza tekst — zamienia entery i wielokrotne spacje w jedną spację,
+        // żeby podgląd był zawsze jedną linią a nie blokiem tekstu.
         QString plaskiTekst = wlasciwaRecenzja.simplified();
         QString podgladTekstu;
 
+        // Podgląd ucinamy do 90 znaków żeby karty miały zbliżoną wysokość.
+        // Reszta tekstu dostępna po kliknięciu w dialog.
         if (plaskiTekst.length() > 90) {
             podgladTekstu = plaskiTekst.left(90) + "... <span style='color: #2d89ef; font-style: normal; font-size: 11px;'>(Kliknij, by czytać więcej)</span>";
         } else {
             podgladTekstu = plaskiTekst;
         }
 
+        // Karta to QPushButton a nie zwykły widget — bo przycisk obsługuje kliknięcie
+        // i efekt hover bez żadnego dodatkowego kodu.
         QPushButton* karta = new QPushButton();
         karta->setCursor(Qt::PointingHandCursor);
-        karta->setMinimumHeight(90); // Wymuszona minimalna wysokość — bez tego layout zgniata kafelki.
+        karta->setMinimumHeight(90); // Bez tego layout zgniata kafelki do wysokości samego tekstu.
         karta->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         karta->setStyleSheet(
             "QPushButton {"
@@ -99,6 +105,8 @@ void TimelineView::renderujTimeline() {
             "QPushButton:hover { background: #2f3336; }"
             );
 
+        // Layout wewnątrz przycisku — QPushButton może trzymać własne widgety,
+        // dzięki temu karta ma tytuł i snippet zamiast jednego napisu.
         QVBoxLayout* l = new QVBoxLayout(karta);
         l->setContentsMargins(15, 15, 15, 15);
         l->setSpacing(5);
@@ -107,26 +115,32 @@ void TimelineView::renderujTimeline() {
 
         QLabel* snippet = new QLabel(podgladTekstu);
         snippet->setWordWrap(true);
-        snippet->setTextFormat(Qt::RichText); // Wymagane, aby zadziałały tagi <span>
+        snippet->setTextFormat(Qt::RichText); // Bez tego tagi <span> wyświetlają się jako zwykły tekst.
         snippet->setStyleSheet("color: #bdc3c7; font-style: italic;");
-        snippet->setAttribute(Qt::WA_TransparentForMouseEvents); // Żeby kliknięcie w tekst przenosiło na przycisk
+        // Bez tego atrybutu kliknięcie w obszar labela zatrzymuje się na nim
+        // i nie dociera do przycisku pod spodem.
+        snippet->setAttribute(Qt::WA_TransparentForMouseEvents);
 
         l->addWidget(tytul);
         l->addWidget(snippet);
 
+        // Lambda przechwytuje p przez wartość (kopię) — każda karta musi pamiętać
+        // swoje własne dane niezależnie od pozostałych kart w pętli.
         connect(karta, &QPushButton::clicked, this, [this, p]() {
             pokazDetaleRecenzji(p);
         });
 
+        //dokłada gotową kartę na dół listy
         mainLayout->addWidget(karta);
     }
 }
 
 void TimelineView::pokazDetaleRecenzji(const PodejscieHistoryczne& p) {
+    // "this" jako rodzic dialogu — dialog wycentruje się nad oknem aplikacji
+    // i zostanie zamknięty razem z nią gdyby coś poszło nie tak.
     QDialog d(this);
-    QStringList daneRecenzji = p.recenzja.split("|||");
-    QString tytulMedium = (daneRecenzji.size() > 1) ? daneRecenzji.first() : "Nieznany tytuł";
-    QString wlasciwaRecenzja = (daneRecenzji.size() > 1) ? daneRecenzji.last() : p.recenzja;
+    QString tytulMedium = p.tytulMedium.isEmpty() ? "Nieznany tytuł" : p.tytulMedium;
+    QString wlasciwaRecenzja = p.recenzja;
 
     if (wlasciwaRecenzja.trimmed().isEmpty() || wlasciwaRecenzja.trimmed() == "0") {
         wlasciwaRecenzja = "Brak recenzji tekstowej.";
@@ -138,12 +152,15 @@ void TimelineView::pokazDetaleRecenzji(const PodejscieHistoryczne& p) {
 
     layout->addWidget(new QLabel(QString("<h2>Werdykt: %1/10</h2>").arg(p.ocena)));
 
+    // QTextBrowser zamiast QLabel — recenzja może być długa i wieloliniowa,
+    // QTextBrowser ma własny scrollbar.
     QTextBrowser* rec = new QTextBrowser();
     rec->setHtml(QString("<i>%1</i>").arg(wlasciwaRecenzja));
     rec->setStyleSheet("background: #1a1c1e; padding: 10px; border-radius: 5px; color: #d1d1d1; border-left: 3px solid #f1c40f;");
     rec->setMaximumHeight(150);
     layout->addWidget(rec);
 
+    // Osobna scroll area na sesje — niezależna od recenzji
     layout->addWidget(new QLabel("<br><b>Oś czasu sesji (Notatki):</b>"));
     QScrollArea* sa = new QScrollArea();
     QWidget* content = new QWidget();
@@ -154,17 +171,19 @@ void TimelineView::pokazDetaleRecenzji(const PodejscieHistoryczne& p) {
     } else {
         for (const auto& s : p.sesje) {
             QLabel* n = new QLabel(QString("<span style='color:#2d89ef; font-weight:bold;'>%1</span><br>%2")
-                                       .arg(s.data.toString("dd.MM.yyyy HH:mm")).arg(s.notatka.isEmpty() ? "Brak notatki" : s.notatka));
+                                       .arg(s.data.toString("dd.MM.yyyy HH:mm"), s.notatka.isEmpty() ? "Brak notatki" : s.notatka));
             n->setWordWrap(true);
             n->setStyleSheet("margin-bottom: 5px; padding: 10px; background: #25282a; border-radius: 5px;");
             notesLayout->addWidget(n);
         }
     }
+    // addStretch wypycha wszystkie wpisy do góry zamiast rozciągać je na całą dostępną wysokość.
     notesLayout->addStretch();
 
     sa->setWidget(content);
     sa->setWidgetResizable(true);
     layout->addWidget(sa);
 
+    // exec() blokuje — kod poniżej nie wykona się dopóki użytkownik nie zamknie dialogu.
     d.exec();
 }

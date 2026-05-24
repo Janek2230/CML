@@ -14,10 +14,10 @@ PlatformyDialog::PlatformyDialog(AppController& controller, QWidget *parent)
 
     wypelnijTabele();
 
-    connect(ui->btnDodaj,  &QPushButton::clicked, this, &PlatformyDialog::onBtnDodajClicked);
-    connect(ui->btnEdytuj, &QPushButton::clicked, this, &PlatformyDialog::onBtnEdytujClicked);
-    connect(ui->btnUsun,   &QPushButton::clicked, this, &PlatformyDialog::onBtnUsunClicked);
-    // btnZamknij accept() jest podłączony w pliku .ui
+    connect(ui->btnDodaj,    &QPushButton::clicked, this, &PlatformyDialog::onBtnDodajClicked);
+    connect(ui->btnEdytuj,   &QPushButton::clicked, this, &PlatformyDialog::onBtnEdytujClicked);
+    connect(ui->btnUsun,     &QPushButton::clicked, this, &PlatformyDialog::onBtnUsunClicked);
+    connect(ui->btnZamknij,  &QPushButton::clicked, this, &QDialog::accept);
 }
 
 PlatformyDialog::~PlatformyDialog()

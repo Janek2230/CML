@@ -21,10 +21,10 @@ KategorieDialog::KategorieDialog(AppController& controller, QWidget *parent)
 
     wypelnijTabele();
 
-    connect(ui->btnDodaj,  &QPushButton::clicked, this, &KategorieDialog::onBtnDodajClicked);
-    connect(ui->btnEdytuj, &QPushButton::clicked, this, &KategorieDialog::onBtnEdytujClicked);
-    connect(ui->btnUsun,   &QPushButton::clicked, this, &KategorieDialog::onBtnUsunClicked);
-    // btnZamknij accept() jest podłączony w pliku .ui
+    connect(ui->btnDodaj,    &QPushButton::clicked, this, &KategorieDialog::onBtnDodajClicked);
+    connect(ui->btnEdytuj,   &QPushButton::clicked, this, &KategorieDialog::onBtnEdytujClicked);
+    connect(ui->btnUsun,     &QPushButton::clicked, this, &KategorieDialog::onBtnUsunClicked);
+    connect(ui->btnZamknij,  &QPushButton::clicked, this, &QDialog::accept);
 }
 
 KategorieDialog::~KategorieDialog()

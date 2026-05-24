@@ -15,8 +15,6 @@ struct Sesja {
 };
 
 // Jedno podejście do medium — od kliknięcia "zacznij" do zakończenia lub porzucenia.
-// Uwaga: w kontekście pobierzWszystkieRecenzje() pole `recenzja` zawiera zakodowany
-// łańcuch "tytuł medium|||treść recenzji" zamiast samej treści recenzji.
 struct PodejscieHistoryczne {
     int id;
     int numer;
@@ -24,6 +22,7 @@ struct PodejscieHistoryczne {
     int aktualna;
     int docelowa;
     int ocena;
+    QString tytulMedium;
     QString recenzja;
     QDateTime data_rozpoczecia;
     QList<Sesja> sesje;

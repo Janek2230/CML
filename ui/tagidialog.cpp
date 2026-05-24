@@ -14,10 +14,10 @@ TagiDialog::TagiDialog(AppController& controller, QWidget *parent)
 
     wypelnijTabele();
 
-    connect(ui->btnDodaj,  &QPushButton::clicked, this, &TagiDialog::onBtnDodajClicked);
-    connect(ui->btnEdytuj, &QPushButton::clicked, this, &TagiDialog::onBtnEdytujClicked);
-    connect(ui->btnUsun,   &QPushButton::clicked, this, &TagiDialog::onBtnUsunClicked);
-    // btnZamknij accept() jest podłączony w pliku .ui
+    connect(ui->btnDodaj,    &QPushButton::clicked, this, &TagiDialog::onBtnDodajClicked);
+    connect(ui->btnEdytuj,   &QPushButton::clicked, this, &TagiDialog::onBtnEdytujClicked);
+    connect(ui->btnUsun,     &QPushButton::clicked, this, &TagiDialog::onBtnUsunClicked);
+    connect(ui->btnZamknij,  &QPushButton::clicked, this, &QDialog::accept);
 }
 
 TagiDialog::~TagiDialog()

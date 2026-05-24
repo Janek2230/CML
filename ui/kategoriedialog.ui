@@ -91,21 +91,5 @@
  </widget>
  <resources/>
  <connections>
-  <connection>
-   <sender>btnZamknij</sender>
-   <signal>clicked()</signal>
-   <receiver>KategorieDialog</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>420</x>
-     <y>380</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>250</x>
-     <y>200</y>
-    </hint>
-   </hints>
-  </connection>
  </connections>
 </ui>

@@ -81,15 +81,18 @@ SzczegolyWidget::~SzczegolyWidget()
 }
 
 void SzczegolyWidget::ustawMedium(int idMedium) {
+    // Przy nowym medium wracamy na zakładkę 0 (przegląd).
+    // Przy odświeżaniu tego samego medium (po zapisie) zostajemy na aktywnej zakładce.
+    int zachowanaZakladka = (idMedium == aktualneIdMedium) ? ui->tabWidget->currentIndex() : 0;
     aktualneIdMedium = idMedium;
-    ui->tabWidget->setCurrentIndex(0);
+    ui->tabWidget->setCurrentIndex(zachowanaZakladka);
 
-    auto lista = appController.pobierzWszystkieMultimedia();
+    const auto lista = appController.pobierzWszystkieMultimedia();
     for (const auto& medium : lista) {
         if (medium->getId() == idMedium) {
             ui->lblDetaleTytul->setText(medium->getTytul());
 
-            auto platformy = appController.pobierzPlatformy();
+            const auto platformy = appController.pobierzPlatformy();
             QString nazwaPlat = "Nieznana platforma";
             for (const auto& p : platformy) {
                 if (p.first == medium->getIdPlatformy()) { nazwaPlat = p.second; break; }
@@ -110,10 +113,6 @@ void SzczegolyWidget::ustawMedium(int idMedium) {
                     auto p = historia.first();
 
                     QString tekstDoPokazania = p.recenzja;
-                    // Jeśli SQL oddał nam połączenie tytułu i recenzji w "|||", wyciągamy samą recenzję
-                    if (tekstDoPokazania.contains("|||")) {
-                        tekstDoPokazania = tekstDoPokazania.split("|||").last();
-                    }
                     if (tekstDoPokazania.trimmed() == "0" || tekstDoPokazania.trimmed().isEmpty()) {
                         tekstDoPokazania = "Brak recenzji tekstowej.";
                     }
@@ -193,7 +192,7 @@ void SzczegolyWidget::ustawMedium(int idMedium) {
             ui->spinDetaleAktualny->setValue(medium->getPostep().aktualna);
             ui->lblDetaleJednostka->setText(medium->getPostep().jednostka);
 
-            auto historia = appController.pobierzHistorie(idMedium);
+            const auto historia = appController.pobierzHistorie(idMedium);
             QDateTime dataStartuPodejscia;
             int sumaSekundCalkowita = 0;
             if (!historia.isEmpty()) {
@@ -259,7 +258,7 @@ void SzczegolyWidget::odswiezHistorie(int idMedium) {
     ui->treeHistoria->clear();
     ui->txtSzczegolyWpisu->clear();
 
-    auto historia = appController.pobierzHistorie(idMedium);
+    const auto historia = appController.pobierzHistorie(idMedium);
 
     for (const auto& p : historia) {
         QTreeWidgetItem *pNode = new QTreeWidgetItem(ui->treeHistoria);
@@ -557,7 +556,7 @@ void SzczegolyWidget::onBtnEdytujZaznaczoneClicked() {
 
     if (typ == TypHistoriiElementu::Podejscie) {
         const int idPodejscia = item->data(0, ROLE_ID).toInt();
-        auto historia = appController.pobierzHistorie(aktualneIdMedium);
+        const auto historia = appController.pobierzHistorie(aktualneIdMedium);
 
         for (const auto& p : historia) {
             if (p.id == idPodejscia) {
@@ -584,7 +583,7 @@ void SzczegolyWidget::onBtnEdytujZaznaczoneClicked() {
         }
     } else if (typ == TypHistoriiElementu::Sesja) {
         const int idSesji = item->data(0, ROLE_ID).toInt();
-        auto historia = appController.pobierzHistorie(aktualneIdMedium);
+        const auto historia = appController.pobierzHistorie(aktualneIdMedium);
 
         for (const auto& p : historia) {
             for (const auto& s : p.sesje) {

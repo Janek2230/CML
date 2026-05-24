@@ -939,10 +939,6 @@ QMap<int, QStringList> DatabaseManager::pobierzPrzypisaniaTagow() {
 
 QList<PodejscieHistoryczne> DatabaseManager::pobierzWszystkieRecenzje() {
     // Zwraca zakończone podejścia z oceną lub recenzją, posortowane od najnowszych.
-    // UWAGA: pole p.recenzja jest tu nadpisywane stringiem "tytuł|||treść recenzji".
-    // To celowy hack — struktura PodejscieHistoryczne nie ma osobnego pola na tytuł medium,
-    // więc pakujemy dwa stringi w jedno, rozdzielone sekwencją "|||".
-    // Konsumenci (TimelineView, SzczegolyWidget) muszą go rozdzielić przez split("|||").
     QList<PodejscieHistoryczne> lista;
     QSqlQuery q(db);
     q.prepare(R"(
@@ -956,12 +952,11 @@ QList<PodejscieHistoryczne> DatabaseManager::pobierzWszystkieRecenzje() {
     if (q.exec()) {
         while (q.next()) {
             PodejscieHistoryczne p;
-            p.id      = q.value(0).toInt();
-            p.status  = q.value(3).toString();
-            p.ocena   = q.value(4).toInt();
-
-            // Pakujemy tytuł i recenzję w jedno pole — patrz komentarz przy deklaracji funkcji.
-            p.recenzja = q.value(2).toString() + "|||" + q.value(5).toString();
+            p.id          = q.value(0).toInt();
+            p.status      = q.value(3).toString();
+            p.ocena       = q.value(4).toInt();
+            p.tytulMedium = q.value(2).toString();
+            p.recenzja    = q.value(5).toString();
 
             // data_ukonczenia traktujemy jako data_rozpoczecia (PodejscieHistoryczne nie ma osobnego pola).
             p.data_rozpoczecia = q.value(6).toDateTime();
