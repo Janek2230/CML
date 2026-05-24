@@ -51,7 +51,7 @@ public:
     QStringList                pobierzUnikalneJednostki();
     QMap<int, QString>         pobierzSlownikJednostek();
     QStringList                pobierzDostepneStatusy();
-    int  dodajKategorie(const QString &nazwa, const QString &jednostka);
+    bool dodajKategorie(const QString &nazwa, const QString &jednostka);
     bool aktualizujKategorie(int id, const QString &nazwa, const QString &jednostka);
     bool usunKategorie(int idKat, bool usunPowiazane);
 

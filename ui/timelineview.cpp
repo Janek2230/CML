@@ -41,7 +41,7 @@ void TimelineView::wyczyscLayout(QLayout* layout) {
 
 void TimelineView::renderujTimeline() {
     wyczyscLayout(mainLayout);
-    auto recenzje = appController.pobierzWszystkieRecenzje();
+    const auto recenzje = appController.pobierzWszystkieRecenzje();
 
     QString obecnyMiesiacRok = "";
     QLocale polski(QLocale::Polish, QLocale::Poland);
