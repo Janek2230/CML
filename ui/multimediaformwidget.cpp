@@ -49,10 +49,16 @@ void MultimediaFormWidget::onBtnSzybkiTagClicked() {
 
 
 void MultimediaFormWidget::przygotujFormularz(int idMedium, int idDomyslnejKategorii, int idDomyslnejPlatformy) {
+    // Stan trybu ustawiamy NAJPIERW — uzupelnijTagi() poniżej zależy od czyTrybEdycji
+    // oraz idEdytowanegoMedium, więc muszą dotyczyć TEGO wywołania. Inaczej tagi odtwarzają
+    // się z opóźnieniem o jedno przełączenie między "Dodaj" a "Edytuj".
+    czyTrybEdycji = (idMedium != -1);
+    idEdytowanegoMedium = idMedium;
+
     uzupelnijComboBoxy();
     uzupelnijTagi();
     if (idMedium == -1) {
-        czyTrybEdycji = false;
+        ui->label_6->setText("Dodaj nowe medium");
         ui->btnPotwierdzDodaj->setText("Dodaj do biblioteki");
         ui->editNowyTytul->clear();
         ui->spinNowyCel->setValue(1);
@@ -68,8 +74,7 @@ void MultimediaFormWidget::przygotujFormularz(int idMedium, int idDomyslnejKateg
             if (indexPlat != -1) ui->comboNowyTyp->setCurrentIndex(indexPlat);
         }
     } else {
-        czyTrybEdycji = true;
-        idEdytowanegoMedium = idMedium;
+        ui->label_6->setText("Edytuj medium");
         ui->btnPotwierdzDodaj->setText("Zapisz zmiany");
         for (const auto& m : appController.pobierzWszystkieMultimedia()) {
             if (m->getId() == idMedium) {
