@@ -52,14 +52,14 @@ QList<std::shared_ptr<Multimedia>> DatabaseManager::getAllMultimedia() {
     //  0: m.id          1: m.tytul        2: p.status       3: k.id (kategoria)
     //  4: k.jednostka   5: p.wartosc_akt  6: p.wartosc_doc  7: m.data_dodania
     //  8: m.id_platformy  9: p.ocena     10: m.czy_ulubione 11: ostatnia_aktywnosc
-    // 12: p.numer_podejscia
+    // 12: p.numer_podejscia  13: m.rok_wydania  14: m.tworcy
     QSqlQuery query(
         "SELECT DISTINCT ON (m.id) "
         "m.id, m.tytul, p.status, k.id, k.jednostka, "
         "p.wartosc_aktualna, p.wartosc_docelowa, m.data_dodania, "
         "m.id_platformy, p.ocena, m.czy_ulubione, "
         "COALESCE(MAX(COALESCE(d.czas_zakonczenia, d.czas_rozpoczecia)) OVER (PARTITION BY p.id), m.data_dodania) AS ostatnia_aktywnosc, "
-        "p.numer_podejscia "
+        "p.numer_podejscia, m.rok_wydania, m.tworcy "
         "FROM multimedia m "
         "LEFT JOIN kategorie k ON m.id_kategorii = k.id "
         "LEFT JOIN podejscia p ON m.id = p.id_medium "
@@ -86,6 +86,8 @@ QList<std::shared_ptr<Multimedia>> DatabaseManager::getAllMultimedia() {
         medium->setOcena(query.value(9).toInt());
         medium->setCzyUlubione(query.value(10).toBool());
         medium->setDataOstatniejAktywnosci(query.value(11).toDateTime());
+        medium->setRokWydania(query.value(13).toInt());
+        medium->setTworcy(query.value(14).toString());
         list.append(medium);
     }
     return list;
@@ -199,17 +201,21 @@ bool DatabaseManager::zacznijOdNowa(int idMedium) {
 }
 
 
-int DatabaseManager::dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel) {
+int DatabaseManager::dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel, int rokWydania, const QString &tworcy) {
     // Dodanie medium to zawsze dwa INSERT-y w jednej transakcji:
     // najpierw wiersz w multimedia (RETURNING id), potem pierwsze podejście ze statusem 'Planowane'.
     // id=0 oznacza brak wyboru, bindujemy NULL żeby FK nie wskazywał na nieistniejący rekord.
     db.transaction();
 
     QSqlQuery query1(db);
-    query1.prepare("INSERT INTO multimedia (tytul, id_kategorii, id_platformy) VALUES (:tytul, :idKat, :idPlat) RETURNING id");
+    query1.prepare("INSERT INTO multimedia (tytul, id_kategorii, id_platformy, rok_wydania, tworcy) "
+                   "VALUES (:tytul, :idKat, :idPlat, :rok, :tworcy) RETURNING id");
     query1.bindValue(":tytul", tytul);
     query1.bindValue(":idKat",  idKat      > 0 ? QVariant(idKat)      : QVariant(QMetaType::fromType<int>()));
     query1.bindValue(":idPlat", idPlatformy > 0 ? QVariant(idPlatformy) : QVariant(QMetaType::fromType<int>()));
+    // rok=0 oznacza "nieznany" → zapisujemy NULL zamiast zera.
+    query1.bindValue(":rok",    rokWydania > 0 ? QVariant(rokWydania) : QVariant(QMetaType::fromType<int>()));
+    query1.bindValue(":tworcy", tworcy.trimmed().isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(tworcy.trimmed()));
 
     if (!query1.exec() || !query1.next()) { db.rollback(); return -1; }
     int noweId = query1.value(0).toInt();
@@ -253,14 +259,17 @@ QList<QPair<int, QString>> DatabaseManager::pobierzTagi() {
     return lista;
 }
 
-bool DatabaseManager::aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel) {
+bool DatabaseManager::aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel, int rokWydania, const QString &tworcy) {
     db.transaction();
     QSqlQuery query(db);
 
-    query.prepare("UPDATE multimedia SET tytul = :tytul, id_kategorii = :idKat, id_platformy = :idPlat WHERE id = :id");
+    query.prepare("UPDATE multimedia SET tytul = :tytul, id_kategorii = :idKat, id_platformy = :idPlat, "
+                  "rok_wydania = :rok, tworcy = :tworcy WHERE id = :id");
     query.bindValue(":tytul", tytul);
     query.bindValue(":idKat", idKat > 0 ? QVariant(idKat) : QVariant(QMetaType::fromType<int>()));
     query.bindValue(":idPlat", idPlatformy > 0 ? QVariant(idPlatformy) : QVariant(QMetaType::fromType<int>()));
+    query.bindValue(":rok",    rokWydania > 0 ? QVariant(rokWydania) : QVariant(QMetaType::fromType<int>()));
+    query.bindValue(":tworcy", tworcy.trimmed().isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(tworcy.trimmed()));
     query.bindValue(":id", id);
 
     if (!query.exec()) {
@@ -295,16 +304,26 @@ int DatabaseManager::dodajKategorie(const QString &nazwa, const QString &jednost
     return -1;
 }
 
-int DatabaseManager::dodajPlatforme(const QString &nazwa) {
+int DatabaseManager::dodajPlatforme(const QString &nazwa, const QString &typNosnika) {
     QSqlQuery query(db);
     query.prepare("INSERT INTO platformy (nazwa, typ_nosnika) VALUES (:nazwa, :typ) RETURNING id");
     query.bindValue(":nazwa", nazwa);
-    query.bindValue(":typ", "Cyfrowa"); // Kolumna NOT NULL w schemacie — zawsze domyślnie "Cyfrowa".
+    // Kolumna NOT NULL — gdy nie podano typu, używamy domyślnego "Cyfrowy".
+    query.bindValue(":typ", typNosnika.trimmed().isEmpty() ? "Cyfrowy" : typNosnika.trimmed());
 
     if (query.exec() && query.next()) {
         return query.value(0).toInt();
     }
     return -1;
+}
+
+QList<QList<QVariant>> DatabaseManager::pobierzSurowePlatformy() {
+    QList<QList<QVariant>> wynik;
+    QSqlQuery q("SELECT id, nazwa, typ_nosnika FROM platformy ORDER BY id");
+    while (q.next()) {
+        wynik.append({q.value(0), q.value(1), q.value(2)});
+    }
+    return wynik;
 }
 
 QStringList DatabaseManager::pobierzUnikalneJednostki() {
@@ -331,10 +350,11 @@ bool DatabaseManager::aktualizujKategorie(int id, const QString &nazwa, const QS
     return query.exec();
 }
 
-bool DatabaseManager::aktualizujPlatforme(int id, const QString &nazwa) {
+bool DatabaseManager::aktualizujPlatforme(int id, const QString &nazwa, const QString &typNosnika) {
     QSqlQuery query(db);
-    query.prepare("UPDATE platformy SET nazwa = :nazwa WHERE id = :id");
+    query.prepare("UPDATE platformy SET nazwa = :nazwa, typ_nosnika = :typ WHERE id = :id");
     query.bindValue(":nazwa", nazwa);
+    query.bindValue(":typ", typNosnika.trimmed().isEmpty() ? "Cyfrowy" : typNosnika.trimmed());
     query.bindValue(":id", id);
     return query.exec();
 }
@@ -921,6 +941,71 @@ QVariantMap DatabaseManager::pobierzCiekawostkiStatystyczne() {
         int dzien = q4.value(0).toInt();
         QStringList dni = {"", "Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"};
         wynik["najlepszyDzien"] = (dzien >= 1 && dzien <= 7) ? dni[dzien] : "Brak danych";
+    }
+
+    // 5. Pożeracz twórców (twórca, na którego poszło najwięcej czasu)
+    QSqlQuery q5(db);
+    q5.prepare(R"(
+        SELECT m.tworcy, SUM(d.czas_trwania_sekundy) AS suma
+        FROM dziennik_aktywnosci d
+        JOIN podejscia p ON d.id_podejscia = p.id
+        JOIN multimedia m ON p.id_medium = m.id
+        WHERE m.tworcy IS NOT NULL AND m.tworcy <> ''
+        GROUP BY m.tworcy
+        ORDER BY suma DESC NULLS LAST LIMIT 1
+    )");
+    if (q5.exec() && q5.next()) {
+        wynik["ulubionyTworca"] = q5.value(0).toString();
+        wynik["ulubionyTworcaCzas"] = q5.value(1).toLongLong();
+    }
+
+    // 6. Dominująca dekada (z którego dziesięciolecia pochodzi najwięcej Twoich pozycji)
+    QSqlQuery q6(db);
+    q6.prepare(R"(
+        SELECT (rok_wydania / 10) * 10 AS dekada, COUNT(*) AS ilosc
+        FROM multimedia
+        WHERE rok_wydania IS NOT NULL AND rok_wydania > 0
+        GROUP BY dekada
+        ORDER BY ilosc DESC LIMIT 1
+    )");
+    if (q6.exec() && q6.next()) {
+        wynik["dominujacaDekada"] = q6.value(0).toInt();
+        wynik["dominujacaDekadaIlosc"] = q6.value(1).toInt();
+    }
+
+    // 7. Wiek nadrabiania (średnie opóźnienie między premierą dzieła a dodaniem go do biblioteki)
+    QSqlQuery q7(db);
+    q7.prepare(R"(
+        SELECT AVG(EXTRACT(YEAR FROM data_dodania) - rok_wydania)
+        FROM multimedia
+        WHERE rok_wydania IS NOT NULL AND rok_wydania > 0
+          AND EXTRACT(YEAR FROM data_dodania) >= rok_wydania
+    )");
+    if (q7.exec() && q7.next() && !q7.value(0).isNull()) {
+        wynik["sredniWiekNadrabiania"] = q7.value(0).toDouble();
+    }
+
+    // 8. Pora doby (kiedy w ciągu dnia logujesz najwięcej czasu — "Nocny Marek")
+    QSqlQuery q8(db);
+    q8.prepare(R"(
+        SELECT pora FROM (
+            SELECT
+                CASE
+                    WHEN EXTRACT(HOUR FROM czas_rozpoczecia) BETWEEN 6 AND 11  THEN 'Rano'
+                    WHEN EXTRACT(HOUR FROM czas_rozpoczecia) BETWEEN 12 AND 17 THEN 'Popołudnie'
+                    WHEN EXTRACT(HOUR FROM czas_rozpoczecia) BETWEEN 18 AND 23 THEN 'Wieczór'
+                    ELSE 'Noc'
+                END AS pora,
+                SUM(czas_trwania_sekundy) AS suma
+            FROM dziennik_aktywnosci
+            WHERE czas_rozpoczecia IS NOT NULL
+            GROUP BY pora
+            ORDER BY suma DESC NULLS LAST
+            LIMIT 1
+        ) AS najaktywniejsza
+    )");
+    if (q8.exec() && q8.next()) {
+        wynik["poraDoby"] = q8.value(0).toString();
     }
 
     return wynik;

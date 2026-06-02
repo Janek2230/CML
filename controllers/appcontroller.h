@@ -19,8 +19,8 @@ public:
     // --- Multimedia ---
     QList<std::shared_ptr<Multimedia>> pobierzWszystkieMultimedia();
     QList<std::shared_ptr<Multimedia>> pobierzKupkeWstydu();
-    int  dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel);
-    bool aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel);
+    int  dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel, int rokWydania = 0, const QString &tworcy = QString());
+    bool aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel, int rokWydania = 0, const QString &tworcy = QString());
     bool usunMedium(int idMedium);
     bool usunWieleMultimediow(const QList<int>& idList);
     bool zmienKategorieWielu(const QList<int>& idMultimediow, int nowaKategoriaId);
@@ -56,9 +56,11 @@ public:
     bool usunKategorie(int idKat, bool usunPowiazane);
 
     // --- Platformy ---
+    struct PlatformaModel { int id; QString nazwa; QString typNosnika; };
     QList<QPair<int, QString>> pobierzPlatformy();
-    int  dodajPlatforme(const QString &nazwa);
-    bool aktualizujPlatforme(int id, const QString &nazwa);
+    QList<PlatformaModel>      pobierzPelnePlatformy();
+    int  dodajPlatforme(const QString &nazwa, const QString &typNosnika = QString());
+    bool aktualizujPlatforme(int id, const QString &nazwa, const QString &typNosnika = QString());
     bool usunPlatforme(int idPlat, bool usunPowiazane);
 
     // --- Tagi ---
@@ -79,7 +81,7 @@ public:
     QList<QVariantMap>  pobierzPodsumowanieKategorii();
     QList<QVariantMap>  pobierzPodsumowanieTagow();
     QVariantMap         pobierzCiekawostkiStatystyczne();
-    QList<QVariantMap>  pobierzDaneDlaWykresu(int zakres, const QString& metryka);
+    QList<StatystykaAktywnosci>  pobierzDaneDlaWykresu(int zakres, const QString& metryka);
 
 signals:
     void bladKrytyczny(const QString& wiadomosc);

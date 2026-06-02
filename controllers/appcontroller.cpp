@@ -11,25 +11,12 @@ bool AppController::inicjalizujBaze() {
     return true;
 }
 
-QList<QVariantMap> AppController::pobierzDaneDlaWykresu(int zakres, const QString& metryka) {
-    auto suroweDane = dbManager.pobierzSuroweDaneStatystyk(zakres, metryka);
-    QList<QVariantMap> sformatowaneDane;
-
-    for (const auto& s : suroweDane) {
-        QVariantMap mapa;
-        mapa["data"] = s.data;
-        mapa["seria"] = s.nazwaSerii;
-
-        if (metryka == "czas") {
-            mapa["wartosc"] = s.wartosc / 3600.0; // DB przechowuje sekundy; wykres używa godzin.
-        } else {
-            mapa["wartosc"] = s.wartosc;
-        }
-
-        sformatowaneDane.append(mapa);
+QList<StatystykaAktywnosci> AppController::pobierzDaneDlaWykresu(int zakres, const QString& metryka) {
+    auto dane = dbManager.pobierzSuroweDaneStatystyk(zakres, metryka);
+    if (metryka == "czas") {
+        for (auto& s : dane) s.wartosc /= 3600.0; // DB przechowuje sekundy; wykres używa godzin.
     }
-
-    return sformatowaneDane;
+    return dane;
 }
 
 QList<std::shared_ptr<Multimedia>> AppController::pobierzWszystkieMultimedia() {
@@ -156,19 +143,19 @@ bool AppController::zacznijOdNowa(int idMedium) {
     return false;
 }
 
-int AppController::dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel) {
-    int id = dbManager.dodajNoweMedium(tytul, idKat, idPlatformy, cel);
+int AppController::dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel, int rokWydania, const QString &tworcy) {
+    int id = dbManager.dodajNoweMedium(tytul, idKat, idPlatformy, cel, rokWydania, tworcy);
     if (id > 0) { emit daneZmienione(); }
     return id;
 }
 
-bool AppController::aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel) {
-    if (dbManager.aktualizujDaneMedium(id, tytul, idKat, idPlatformy, cel)) { emit daneZmienione(); return true; }
+bool AppController::aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel, int rokWydania, const QString &tworcy) {
+    if (dbManager.aktualizujDaneMedium(id, tytul, idKat, idPlatformy, cel, rokWydania, tworcy)) { emit daneZmienione(); return true; }
     return false;
 }
 
-int AppController::dodajPlatforme(const QString &nazwa) {
-    int id = dbManager.dodajPlatforme(nazwa);
+int AppController::dodajPlatforme(const QString &nazwa, const QString &typNosnika) {
+    int id = dbManager.dodajPlatforme(nazwa, typNosnika);
     if (id > 0) { emit daneZmienione(); }
     return id;
 }
@@ -179,9 +166,17 @@ int AppController::dodajTag(const QString &nazwa) {
     }
     return id;
 }
-bool AppController::aktualizujPlatforme(int id, const QString &nazwa) {
-    if(dbManager.aktualizujPlatforme(id, nazwa)) { emit daneZmienione(); return true; }
+bool AppController::aktualizujPlatforme(int id, const QString &nazwa, const QString &typNosnika) {
+    if(dbManager.aktualizujPlatforme(id, nazwa, typNosnika)) { emit daneZmienione(); return true; }
     return false;
+}
+
+QList<AppController::PlatformaModel> AppController::pobierzPelnePlatformy() {
+    QList<PlatformaModel> lista;
+    for (const auto& wiersz : dbManager.pobierzSurowePlatformy()) {
+        lista.append({wiersz[0].toInt(), wiersz[1].toString(), wiersz[2].toString()});
+    }
+    return lista;
 }
 bool AppController::aktualizujTag(int id, const QString &nazwa) {
     if (dbManager.aktualizujTag(id, nazwa)) {

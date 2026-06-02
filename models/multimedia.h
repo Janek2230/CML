@@ -22,6 +22,8 @@ private:
 
     int idPlatformy;
     bool ulubione = false;
+    int rokWydania = 0;   // 0 == nieznany; ustawiane setterem na podstawie kolumny rok_wydania.
+    QString tworcy;       // Autor / reżyser / studio; może być puste.
 
 public:
     Multimedia(int id, QString tytul, int idKat, int idPlat, QString status, Postep postep)
@@ -41,6 +43,11 @@ public:
     void setCzyUlubione(bool val) { ulubione = val; }
     QDateTime getDataOstatniejAktywnosci() const { return dataOstatniejAktywnosci; }
     void setDataOstatniejAktywnosci(const QDateTime &d) { dataOstatniejAktywnosci = d; }
+
+    int getRokWydania() const { return rokWydania; }
+    void setRokWydania(int rok) { rokWydania = rok; }
+    QString getTworcy() const { return tworcy; }
+    void setTworcy(const QString &t) { tworcy = t; }
 
     void setDataDodania(const QDateTime &data) { dataDodania = data; }
     void setPostep(Postep nowyPostep) { postep = nowyPostep; }

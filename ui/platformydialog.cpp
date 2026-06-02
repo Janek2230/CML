@@ -28,15 +28,21 @@ PlatformyDialog::~PlatformyDialog()
 void PlatformyDialog::wypelnijTabele()
 {
     ui->tabela->setRowCount(0);
-    const auto platformy = appController.pobierzPlatformy();
+    const auto platformy = appController.pobierzPelnePlatformy();
 
     int wiersz = 0;
-    for (const auto& [id, nazwa] : platformy) {
+    for (const auto& p : platformy) {
         ui->tabela->insertRow(wiersz);
-        ui->tabela->setItem(wiersz, 0, new QTableWidgetItem(QString::number(id)));
-        ui->tabela->setItem(wiersz, 1, new QTableWidgetItem(nazwa));
+        ui->tabela->setItem(wiersz, 0, new QTableWidgetItem(QString::number(p.id)));
+        ui->tabela->setItem(wiersz, 1, new QTableWidgetItem(p.nazwa));
+        ui->tabela->setItem(wiersz, 2, new QTableWidgetItem(p.typNosnika));
         wiersz++;
     }
+}
+
+// Wspólna lista typów nośnika używana przy dodawaniu i edycji platformy.
+static QStringList dostepneTypyNosnika() {
+    return {"Cyfrowy", "Fizyczny", "Streaming", "Papier", "E-book"};
 }
 
 void PlatformyDialog::onBtnDodajClicked()
@@ -48,7 +54,12 @@ void PlatformyDialog::onBtnDodajClicked()
 
     if (!ok || nazwa.isEmpty()) return;
 
-    if (appController.dodajPlatforme(nazwa) <= 0) {
+    const QString typ = QInputDialog::getItem(
+        this, "Typ nośnika", "Wybierz typ nośnika:", dostepneTypyNosnika(), 0, false, &ok
+    );
+    if (!ok) return;
+
+    if (appController.dodajPlatforme(nazwa, typ) <= 0) {
         QMessageBox::warning(this, "Błąd", "Nie udało się dodać platformy.");
         return;
     }
@@ -66,6 +77,7 @@ void PlatformyDialog::onBtnEdytujClicked()
 
     const int     idPlat      = ui->tabela->item(wiersz, 0)->text().toInt();
     const QString obecnaNazwa = ui->tabela->item(wiersz, 1)->text();
+    const QString obecnyTyp   = ui->tabela->item(wiersz, 2) ? ui->tabela->item(wiersz, 2)->text() : QString();
 
     bool ok = false;
     const QString nowaNazwa = QInputDialog::getText(
@@ -74,7 +86,15 @@ void PlatformyDialog::onBtnEdytujClicked()
 
     if (!ok || nowaNazwa.isEmpty()) return;
 
-    if (appController.aktualizujPlatforme(idPlat, nowaNazwa)) {
+    // Lista typów z aktualnie ustawionym typem zaznaczonym domyślnie.
+    const QStringList typy = dostepneTypyNosnika();
+    const int indeksTypu = qMax(0, typy.indexOf(obecnyTyp));
+    const QString nowyTyp = QInputDialog::getItem(
+        this, "Typ nośnika", "Wybierz typ nośnika:", typy, indeksTypu, false, &ok
+    );
+    if (!ok) return;
+
+    if (appController.aktualizujPlatforme(idPlat, nowaNazwa, nowyTyp)) {
         wypelnijTabele();
     }
 }

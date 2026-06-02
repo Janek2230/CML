@@ -21,6 +21,7 @@
 #include <QHeaderView>
 #include <algorithm>
 #include <QPieSeries>
+#include <QScrollArea>
 
 StatisticsWidget::StatisticsWidget(AppController& controller, QWidget *parent) :
     QWidget(parent),
@@ -29,25 +30,22 @@ StatisticsWidget::StatisticsWidget(AppController& controller, QWidget *parent) :
 {
     ui->setupUi(this);
 
-    ui->horizontalLayout_4->setStretch(0, 1);
-    ui->horizontalLayout_4->setStretch(1, 1);
-
-    ui->verticalLayout_8->setStretch(0, 0);
-    ui->verticalLayout_8->setStretch(1, 5);
-    ui->verticalLayout_8->setStretch(2, 4);
-
-    ui->wykresSlupkowyAktywnosci->setMouseTracking(true);
+    // zdarzenia myszy trafiają do wewnętrznego pola rysowania wykresu, nie do jego zewnętrznej ramki
     ui->wykresSlupkowyAktywnosci->viewport()->setMouseTracking(true);
+    // nasłuchujemy na ruchy myszy żeby przesuwać pływającą etykietę z danymi słupka za kursorem
     ui->wykresSlupkowyAktywnosci->viewport()->installEventFilter(this);
 
+    // etykieta jest umieszczona wewnątrz pola rysowania wykresu, dzięki czemu pojawia się na wierzchu słupków
     etykietaTooltip = new QLabel(ui->wykresSlupkowyAktywnosci->viewport());
     etykietaTooltip->setStyleSheet("background-color: rgba(30, 30, 30, 220); color: white; border: 1px solid #555; border-radius: 4px; padding: 5px;");
+    // bez tego flagi etykieta blokowałaby kliknięcia i ruchy myszy, wykres przestałby wykrywać najechanie na słupki
     etykietaTooltip->setAttribute(Qt::WA_TransparentForMouseEvents);
     etykietaTooltip->hide();
 
     connect(ui->comboZakresCzasu, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &StatisticsWidget::odswiezWykresAktywnosci);
     connect(ui->comboMetryka, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &StatisticsWidget::odswiezWykresAktywnosci);
 
+    // dane każdej zakładki są odświeżane dopiero przy jej otwarciu, nie wszystkie na raz przy starcie
     connect(ui->tabWidget, &QTabWidget::currentChanged, this, [this](int) {
         odswiezDane();
     });
@@ -62,23 +60,26 @@ StatisticsWidget::~StatisticsWidget()
 void StatisticsWidget::odswiezWykresAktywnosci() {
     if (!ui->comboZakresCzasu || !ui->comboMetryka) return;
 
+    //Odczytanie wybranego zakresu
     int indexZakresu = ui->comboZakresCzasu->currentIndex();
     int zakres = 30;
     if (indexZakresu == 0) zakres = 7;
     else if (indexZakresu == 1) zakres = 30;
     else if (indexZakresu == 2) zakres = 180;
     else if (indexZakresu == 3) zakres = 365;
-    else if (indexZakresu == 4) zakres = 9999; // Cała historia
+    else if (indexZakresu == 4) zakres = 9999; // cała historia
 
+    //Odczytanie wybranej jednostki
     QString metryka = "czas";
     QString jednostkaWykresu = "[h]";
     int indexMetryki = ui->comboMetryka->currentIndex();
     if (indexMetryki == 1) { metryka = "sesje"; jednostkaWykresu = "sesji"; }
     else if (indexMetryki == 2) { metryka = "jednostki"; jednostkaWykresu = "jedn."; }
 
-    auto dane = appController.pobierzDaneDlaWykresu(zakres, metryka);
+    const auto dane = appController.pobierzDaneDlaWykresu(zakres, metryka);
 
     if (dane.isEmpty()) {
+        // zamiast pustego miejsca pokazujemy komunikat
         QChart *pustyChart = new QChart();
         pustyChart->setTitle(QString("Brak aktywności w wybranym okresie (%1)")
                                  .arg(ui->comboZakresCzasu->currentText().toLower()));
@@ -98,118 +99,98 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
     }
 
     QStringList unikalneDaty;
-    QMap<QString, double> wielkoscSlupka; // Suma całkowita dla danego dnia/miesiąca
     QMap<QString, QMap<QString, double>> mapaSerii;
 
-    // Etap A: Zbieranie surowych danych
     for (const auto& wiersz : dane) {
-        QString data = wiersz["data"].toString();
-        QString seria = wiersz["seria"].toString();
-        double wartosc = wiersz["wartosc"].toDouble();
+        QString data = wiersz.data;
+        QString seria = wiersz.nazwaSerii;
+        double wartosc = wiersz.wartosc;
 
         if (!unikalneDaty.contains(data)) unikalneDaty.append(data);
 
         mapaSerii[seria][data] = wartosc;
-        wielkoscSlupka[data] += wartosc; // Wyliczamy, jak "wysoki" jest cały słupek
     }
 
-    // Etap B: Prosty algorytm Globalnych Liderów
-    QMap<QString, double> globalneSumySerii;
-    for (auto itSeria = mapaSerii.begin(); itSeria != mapaSerii.end(); ++itSeria) {
-        double sumaTotal = 0.0;
-        for (double val : itSeria.value()) {
-            sumaTotal += val;
-        }
-        globalneSumySerii[itSeria.key()] = sumaTotal;
-    }
+    // Stos wg rankingu W OBRĘBIE słupka: dla każdego przedziału czasu osobno sortujemy
+    // tytuły malejąco i przypisujemy je do "miejsc" 1..N. Kolor = miejsce w rankingu danego
+    // słupka (nie konkretny tytuł), a tytuł i wartość trafiają do tooltipa. Dzięki temu każdy
+    // słupek pokazuje SWOICH liderów, a nie globalny top — reszta ląduje w "Pozostałe".
+    const int TOP_N = 4;
 
-    // Sortujemy serie malejąco według całkowitego udziału w zadanym przedziale czasu
-    QList<QPair<double, QString>> rankingSerii;
-    for (auto it = globalneSumySerii.begin(); it != globalneSumySerii.end(); ++it) {
-        if (it.value() > 0) {
-            rankingSerii.append({it.value(), it.key()});
-        }
-    }
-    std::sort(rankingSerii.begin(), rankingSerii.end(), [](const QPair<double, QString>& a, const QPair<double, QString>& b) {
-        return a.first > b.first;
-    });
+    QStringList etykietySlotow;
+    for (int r = 0; r < TOP_N; ++r) etykietySlotow << QString("%1. miejsce").arg(r + 1);
+    etykietySlotow << "Pozostałe";
 
-    // Etap C: Wybór Liderów (max 8 największych aktywności w danym oknie czasowym)
-    QStringList nazwyLiderow;
-    int maxLiderow = 8; // Przy 8 legenda wygląda estetycznie
-    for (int i = 0; i < qMin(maxLiderow, static_cast<int>(rankingSerii.size())); ++i) {
-        nazwyLiderow.append(rankingSerii[i].second);
-    }
+    const QList<QColor> kolorySlotow = {
+        QColor("#f1c40f"),            // 1. miejsce — złoto
+        QColor("#bdc3c7"),            // 2. miejsce — srebro
+        QColor("#cd7f32"),            // 3. miejsce — brąz
+        QColor("#2d89ef"),            // 4. miejsce
+        QColor(127, 140, 141, 150)    // Pozostałe
+    };
 
-    // Etap D: Budowanie warstw wykresu
     QStackedBarSeries *series = new QStackedBarSeries();
     QMap<QString, QStringList> tekstyTooltipow;
-    QMap<QString, QBarSet*> setyLiderow;
-
-    for (const QString& nazwaLidera : nazwyLiderow) {
-        setyLiderow[nazwaLidera] = new QBarSet(nazwaLidera);
-        tekstyTooltipow[nazwaLidera] = QStringList();
+    QList<QBarSet*> setySlotow;
+    for (int s = 0; s < etykietySlotow.size(); ++s) {
+        QBarSet* set = new QBarSet(etykietySlotow[s]);
+        set->setColor(kolorySlotow[s]);
+        setySlotow << set;
+        tekstyTooltipow[etykietySlotow[s]] = QStringList();
     }
-
-    QBarSet *setInne = new QBarSet("Inne");
-    setInne->setColor(QColor(127, 140, 141, 150));
-    QStringList tooltipyInne;
-    bool czyBylyJakiesInne = false;
 
     for (const QString& d : unikalneDaty) {
-        double sumaInneWDanymDniu = 0.0;
-        QString detaleInneDlaDnia = "";
-
+        // (tytuł, wartość) dla tego słupka, posortowane malejąco.
+        QList<QPair<double, QString>> wDniu;
         for (auto it = mapaSerii.begin(); it != mapaSerii.end(); ++it) {
-            QString nazwaSerii = it.key();
-            double val = it.value().value(d, 0.0);
+            const double val = it.value().value(d, 0.0);
+            if (val > 0.0) wDniu.append({val, it.key()});
+        }
+        std::sort(wDniu.begin(), wDniu.end(), [](const QPair<double, QString>& a, const QPair<double, QString>& b) {
+            return a.first > b.first;
+        });
 
-            if (val == 0.0) {
-                if (nazwyLiderow.contains(nazwaSerii)) {
-                    *setyLiderow[nazwaSerii] << 0.0;
-                    tekstyTooltipow[nazwaSerii].append("");
-                }
-                continue;
-            }
-
-            if (nazwyLiderow.contains(nazwaSerii)) {
-                *setyLiderow[nazwaSerii] << val;
-                tekstyTooltipow[nazwaSerii].append(QString("<b>%1</b><br>Wartość: %2 %3")
-                                                       .arg(nazwaSerii).arg(QString::number(val, 'f', 1)).arg(jednostkaWykresu));
+        // Sloty 1..TOP_N — pojedynczy tytuł na danym miejscu (lub 0 gdy brak).
+        for (int r = 0; r < TOP_N; ++r) {
+            if (r < wDniu.size()) {
+                *setySlotow[r] << wDniu[r].first;
+                tekstyTooltipow[etykietySlotow[r]].append(
+                    QString("<b>%1. %2</b><br>%3 %4")
+                        .arg(r + 1)
+                        .arg(wDniu[r].second, QString::number(wDniu[r].first, 'f', 1), jednostkaWykresu));
             } else {
-                sumaInneWDanymDniu += val;
-                detaleInneDlaDnia += QString("- %1: %2 %3<br>").arg(nazwaSerii).arg(QString::number(val, 'f', 1)).arg(jednostkaWykresu);
-                czyBylyJakiesInne = true;
+                *setySlotow[r] << 0.0;
+                tekstyTooltipow[etykietySlotow[r]].append("");
             }
         }
 
-        *setInne << sumaInneWDanymDniu;
-        if (sumaInneWDanymDniu > 0) {
-            tooltipyInne.append(QString("<b>Inne / Pozostałe</b><br>Łącznie: %1 %2<br>W tym:<br>%3")
-                                    .arg(QString::number(sumaInneWDanymDniu, 'f', 1)).arg(jednostkaWykresu).arg(detaleInneDlaDnia));
+        // Slot zbiorczy "Pozostałe" — suma i lista tytułów poza TOP_N.
+        double sumaReszty = 0.0;
+        QString detaleReszty;
+        for (int r = TOP_N; r < wDniu.size(); ++r) {
+            sumaReszty += wDniu[r].first;
+            detaleReszty += QString("- %1: %2 %3<br>").arg(wDniu[r].second, QString::number(wDniu[r].first, 'f', 1), jednostkaWykresu);
+        }
+        *setySlotow[TOP_N] << sumaReszty;
+        if (sumaReszty > 0.0) {
+            tekstyTooltipow["Pozostałe"].append(
+                QString("<b>Pozostałe (%1 tytułów)</b><br>Łącznie: %2 %3<br>%4")
+                    .arg(wDniu.size() - TOP_N)
+                    .arg(QString::number(sumaReszty, 'f', 1), jednostkaWykresu, detaleReszty));
         } else {
-            tooltipyInne.append("");
+            tekstyTooltipow["Pozostałe"].append("");
         }
     }
 
-    for (const QString& nazwaLidera : nazwyLiderow) {
-        series->append(setyLiderow[nazwaLidera]);
-    }
-    if (czyBylyJakiesInne) {
-        series->append(setInne);
-        tekstyTooltipow.insert("Inne", tooltipyInne);
-    } else {
-        delete setInne;
-    }
+    for (QBarSet* set : setySlotow) series->append(set);
 
-    // Etap E: Rysowanie na ekranie
     QChart *chart = new QChart();
     chart->addSeries(series);
     chart->setAnimationOptions(QChart::SeriesAnimations);
 
     QBarCategoryAxis *axisX = new QBarCategoryAxis();
     axisX->append(unikalneDaty);
-    axisX->setLabelsAngle(-45);
+    axisX->setLabelsAngle(-45); // daty pisane poziomo zachodziłyby na siebie
     axisX->setLabelsColor(Qt::white);
     chart->addAxis(axisX, Qt::AlignBottom);
     series->attachAxis(axisX);
@@ -227,8 +208,9 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
     chart->legend()->setVisible(true);
     chart->legend()->setAlignment(Qt::AlignBottom);
     chart->legend()->setLabelColor(Qt::white);
-    chart->setBackgroundVisible(false);
+    chart->setBackgroundVisible(false); // przezroczyste tło żeby widoczne było tło rodzica
 
+    // tekstyTooltipow jest przechwycone przez wartość, bo lambda żyje dłużej niż ta funkcja
     connect(series, &QStackedBarSeries::hovered, this, [this, tekstyTooltipow](bool status, int index, QBarSet *barset) {
         if (status && index >= 0) {
             QString nazwa = barset->label();
@@ -246,7 +228,6 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
     ui->wykresSlupkowyAktywnosci->setChart(chart);
     ui->wykresSlupkowyAktywnosci->setRenderHint(QPainter::Antialiasing);
     ui->wykresSlupkowyAktywnosci->setBackgroundBrush(Qt::NoBrush);
-    ui->wykresSlupkowyAktywnosci->setStyleSheet("background: transparent; border: none;");
 }
 
 bool StatisticsWidget::eventFilter(QObject *watched, QEvent *event) {
@@ -254,9 +235,11 @@ bool StatisticsWidget::eventFilter(QObject *watched, QEvent *event) {
         if (!etykietaTooltip->isHidden()) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
 
+            // domyślnie etykieta pojawia się 15px w prawo i w dół od kursora, żeby go nie zasłaniać
             int x = mouseEvent->pos().x() + 15;
             int y = mouseEvent->pos().y() + 15;
 
+            // jeśli etykieta wychodziłaby poza prawą lub dolną krawędź, przerzucamy ją na drugą stronę kursora
             if (x + etykietaTooltip->width() > ui->wykresSlupkowyAktywnosci->viewport()->width()) {
                 x = mouseEvent->pos().x() - etykietaTooltip->width() - 15;
             }
@@ -265,9 +248,10 @@ bool StatisticsWidget::eventFilter(QObject *watched, QEvent *event) {
             }
 
             etykietaTooltip->move(x, y);
-            etykietaTooltip->raise();
+            etykietaTooltip->raise(); // gwarantuje że etykieta nie schowa się pod inne elementy wykresu
         }
     }
+    // przekazujemy zdarzenie dalej, żeby Qt mógł je normalnie obsłużyć
     return QWidget::eventFilter(watched, event);
 }
 
@@ -276,22 +260,20 @@ void StatisticsWidget::odswiezDane() {
     if (index == 0) odswiezPodsumowanieOgolne();
     else if (index == 1) odswiezWykresAktywnosci();
     else if (index == 2) odswiezKupkeWstydu();
-    else if (index == 3) odswiezPorzucone();
+    else if (index == 3) odswiezNigdyNieukonczone();
     else if (index == 4) odswiezUlubione();
 }
 
-void StatisticsWidget::odswiezPorzucone() {
-    // Wyrzucamy stary układ do kosza
-    if (ui->layoutUlubione->layout()) {
-        wyczyscLayout(ui->layoutUlubione->layout());
-        delete ui->layoutUlubione->layout();
+void StatisticsWidget::odswiezNigdyNieukonczone() {
+    if (ui->layoutNigdyNieukonczone->layout()) {
+        wyczyscLayout(ui->layoutNigdyNieukonczone->layout());
+        delete ui->layoutNigdyNieukonczone->layout();
     }
 
-    // Inicjalizujemy siatkę
-    QGridLayout* siatkaPorzucone = new QGridLayout(ui->layoutUlubione);
-    siatkaPorzucone->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+    QGridLayout* siatkaPorzucone = new QGridLayout(ui->layoutNigdyNieukonczone);
+    siatkaPorzucone->setAlignment(Qt::AlignTop);
 
-    auto wszystkie = appController.pobierzWszystkieMultimedia();
+    const auto wszystkie = appController.pobierzWszystkieMultimedia();
 
     QMap<int, QString> mapaPlatform;
     for (const auto& platforma : appController.pobierzPlatformy()) {
@@ -301,10 +283,12 @@ void StatisticsWidget::odswiezPorzucone() {
     bool dodanoCokolwiek = false;
     int row = 0;
     int col = 0;
-    const int maxCols = 3; // Liczba kolumn kafelków na szerokość
+    const int maxCols = 4; // Liczba kolumn kafelków na szerokość
+    // Równe rozciągnięcie kolumn — pełne rzędy wypełniają całą szerokość, bez pustki po prawej.
+    for (int c = 0; c < maxCols; ++c) siatkaPorzucone->setColumnStretch(c, 1);
 
     for (const auto& m : wszystkie) {
-        auto historia = appController.pobierzHistorie(m->getId());
+        const auto historia = appController.pobierzHistorie(m->getId());
         bool czyKiedykolwiekUkonczone = false;
         bool czyKiedykolwiekPorzucone = false;
 
@@ -333,80 +317,107 @@ void StatisticsWidget::odswiezPorzucone() {
 }
 
 void StatisticsWidget::odswiezUlubione() {
-    // Uwaga: Używamy 'layoutPorzucone', ponieważ w pliku .ui to ten layout znajduje się w zakładce "Ulubione"
-    QVBoxLayout* layoutUlubione = qobject_cast<QVBoxLayout*>(ui->layoutPorzucone->layout());
-    if (!layoutUlubione) {
-        layoutUlubione = new QVBoxLayout(ui->layoutPorzucone);
+    // Pełna przebudowa zakładki: trzy pionowe kolumny, każda z własnym, niezależnym scrollem.
+    if (ui->layoutUlubione->layout()) {
+        wyczyscLayout(ui->layoutUlubione->layout());
+        delete ui->layoutUlubione->layout();
     }
-    wyczyscLayout(layoutUlubione);
 
-    auto wszystkie = appController.pobierzWszystkieMultimedia();
+    const auto wszystkie = appController.pobierzWszystkieMultimedia();
 
     QMap<int, QString> mapaPlatform;
     for (const auto& platforma : appController.pobierzPlatformy()) {
         mapaPlatform.insert(platforma.first, platforma.second);
     }
 
-    // --- SEKCJA 1: Oznaczone serduszkiem ---
-    layoutUlubione->addWidget(new QLabel("<h2>Tytuły oznaczone jako Ulubione (❤)</h2>"));
-    QHBoxLayout* wierszUlubionych = new QHBoxLayout();
-    bool czySaUlubione = false;
-    for (const auto& m : wszystkie) {
-        if (m->getCzyUlubione()) {
-            wierszUlubionych->addWidget(zbudujKafelek(m, mapaPlatform, false, false));
-            czySaUlubione = true;
-        }
-    }
-    if (!czySaUlubione) wierszUlubionych->addWidget(new QLabel("Brak ulubionych tytułów.", this));
-    wierszUlubionych->addStretch();
-    layoutUlubione->addLayout(wierszUlubionych);
-
-    // --- SEKCJA 2: Najwięcej czasu ---
-    layoutUlubione->addWidget(new QLabel("<br><h2>Najwięcej spędzonego czasu (Top 5)</h2>"));
-    QList<QPair<long long, std::shared_ptr<Multimedia>>> rankingCzasu;
+    // Łączny czas (sekundy) per medium liczymy raz i cache'ujemy.
+    QMap<int, long long> czasMap;
     for (const auto& m : wszystkie) {
         long long sumaSekund = 0;
-        auto historia = appController.pobierzHistorie(m->getId());
-        for (const auto& p : historia) {
+        for (const auto& p : appController.pobierzHistorie(m->getId()))
             for (const auto& s : p.sesje) sumaSekund += s.sekundy;
-        }
-        if (sumaSekund > 0) rankingCzasu.append({sumaSekund, m});
+        czasMap[m->getId()] = sumaSekund;
     }
 
-    std::sort(rankingCzasu.begin(), rankingCzasu.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
+    // --- Trzy posortowane listy (wszystkie pozycje, bez limitu Top 5) ---
+    QList<std::shared_ptr<Multimedia>> ulubione;
+    for (const auto& m : wszystkie) if (m->getCzyUlubione()) ulubione.append(m);
+    std::sort(ulubione.begin(), ulubione.end(), [&czasMap](const auto& a, const auto& b) {
+        return czasMap[a->getId()] > czasMap[b->getId()];
+    });
 
-    QHBoxLayout* wierszCzasu = new QHBoxLayout();
-    for (int i = 0; i < qMin(5, static_cast<int>(rankingCzasu.size())); ++i) {
-        auto m = rankingCzasu[i].second;
-        QWidget* kafelek = zbudujKafelek(m, mapaPlatform, false, false);
-        QVBoxLayout* l = qobject_cast<QVBoxLayout*>(kafelek->layout());
-        if (l) l->insertWidget(2, new QLabel(QString("<b>Łącznie:</b> %1").arg(sformatujCzas(rankingCzasu[i].first)), kafelek));
-        wierszCzasu->addWidget(kafelek);
-    }
-    if (rankingCzasu.isEmpty()) wierszCzasu->addWidget(new QLabel("Brak danych o czasie.", this));
-    wierszCzasu->addStretch();
-    layoutUlubione->addLayout(wierszCzasu);
+    QList<std::shared_ptr<Multimedia>> rankingCzasu;
+    for (const auto& m : wszystkie) if (czasMap[m->getId()] > 0) rankingCzasu.append(m);
+    std::sort(rankingCzasu.begin(), rankingCzasu.end(), [&czasMap](const auto& a, const auto& b) {
+        return czasMap[a->getId()] > czasMap[b->getId()];
+    });
 
-    // --- SEKCJA 3: Najwięcej podejść ---
-    layoutUlubione->addWidget(new QLabel("<br><h2>Najbardziej wytrwałe (Najwięcej podejść - Top 5)</h2>"));
-    QList<std::shared_ptr<Multimedia>> rankingPodejsc = wszystkie;
-    std::sort(rankingPodejsc.begin(), rankingPodejsc.end(), [](const std::shared_ptr<Multimedia>& a, const std::shared_ptr<Multimedia>& b) {
+    QList<std::shared_ptr<Multimedia>> rankingPodejsc;
+    for (const auto& m : wszystkie) if (m->getPostep().numer_podejscia > 1) rankingPodejsc.append(m);
+    std::sort(rankingPodejsc.begin(), rankingPodejsc.end(), [](const auto& a, const auto& b) {
         return a->getPostep().numer_podejscia > b->getPostep().numer_podejscia;
     });
 
-    QHBoxLayout* wierszPodejsc = new QHBoxLayout();
-    for (int i = 0; i < qMin(5, static_cast<int>(rankingPodejsc.size())); ++i) {
-        if (rankingPodejsc[i]->getPostep().numer_podejscia > 1) {
-            QWidget* kafelek = zbudujKafelek(rankingPodejsc[i], mapaPlatform, false, false);
-            QVBoxLayout* l = qobject_cast<QVBoxLayout*>(kafelek->layout());
-            if (l) l->insertWidget(2, new QLabel(QString("<b>Podejść:</b> %1").arg(rankingPodejsc[i]->getPostep().numer_podejscia), kafelek));
-            wierszPodejsc->addWidget(kafelek);
-        }
+    // --- Trzy kolumny z niezależnym scrollem ---
+    QHBoxLayout* glowny = new QHBoxLayout(ui->layoutUlubione);
+    glowny->setSpacing(12);
+
+    // Tworzy kolumnę (nagłówek + scroll z pionową listą), podpina ją i zwraca layout listy.
+    auto dodajKolumne = [glowny](const QString& tytul) -> QVBoxLayout* {
+        QVBoxLayout* kolumna = new QVBoxLayout();
+        QLabel* naglowek = new QLabel(tytul);
+        naglowek->setStyleSheet("font-size: 15px; font-weight: bold; padding: 4px; color: #ffffff;");
+        kolumna->addWidget(naglowek);
+
+        QScrollArea* scroll = new QScrollArea();
+        scroll->setWidgetResizable(true);
+        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        scroll->setFrameShape(QFrame::NoFrame);
+
+        QWidget* content = new QWidget();
+        QVBoxLayout* lista = new QVBoxLayout(content);
+        lista->setAlignment(Qt::AlignTop);
+        lista->setSpacing(8);
+        scroll->setWidget(content);
+
+        kolumna->addWidget(scroll);
+        glowny->addLayout(kolumna);
+        return lista;
+    };
+
+    // Kolumna 1: oznaczone jako ulubione (bez serduszka w nagłówku).
+    QVBoxLayout* listaUlubione = dodajKolumne("Oznaczone jako ulubione");
+    for (const auto& m : ulubione) {
+        QWidget* k = zbudujKafelek(m, mapaPlatform, false, false);
+        QVBoxLayout* l = qobject_cast<QVBoxLayout*>(k->layout());
+        if (l && czasMap[m->getId()] > 0)
+            l->insertWidget(2, new QLabel(QString("<b>Łącznie:</b> %1").arg(sformatujCzas(czasMap[m->getId()])), k));
+        listaUlubione->addWidget(k);
     }
-    if (wierszPodejsc->count() == 0) wierszPodejsc->addWidget(new QLabel("Nigdy nie dawałeś niczemu drugiej szansy.", this));
-    wierszPodejsc->addStretch();
-    layoutUlubione->addLayout(wierszPodejsc);
-    layoutUlubione->addStretch();
+    if (ulubione.isEmpty()) listaUlubione->addWidget(new QLabel("Brak ulubionych tytułów."));
+    listaUlubione->addStretch();
+
+    // Kolumna 2: najwięcej spędzonego czasu (wszystkie z czasem > 0).
+    QVBoxLayout* listaCzas = dodajKolumne("Najwięcej spędzonego czasu");
+    for (const auto& m : rankingCzasu) {
+        QWidget* k = zbudujKafelek(m, mapaPlatform, false, false);
+        QVBoxLayout* l = qobject_cast<QVBoxLayout*>(k->layout());
+        if (l) l->insertWidget(2, new QLabel(QString("<b>Łącznie:</b> %1").arg(sformatujCzas(czasMap[m->getId()])), k));
+        listaCzas->addWidget(k);
+    }
+    if (rankingCzasu.isEmpty()) listaCzas->addWidget(new QLabel("Brak danych o czasie."));
+    listaCzas->addStretch();
+
+    // Kolumna 3: najbardziej wytrwałe (wszystkie z więcej niż jednym podejściem).
+    QVBoxLayout* listaPodejsc = dodajKolumne("Najbardziej wytrwałe (najwięcej podejść)");
+    for (const auto& m : rankingPodejsc) {
+        QWidget* k = zbudujKafelek(m, mapaPlatform, false, false);
+        QVBoxLayout* l = qobject_cast<QVBoxLayout*>(k->layout());
+        if (l) l->insertWidget(2, new QLabel(QString("<b>Podejść:</b> %1").arg(m->getPostep().numer_podejscia), k));
+        listaPodejsc->addWidget(k);
+    }
+    if (rankingPodejsc.isEmpty()) listaPodejsc->addWidget(new QLabel("Brak wielokrotnych podejść."));
+    listaPodejsc->addStretch();
 }
 
 QString StatisticsWidget::sformatujCzas(long long sekundy) const {
@@ -434,16 +445,6 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
     ui->lblSummaryCzasTotal->setText(formatujKPI("Spędzony czas", sformatujCzas(stats.value("czasTotal", 0).toLongLong())));
     ui->lblSummaryJednostkiTotal->setText(formatujKPI("Zdobyte jednostki", QString::number(stats.value("jednostkiTotal", 0).toLongLong())));
     ui->lblSummaryUlubionyTag->setText(formatujKPI("Ulubiony tag", stats.value("ulubionyTag", "Brak danych").toString()));
-
-    ui->lblSummaryMediaTotal->setAlignment(Qt::AlignCenter);
-    ui->lblSummaryPodejsciaTotal->setAlignment(Qt::AlignCenter);
-    ui->lblSummarySesjeTotal->setAlignment(Qt::AlignCenter);
-    ui->lblSummaryCzasTotal->setAlignment(Qt::AlignCenter);
-    ui->lblSummaryJednostkiTotal->setAlignment(Qt::AlignCenter);
-    ui->lblSummaryUlubionyTag->setAlignment(Qt::AlignCenter);
-
-    // Ograniczenie wysokości panelu KPI zapobiega rozciąganiu się go kosztem wykresów poniżej.
-    ui->groupBoxKPI->setMaximumHeight(75);
 
     // ==========================================
     // WYKRES KOŁOWY (Kategorie)
@@ -537,24 +538,12 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
     // TABELA TAGÓW (Ucywilizowana)
     // ==========================================
 
-    if (!ui->groupBoxTagi->layout()) {
-        QVBoxLayout *layoutTagi = new QVBoxLayout(ui->groupBoxTagi);
-        layoutTagi->setContentsMargins(10, 20, 10, 10);
-        layoutTagi->addWidget(ui->tableSummaryTagi);
-    }
-
     ui->tableSummaryTagi->setRowCount(0);
-    ui->tableSummaryTagi->setColumnCount(3);
-    ui->tableSummaryTagi->setHorizontalHeaderLabels({"Tag", "Wpisy", "Czas"});
     ui->tableSummaryTagi->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     ui->tableSummaryTagi->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
     ui->tableSummaryTagi->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-    ui->tableSummaryTagi->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    ui->tableSummaryTagi->setSelectionMode(QAbstractItemView::NoSelection);
     ui->tableSummaryTagi->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     ui->tableSummaryTagi->verticalHeader()->setVisible(false);
-    ui->tableSummaryTagi->setShowGrid(false);
-    ui->tableSummaryTagi->setStyleSheet("QTableWidget { border: none; background-color: transparent; } QHeaderView::section { background-color: transparent; border: none; font-weight: bold; color: #a0a0a0; border-bottom: 1px solid #3a3f44; padding: 4px; } QTableWidget::item { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 4px; }");
 
 
 
@@ -592,45 +581,97 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
         delete staryLayout;
     }
 
-    QVBoxLayout* layoutOsiagniec = new QVBoxLayout(ui->groupBox);
+    // Układ dwukolumnowy: zewnętrzny QHBoxLayout trzyma dwie pionowe kolumny kafelków (4+4).
+    QHBoxLayout* layoutOsiagniec = new QHBoxLayout(ui->groupBox);
     layoutOsiagniec->setContentsMargins(15, 20, 15, 15);
-    layoutOsiagniec->setSpacing(10);
+    layoutOsiagniec->setSpacing(30);
 
-    struct Osiagniecie { QString ikona; QString tytul; QString wartosc; QString podtytul; };
+    QVBoxLayout* kolumnaLewa  = new QVBoxLayout();
+    QVBoxLayout* kolumnaPrawa = new QVBoxLayout();
+    kolumnaLewa->setSpacing(10);
+    kolumnaPrawa->setSpacing(10);
+
+    // Ciekawostki oparte o nowe pola: twórca i rok wydania.
+    const int dekada = ciekawostki.value("dominujacaDekada", 0).toInt();
+    const QString dekadaTekst = dekada > 0 ? QString("Lata %1").arg(dekada) : "Brak danych";
+    const QString dekadaPodtytul = dekada > 0
+        ? QString("%1 pozycji z tej dekady").arg(ciekawostki.value("dominujacaDekadaIlosc", 0).toInt())
+        : "Uzupełnij rok wydania w pozycjach";
+
+    const bool maWiek = ciekawostki.contains("sredniWiekNadrabiania");
+    const QString wiekTekst = maWiek
+        ? QString("%1 lat").arg(qRound(ciekawostki.value("sredniWiekNadrabiania").toDouble()))
+        : "Brak danych";
+
+    // Pora doby → persona. Surowa nazwa pory z bazy ('Noc'/'Rano'/...) mapowana na chwytliwy tytuł.
+    const QString pora = ciekawostki.value("poraDoby", "").toString();
+    QString poraPersona = "Brak danych";
+    QString poraOpis = "Najaktywniejsza pora doby";
+    if (pora == "Noc")             { poraPersona = "Nocny Marek";          poraOpis = "Najwięcej czasu w nocy (00–06)"; }
+    else if (pora == "Rano")       { poraPersona = "Ranny Ptaszek";        poraOpis = "Najwięcej czasu rano (06–12)"; }
+    else if (pora == "Popołudnie") { poraPersona = "Popołudniowy Gracz";   poraOpis = "Najwięcej czasu po południu (12–18)"; }
+    else if (pora == "Wieczór")    { poraPersona = "Wieczorny Maratończyk"; poraOpis = "Najwięcej czasu wieczorem (18–24)"; }
+
+    // Kolejność dobrana pod układ dwukolumnowy: lewa = rekordy konsumpcji, prawa = Twój profil/gust.
+    struct Osiagniecie { QString tytul; QString wartosc; QString podtytul; };
     QList<Osiagniecie> osiagniecia = {
-        {"", "Maratończyk (Najdłuższa sesja)",
+        // --- Kolumna lewa (rekordy) ---
+        {"Maratończyk (Najdłuższa sesja)",
          ciekawostki.value("rekordSesjaTytul", "Brak").toString(),
          sformatujCzas(ciekawostki.value("rekordSesjaCzas", 0).toLongLong())},
 
-        {"", "Pożeracz Czasu (Najwięcej godzin)",
+        {"Pożeracz Czasu (Najwięcej godzin)",
          ciekawostki.value("pozeraczTytul", "Brak").toString(),
          sformatujCzas(ciekawostki.value("pozeraczCzas", 0).toLongLong())},
 
-        {"", "Syndrom 'Jeszcze 1 tury' (Najwięcej podejść)",
-         ciekawostki.value("uparyTytul", "Brak").toString(),
-         QString("%1 podejść").arg(ciekawostki.value("uparyIlosc", 0).toInt())},
+        {"Pożeracz Twórców (Najwięcej godzin)",
+         ciekawostki.value("ulubionyTworca", "Brak").toString(),
+         sformatujCzas(ciekawostki.value("ulubionyTworcaCzas", 0).toLongLong())},
 
-        {"","Twój dzień na relaks",
+        {"Syndrom 'Jeszcze 1 tury' (Najwięcej podejść)",
+         ciekawostki.value("uparyTytul", "Brak").toString(),
+         QString("Podejścia: %1").arg(ciekawostki.value("uparyIlosc", 0).toInt())},
+
+        // --- Kolumna prawa (profil / gust) ---
+        {"Twój dzień na relaks",
          ciekawostki.value("najlepszyDzien", "Brak").toString(),
-         "Najbardziej aktywny dzień tygodnia"}
+         "Najbardziej aktywny dzień tygodnia"},
+
+        {"Twoja pora doby",
+         poraPersona,
+         poraOpis},
+
+        {"Twoja epoka (Najczęstsza dekada)",
+         dekadaTekst,
+         dekadaPodtytul},
+
+        {"Wiek nadrabiania",
+         wiekTekst,
+         "Średnie opóźnienie między premierą a dodaniem"}
     };
 
-    for (const auto& os : osiagniecia) {
+    // (size+1)/2 → przy 8 kafelkach daje 4 w lewej, 4 w prawej (i poprawnie dzieli nieparzyste).
+    const int progKolumny = (osiagniecia.size() + 1) / 2;
+    for (int i = 0; i < osiagniecia.size(); ++i) {
+        const auto& os = osiagniecia[i];
         QLabel* lbl = new QLabel(ui->groupBox);
         QString html = QString(
                            "<div style='margin-bottom: 5px;'>"
-                           "  <span style='color: #8a8f98; font-size: 12px;'>%1 %2</span><br>"
-                           "  <span style='color: #ffffff; font-size: 16px; font-weight: bold;'>%3</span><br>"
-                           "  <span style='color: #2d89ef; font-size: 13px; font-weight: bold;'>%4</span>"
+                           "  <span style='color: #8a8f98; font-size: 12px;'>%1</span><br>"
+                           "  <span style='color: #ffffff; font-size: 16px; font-weight: bold;'>%2</span><br>"
+                           "  <span style='color: #2d89ef; font-size: 13px; font-weight: bold;'>%3</span>"
                            "</div>"
-                           ).arg(os.ikona, os.tytul, os.wartosc, os.podtytul);
+                           ).arg(os.tytul, os.wartosc, os.podtytul);
 
         lbl->setText(html);
         lbl->setTextFormat(Qt::RichText);
-        layoutOsiagniec->addWidget(lbl);
+        (i < progKolumny ? kolumnaLewa : kolumnaPrawa)->addWidget(lbl);
     }
 
-    layoutOsiagniec->addStretch();
+    kolumnaLewa->addStretch();
+    kolumnaPrawa->addStretch();
+    layoutOsiagniec->addLayout(kolumnaLewa);
+    layoutOsiagniec->addLayout(kolumnaPrawa);
 }
 
 
@@ -675,8 +716,10 @@ void StatisticsWidget::wyczyscLayout(QLayout* layout) {
 QWidget* StatisticsWidget::zbudujKafelek(const std::shared_ptr<Multimedia>& medium, const QMap<int, QString>& mapaPlatform, bool pokazWznow, bool pokazPorzuc) {
     auto* kafelek = new QFrame(this);
     kafelek->setFrameShape(QFrame::StyledPanel);
-    kafelek->setMinimumWidth(260);
-    kafelek->setMaximumWidth(300);
+    kafelek->setMinimumWidth(240);
+    // Bez sztywnej maksymalnej szerokości + poziome "Expanding" — kafelek wypełnia
+    // szerokość swojej kolumny/komórki zamiast zostawiać pustą przestrzeń obok.
+    kafelek->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     kafelek->setStyleSheet("QFrame { border: 1px solid #3a3f44; border-radius: 6px; background-color: rgba(255,255,255,0.03); }");
 
     auto* layout = new QVBoxLayout(kafelek);
@@ -744,7 +787,7 @@ QWidget* StatisticsWidget::zbudujKafelek(const std::shared_ptr<Multimedia>& medi
 }
 
 void StatisticsWidget::odswiezKupkeWstydu() {
-    auto wszystkie = appController.pobierzWszystkieMultimedia();
+    const auto wszystkie = appController.pobierzWszystkieMultimedia();
     const int suma = wszystkie.size();
     if (suma == 0) {
         ui->labelWskaznikZaleglosci->setText("Wskaźnik zaległości: 0 / 0 (0%)");

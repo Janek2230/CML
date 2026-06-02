@@ -100,10 +100,15 @@ void PanelNawigacjiWidget::zaladujDaneDoDrzewa()
     QMap<int, QString>          slownikKategorii;
     QList<QPair<int, QString>>  listaPlatform;
     QMap<int, QStringList>      mapaTagow;
+    QMap<int, QString>          mapaTypowNosnika; // id_platformy → typ_nosnika (tryb 5)
 
     if (trybGrupowania == 0) slownikKategorii = appController.getCategories();
     if (trybGrupowania == 2) listaPlatform    = appController.pobierzPlatformy();
     if (trybGrupowania == 4) mapaTagow        = appController.pobierzPrzypisaniaTagow();
+    if (trybGrupowania == 5) {
+        for (const auto& p : appController.pobierzPelnePlatformy())
+            mapaTypowNosnika.insert(p.id, p.typNosnika);
+    }
 
     // Mapa istniejących węzłów-folderów, by nie tworzyć duplikatów.
     QMap<QString, QTreeWidgetItem*> wezlyGlowne;
@@ -176,6 +181,11 @@ void PanelNawigacjiWidget::zaladujDaneDoDrzewa()
             nazwaGrupy = data.isValid()
                 ? QString("%1 %2").arg(polski.standaloneMonthName(data.month())).arg(data.year()).toUpper()
                 : "BRAK DATY";
+            break;
+        }
+        case 5: {
+            const QString typ = mapaTypowNosnika.value(medium->getIdPlatformy());
+            nazwaGrupy = typ.isEmpty() ? "Nieznany typ nośnika" : typ;
             break;
         }
         default:

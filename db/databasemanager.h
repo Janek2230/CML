@@ -30,8 +30,8 @@ public:
 
     // --- Multimedia (CRUD) ---
     QList<std::shared_ptr<Multimedia>> getAllMultimedia();
-    int  dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel);
-    bool aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel);
+    int  dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel, int rokWydania, const QString &tworcy);
+    bool aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel, int rokWydania, const QString &tworcy);
     bool usunMedium(int id);
     bool usunWieleMultimediow(const QList<int>& idList);
     bool zmienKategorieWielu(const QList<int>& idMultimediow, int nowaKategoriaId);
@@ -66,8 +66,10 @@ public:
 
     // --- Platformy ---
     QList<QPair<int, QString>> pobierzPlatformy();
-    int  dodajPlatforme(const QString &nazwa);
-    bool aktualizujPlatforme(int id, const QString &nazwa);
+    // Pełne dane platform wraz z typem nośnika: wiersz = [id, nazwa, typ_nosnika].
+    QList<QList<QVariant>>     pobierzSurowePlatformy();
+    int  dodajPlatforme(const QString &nazwa, const QString &typNosnika);
+    bool aktualizujPlatforme(int id, const QString &nazwa, const QString &typNosnika);
     // Analogicznie jak usunKategorie — usunPowiazane kontroluje los multimedia.
     bool usunPlatforme(int idPlat, bool usunPowiazane);
 

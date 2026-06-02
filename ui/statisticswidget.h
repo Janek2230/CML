@@ -30,7 +30,7 @@ signals:
 
 private:
     void odswiezPodsumowanieOgolne();
-    void odswiezPorzucone();
+    void odswiezNigdyNieukonczone();
     void odswiezUlubione();
     void odswiezKupkeWstydu();
 

@@ -22,8 +22,17 @@ qt_add_executable(CML
     controllers/appcontroller.h controllers/appcontroller.cpp
     models/multimedia.h models/platformy.h models/postep.h
     models/historia.h models/aktywnosc_statystyki.h
+)
 
-
+qt_add_resources(CML "resources"
+    PREFIX "/icons"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons"
+    FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/heart-filled.svg
+        ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/heart-outline.svg
+        ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/play.svg
+        ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/pause.svg
+        ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/reset.svg
 )
 
 target_include_directories(CML

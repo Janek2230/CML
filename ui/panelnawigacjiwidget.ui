@@ -65,6 +65,7 @@
          <item><property name="text"><string>Platforma</string></property></item>
          <item><property name="text"><string>Data dodania</string></property></item>
          <item><property name="text"><string>Tagi</string></property></item>
+         <item><property name="text"><string>Typ nośnika</string></property></item>
         </widget>
        </item>
       </layout>

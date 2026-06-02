@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>950</width>
-    <height>561</height>
+    <height>648</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -28,9 +28,6 @@
    </property>
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
-     <property name="whatsThis">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Porzucone&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
      <property name="currentIndex">
       <number>0</number>
      </property>
@@ -40,9 +37,15 @@
       </attribute>
       <layout class="QGridLayout" name="gridLayout_5">
        <item row="0" column="0">
-        <layout class="QVBoxLayout" name="verticalLayout_8">
+        <layout class="QVBoxLayout" name="verticalLayout_8" stretch="0,5,4">
          <item>
           <widget class="QGroupBox" name="groupBoxKPI">
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>90</height>
+            </size>
+           </property>
            <property name="title">
             <string>Stan biblioteki</string>
            </property>
@@ -52,12 +55,18 @@
               <property name="text">
                <string>Ulubiony tag: Brak danych</string>
               </property>
+              <property name="alignment">
+               <set>Qt::AlignmentFlag::AlignCenter</set>
+              </property>
              </widget>
             </item>
             <item row="0" column="1">
              <widget class="QLabel" name="lblSummaryPodejsciaTotal">
               <property name="text">
                <string>Podejścia: 0</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignmentFlag::AlignCenter</set>
               </property>
              </widget>
             </item>
@@ -66,12 +75,18 @@
               <property name="text">
                <string>Łączny przyrost jednostek: 0</string>
               </property>
+              <property name="alignment">
+               <set>Qt::AlignmentFlag::AlignCenter</set>
+              </property>
              </widget>
             </item>
             <item row="0" column="0">
              <widget class="QLabel" name="lblSummaryMediaTotal">
               <property name="text">
                <string>Media: 0</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignmentFlag::AlignCenter</set>
               </property>
              </widget>
             </item>
@@ -80,12 +95,18 @@
               <property name="text">
                <string>Łączny czas: 0h 0m</string>
               </property>
+              <property name="alignment">
+               <set>Qt::AlignmentFlag::AlignCenter</set>
+              </property>
              </widget>
             </item>
             <item row="0" column="2">
              <widget class="QLabel" name="lblSummarySesjeTotal">
               <property name="text">
                <string>Sesje: 0</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignmentFlag::AlignCenter</set>
               </property>
              </widget>
             </item>
@@ -145,37 +166,57 @@
           </layout>
          </item>
          <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_4">
+          <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,1">
            <item>
             <widget class="QGroupBox" name="groupBoxTagi">
              <property name="title">
               <string>Tagi i gatunki</string>
              </property>
-             <widget class="QTableWidget" name="tableSummaryTagi">
-              <property name="geometry">
-               <rect>
-                <x>10</x>
-                <y>30</y>
-                <width>441</width>
-                <height>192</height>
-               </rect>
+             <layout class="QVBoxLayout" name="verticalLayoutTagi">
+              <property name="leftMargin">
+               <number>10</number>
               </property>
-              <column>
-               <property name="text">
-                <string>Tag</string>
-               </property>
-              </column>
-              <column>
-               <property name="text">
-                <string>Liczba mediów</string>
-               </property>
-              </column>
-              <column>
-               <property name="text">
-                <string>Czas</string>
-               </property>
-              </column>
-             </widget>
+              <property name="topMargin">
+               <number>20</number>
+              </property>
+              <property name="rightMargin">
+               <number>10</number>
+              </property>
+              <property name="bottomMargin">
+               <number>10</number>
+              </property>
+              <item>
+               <widget class="QTableWidget" name="tableSummaryTagi">
+                <property name="styleSheet">
+                 <string notr="true">QTableWidget { border: none; background-color: transparent; } QHeaderView::section { background-color: transparent; border: none; font-weight: bold; color: #a0a0a0; border-bottom: 1px solid #3a3f44; padding: 4px; } QTableWidget::item { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 4px; }</string>
+                </property>
+                <property name="editTriggers">
+                 <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+                </property>
+                <property name="selectionMode">
+                 <enum>QAbstractItemView::SelectionMode::NoSelection</enum>
+                </property>
+                <property name="showGrid">
+                 <bool>false</bool>
+                </property>
+                <column>
+                 <property name="text">
+                  <string>Tag</string>
+                 </property>
+                </column>
+                <column>
+                 <property name="text">
+                  <string>Wpisy</string>
+                 </property>
+                </column>
+                <column>
+                 <property name="text">
+                  <string>Czas</string>
+                 </property>
+                </column>
+               </widget>
+              </item>
+             </layout>
             </widget>
            </item>
            <item>
@@ -183,25 +224,6 @@
              <property name="title">
               <string>Ściana Chwały</string>
              </property>
-             <layout class="QGridLayout" name="gridLayout_4">
-              <item row="0" column="0">
-               <layout class="QVBoxLayout" name="verticalLayout_7">
-                <item>
-                 <spacer name="verticalSpacer">
-                  <property name="orientation">
-                   <enum>Qt::Orientation::Vertical</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>20</width>
-                    <height>40</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-               </layout>
-              </item>
-             </layout>
             </widget>
            </item>
           </layout>
@@ -270,7 +292,14 @@
           </layout>
          </item>
          <item>
-          <widget class="QChartView" name="wykresSlupkowyAktywnosci"/>
+          <widget class="QChartView" name="wykresSlupkowyAktywnosci">
+           <property name="mouseTracking">
+            <bool>true</bool>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">background: transparent; border: none;</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </item>
@@ -412,7 +441,7 @@ QPushButton:pressed {
                   <x>0</x>
                   <y>0</y>
                   <width>298</width>
-                  <height>375</height>
+                  <height>462</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="sekcjaPlanowaneLayout"/>
@@ -447,7 +476,7 @@ QPushButton:pressed {
                   <x>0</x>
                   <y>0</y>
                   <width>298</width>
-                  <height>375</height>
+                  <height>462</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="sekcjaPrzerwaneLayout"/>
@@ -482,7 +511,7 @@ QPushButton:pressed {
                   <x>0</x>
                   <y>0</y>
                   <width>298</width>
-                  <height>375</height>
+                  <height>462</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="sekcjaWstrzymaneLayout"/>
@@ -497,7 +526,7 @@ QPushButton:pressed {
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="tabUlubione">
+     <widget class="QWidget" name="tabNigdyNieukonczone">
       <attribute name="title">
        <string>Nigdy nieukończone</string>
       </attribute>
@@ -507,13 +536,13 @@ QPushButton:pressed {
          <property name="widgetResizable">
           <bool>true</bool>
          </property>
-         <widget class="QWidget" name="layoutUlubione">
+         <widget class="QWidget" name="layoutNigdyNieukonczone">
           <property name="geometry">
            <rect>
             <x>0</x>
             <y>0</y>
             <width>922</width>
-            <height>500</height>
+            <height>587</height>
            </rect>
           </property>
          </widget>
@@ -521,7 +550,7 @@ QPushButton:pressed {
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="tabPorzucone">
+     <widget class="QWidget" name="tabUlubione">
       <attribute name="title">
        <string>Ulubione</string>
       </attribute>
@@ -531,13 +560,13 @@ QPushButton:pressed {
          <property name="widgetResizable">
           <bool>true</bool>
          </property>
-         <widget class="QWidget" name="layoutPorzucone">
+         <widget class="QWidget" name="layoutUlubione">
           <property name="geometry">
            <rect>
             <x>0</x>
             <y>0</y>
             <width>922</width>
-            <height>500</height>
+            <height>587</height>
            </rect>
           </property>
          </widget>

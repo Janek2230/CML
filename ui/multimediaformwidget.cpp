@@ -57,6 +57,8 @@ void MultimediaFormWidget::przygotujFormularz(int idMedium, int idDomyslnejKateg
         ui->editNowyTytul->clear();
         ui->spinNowyCel->setValue(1);
         ui->spinNowaOcena->setValue(0);
+        ui->spinNowyRok->setValue(0);   // 0 == "—" (nieznany rok)
+        ui->editNowyTworca->clear();
         if (idDomyslnejKategorii != 0) {
             int indexKat = ui->comboNowaKategoria->findData(idDomyslnejKategorii);
             if (indexKat != -1) ui->comboNowaKategoria->setCurrentIndex(indexKat);
@@ -74,6 +76,8 @@ void MultimediaFormWidget::przygotujFormularz(int idMedium, int idDomyslnejKateg
                 ui->editNowyTytul->setText(m->getTytul());
                 ui->spinNowyCel->setValue(m->getPostep().docelowa);
                 ui->spinNowaOcena->setValue(m->getOcena());
+                ui->spinNowyRok->setValue(m->getRokWydania());
+                ui->editNowyTworca->setText(m->getTworcy());
                 int idxKat = ui->comboNowaKategoria->findData(m->getIdKategorii());
                 ui->comboNowaKategoria->setCurrentIndex(idxKat != -1 ? idxKat : 0);
                 int idxPlat = ui->comboNowyTyp->findData(m->getIdPlatformy());
@@ -94,15 +98,17 @@ void MultimediaFormWidget::onBtnPotwierdzDodajClicked() {
     int idKat = ui->comboNowaKategoria->currentData().toInt();
     int idPlat = ui->comboNowyTyp->currentData().toInt();
     int cel = ui->spinNowyCel->value();
+    int rok = ui->spinNowyRok->value();                  // 0 == nieznany
+    QString tworca = ui->editNowyTworca->text().trimmed();
 
     bool sukces = false;
     int idDoTagow = -1; // Zmienna na ID do przypisania tagów
 
     if (czyTrybEdycji) {
-        sukces = appController.aktualizujDaneMedium(idEdytowanegoMedium, tytul, idKat, idPlat, cel);
+        sukces = appController.aktualizujDaneMedium(idEdytowanegoMedium, tytul, idKat, idPlat, cel, rok, tworca);
         idDoTagow = idEdytowanegoMedium;
     } else {
-        idDoTagow = appController.dodajNoweMedium(tytul, idKat, idPlat, cel);
+        idDoTagow = appController.dodajNoweMedium(tytul, idKat, idPlat, cel, rok, tworca);
         sukces = (idDoTagow > 0);
     }
 
@@ -128,6 +134,8 @@ void MultimediaFormWidget::onBtnPotwierdzDodajClicked() {
         ui->lblKomunikatFormularza->setStyleSheet("color: green; font-weight: bold;");
         ui->lblKomunikatFormularza->setText(czyTrybEdycji ? "Zaktualizowano: " + tytul : "Dodano do biblioteki: " + tytul);
         ui->editNowyTytul->clear();
+        ui->spinNowyRok->setValue(0);
+        ui->editNowyTworca->clear();
     } else {
         ui->lblKomunikatFormularza->setStyleSheet("color: red; font-weight: bold;");
         ui->lblKomunikatFormularza->setText("Błąd bazy danych!");

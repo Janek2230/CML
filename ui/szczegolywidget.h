@@ -43,7 +43,6 @@ private:
     void aktualizujStanPrzyciskowHistorii();
     void odswiezPrzyciskUlubione(bool czyUlubione);
     bool pokazDialogSesji(int& przyrost, int& sekundy, QString& notatka, const QString& tytul, bool edycja);
-    bool pokazDialogPodejscia(QString& status, int& aktualna, int& docelowa, int& ocena, QString& recenzja, const QString& tytul);
 
     Ui::SzczegolyWidget *ui;
     AppController& appController;

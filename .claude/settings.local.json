@@ -3,7 +3,12 @@
     "allow": [
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Janek\\\\source\\\\repos\\\\CML\" -Recurse -File | Select-Object FullName | ForEach-Object { $_.FullName } | Sort-Object)",
       "PowerShell($content = [System.IO.File]::ReadAllText\\('C:\\\\Users\\\\Janek\\\\source\\\\repos\\\\CML\\\\ui\\\\statisticswidget.cpp', [System.Text.Encoding]::UTF8\\); Write-Host \"TO KLUCZ found: $\\($content.Contains\\('TO KLUCZ'\\)\\)\")",
-      "Bash(xargs grep -l -i \"timeline\")"
+      "Bash(xargs grep -l -i \"timeline\")",
+      "Bash(Select-String -Path \"C:\\\\Users\\\\Janek\\\\source\\\\repos\\\\CML\\\\ui\\\\statisticswidget.cpp\" -Pattern \"setStretch|setMouseTracking\\\\\\(true\\\\\\)|setAlignment|setMaximumHeight|setColumnCount|setHorizontalHeaderLabels|setEditTriggers|setSelectionMode|setShowGrid|setStyleSheet.*transparent.*border.*none\")",
+      "Bash(Select-Object LineNumber, Line)",
+      "PowerShell($env:PATH = \"C:\\\\Qt\\\\6.10.2\\\\mingw_64\\\\bin;C:\\\\Qt\\\\Tools\\\\mingw1310_64\\\\bin;\" + $env:PATH; & \"C:\\\\Strawberry\\\\c\\\\bin\\\\ninja.exe\" -C \"build\\\\Desktop_Qt_6_10_2_MinGW_64_bit-Debug\" 2>&1 | Select-Object -Last 60)",
+      "PowerShell(Get-Process CML -ErrorAction SilentlyContinue)",
+      "Bash(where psql *)"
     ]
   }
 }

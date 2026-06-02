@@ -35,6 +35,11 @@
        <string>Nazwa</string>
       </property>
      </column>
+     <column>
+      <property name="text">
+       <string>Typ nośnika</string>
+      </property>
+     </column>
     </widget>
    </item>
    <item>

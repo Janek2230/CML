@@ -39,6 +39,13 @@ DECLARE
     v_tytuly_ksiazki TEXT[] := ARRAY['Diuna', 'Fundacja', 'Problem trzech ciał', 'Ślepowidzenie', 'Hyperion', 'Władca Pierścieni', 'Silmarillion', '1984', 'Zbrodnia i kara', 'Lód', 'Neuromancer'];
     v_tytuly_seriale TEXT[] := ARRAY['Breaking Bad', 'The Wire', 'Sopranos', 'Czarnobyl', 'Sukcesja', 'Dark', 'Stranger Things', 'The Office', 'Bojack Horseman', 'Arcane', 'Fargo'];
     v_tytuly_filmy TEXT[] := ARRAY['Skazani na Shawshank', 'Matrix', 'Incepcja', 'Pulp Fiction', 'Mroczny Rycerz', 'Interstellar', 'Gladiator', 'Chłopcy z ferajny', 'Forrest Gump', 'Blade Runner'];
+
+    -- Twórcy (autorzy / reżyserzy / studia) losowani per kategoria — zasilają statystykę "Pożeracz Twórców".
+    v_tworcy VARCHAR;
+    v_tworcy_gry TEXT[]     := ARRAY['CD Projekt RED', 'FromSoftware', 'Larian Studios', 'Supergiant Games', 'Valve', 'Rockstar Games'];
+    v_tworcy_ksiazki TEXT[] := ARRAY['Frank Herbert', 'Isaac Asimov', 'Liu Cixin', 'Stanisław Lem', 'Andrzej Sapkowski', 'J.R.R. Tolkien'];
+    v_tworcy_seriale TEXT[] := ARRAY['HBO', 'Netflix', 'Vince Gilligan', 'AMC', 'BBC'];
+    v_tworcy_filmy TEXT[]   := ARRAY['Christopher Nolan', 'Quentin Tarantino', 'Ridley Scott', 'Stanley Kubrick', 'Denis Villeneuve'];
 BEGIN
 
     -- 1. Inicjalizacja słowników - przypisuję sztywne ID dla pewności przy relacjach
@@ -72,29 +79,33 @@ BEGIN
             v_cat_rand := floor(random() * 4 + 1); 
             
             -- Determinowanie parametrów zależnych od kategorii
-            IF v_cat_rand = 1 THEN 
+            IF v_cat_rand = 1 THEN
                 v_plat := CASE WHEN random() > 0.5 THEN 1 ELSE 2 END;
                 v_tytul := v_tytuly_gry[floor(random() * array_length(v_tytuly_gry, 1) + 1)];
+                v_tworcy := v_tworcy_gry[floor(random() * array_length(v_tworcy_gry, 1) + 1)];
                 v_docelowa := 100;
-            ELSIF v_cat_rand = 2 THEN 
+            ELSIF v_cat_rand = 2 THEN
                 v_plat := CASE WHEN random() > 0.5 THEN 3 ELSE 4 END;
                 v_tytul := v_tytuly_ksiazki[floor(random() * array_length(v_tytuly_ksiazki, 1) + 1)];
+                v_tworcy := v_tworcy_ksiazki[floor(random() * array_length(v_tworcy_ksiazki, 1) + 1)];
                 v_docelowa := floor(random() * 700 + 200);
-            ELSIF v_cat_rand = 3 THEN 
+            ELSIF v_cat_rand = 3 THEN
                 v_plat := CASE WHEN random() > 0.5 THEN 5 ELSE 6 END;
                 v_tytul := v_tytuly_seriale[floor(random() * array_length(v_tytuly_seriale, 1) + 1)];
+                v_tworcy := v_tworcy_seriale[floor(random() * array_length(v_tworcy_seriale, 1) + 1)];
                 v_docelowa := floor(random() * 40 + 10);
-            ELSE 
+            ELSE
                 v_plat := CASE WHEN random() > 0.7 THEN 7 ELSE 5 END;
                 v_tytul := v_tytuly_filmy[floor(random() * array_length(v_tytuly_filmy, 1) + 1)];
+                v_tworcy := v_tworcy_filmy[floor(random() * array_length(v_tworcy_filmy, 1) + 1)];
                 v_docelowa := floor(random() * 120 + 90);
             END IF;
 
             -- Data dodania (losowy dzień z wylosowanego miesiąca, z blokadą na przyszłość)
             v_data_dodania := LEAST(v_month + (random() * 27 * interval '1 day'), v_end_date);
             
-            INSERT INTO multimedia (tytul, id_kategorii, id_platformy, data_dodania, rok_wydania)
-            VALUES (v_tytul, v_cat_rand, v_plat, v_data_dodania, floor(random() * 24 + 2000))
+            INSERT INTO multimedia (tytul, id_kategorii, id_platformy, data_dodania, rok_wydania, tworcy)
+            VALUES (v_tytul, v_cat_rand, v_plat, v_data_dodania, floor(random() * 24 + 2000), v_tworcy)
             RETURNING id INTO new_med_id;
             
             -- Losowe tagi (1-3 sztuki)
