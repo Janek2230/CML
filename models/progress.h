@@ -3,8 +3,7 @@
 
 #include <QString>
 
-// Stan bieżącego podejścia do medium — osadzony bezpośrednio w obiekcie Multimedia,
-// żeby widoki nie musiały osobno odpytywać tabeli podejść.
+// Stan bieżącego podejścia do medium — osadzony bezpośrednio w obiekcie Multimedia
 struct Progress {
     int aktualna = 0;
     int docelowa = 0;

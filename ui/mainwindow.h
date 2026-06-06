@@ -34,5 +34,10 @@ private:
     DetailsWidget        *szczegolyWidget;
 
     void pokazSzczegolyMedium(int idMedium);
+    void pokazPulpit();
+
+    // Szablon dla bliźniaczych dialogów zarządzania (Kategorie/Platformy/Tagi).
+    template <typename Dialog>
+    void otworzDialogZarzadzania();
 };
 #endif

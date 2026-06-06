@@ -6,10 +6,7 @@
 #include <QDateTime>
 #include "progress.h"
 
-// Dozwolone statusy medium / podejścia — jedyne źródło prawdy po stronie C++.
-// Wartości MUSZĄ odpowiadać enumowi typ_statusu w bazie (SQL/01_init_schemaV3.sql),
-// bo trafiają wprost do kolumny status. UI dzieli je na edytowalne (wybór w combo)
-// i terminalne (ustawiane dedykowanymi przyciskami "zakończ"/"porzuć").
+// Dozwolone statusy medium / podejścia
 namespace Status {
     inline const QString Planowane  = QStringLiteral("Planowane");
     inline const QString WTrakcie   = QStringLiteral("W trakcie");
@@ -23,10 +20,8 @@ namespace Status {
 }
 
 // Pojedyncze medium w bibliotece — książka, gra, serial, film itp.
-// Obiekt jest tworzony przez pobierzWszystkieMultimedia() i przekazywany jako shared_ptr.
 // Pola opcjonalne (dataDodania, ocena, ulubione...) wypełnia się zaraz po konstrukcji
-// na podstawie kolejnych kolumn zapytania SQL; domyślne wartości chronią przed UB,
-// gdy kolumna jest pusta lub pole nie zostanie ustawione.
+// na podstawie kolejnych kolumn zapytania SQL
 struct Multimedia {
     int id = 0;
     QString tytul;
@@ -39,8 +34,8 @@ struct Multimedia {
 
     int idPlatformy = 0;
     bool ulubione = false;
-    int rokWydania = 0;   // 0 == nieznany; z kolumny rok_wydania.
-    QString tworcy;       // Autor / reżyser / studio; może być puste.
+    int rokWydania = 0;   // 0 == nieznany, z kolumny rok_wydania.
+    QString tworcy;       // Autor / reżyser / studio, może być puste.
 };
 
 #endif

@@ -22,8 +22,11 @@ DashboardWidget::~DashboardWidget() {
 
 void DashboardWidget::odswiezStatystykiGlowne() {
     auto statystyki = appController.pobierzStatystykiGlobalne();
+    // Pusta biblioteka (brak jakichkolwiek mediów) — nie ma czego rysować.
     if (statystyki.value("Suma", 0) == 0) return;
 
+    // Po jednym wycinku koła na status: etykieta = nazwa statusu, rozmiar = liczba mediów
+    // o tym statusie. Brak klucza w mapie -> 0 (wycinek pusty, ale wciąż widoczny w legendzie).
     QPieSeries *seria = new QPieSeries();
     seria->append(Status::Planowane,  statystyki.value(Status::Planowane, 0));
     seria->append(Status::WTrakcie,   statystyki.value(Status::WTrakcie, 0));
@@ -31,6 +34,7 @@ void DashboardWidget::odswiezStatystykiGlowne() {
     seria->append(Status::Ukonczone,  statystyki.value(Status::Ukonczone, 0));
     seria->append(Status::Porzucone,  statystyki.value(Status::Porzucone, 0));
 
+    // Kolory wg kolejności dodania wycinków powyżej (0=Planowane ... 4=Porzucone).
     seria->slices().at(0)->setColor(QColor(0x7f, 0x8c, 0x8d));
     seria->slices().at(1)->setColor(QColor(0x29, 0x80, 0xb9));
     seria->slices().at(2)->setColor(QColor(0xf1, 0xc4, 0x0f));

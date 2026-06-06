@@ -9,6 +9,12 @@
 #include <QDialogButtonBox>
 #include <utility>
 
+namespace {
+// Rola węzła comboboxa kategorii: trzyma nazwę jednostki (np. "strony"),
+// używaną do etykiety "Cel (jednostka):".
+constexpr int ROLA_JEDNOSTKA = Qt::UserRole + 1;
+}
+
 MultimediaFormWidget::MultimediaFormWidget(AppController& controller, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::MultimediaFormWidget),
@@ -25,10 +31,8 @@ MultimediaFormWidget::MultimediaFormWidget(AppController& controller, QWidget *p
     connect(ui->comboNowaKategoria, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MultimediaFormWidget::obsluzZmianeKategorii);
 
     connect(ui->btnPotwierdzDodaj, &QPushButton::clicked, this, &MultimediaFormWidget::obsluzPotwierdzDodaj);
-
     connect(ui->btnDodajPlatforme, &QPushButton::clicked, this, &MultimediaFormWidget::obsluzSzybkaPlatforma);
     connect(ui->btnDodajKategorie, &QPushButton::clicked, this, &MultimediaFormWidget::obsluzSzybkaKategoria);
-
     connect(ui->btnDodajTag, &QPushButton::clicked, this, &MultimediaFormWidget::obsluzSzybkiTag);
 }
 
@@ -37,33 +41,19 @@ MultimediaFormWidget::~MultimediaFormWidget()
     delete ui;
 }
 
-void MultimediaFormWidget::obsluzSzybkiTag() {
-    bool ok;
-    QString nazwa = QInputDialog::getText(this, "Nowy Tag", "Podaj nazwę tagu:", QLineEdit::Normal, "", &ok);
-    if (ok && !nazwa.trimmed().isEmpty()) {
-        if (appController.dodajTag(nazwa.trimmed()) > 0) {
-            uzupelnijTagi();
-        }
-    }
-}
-
-
 void MultimediaFormWidget::przygotujFormularz(int idMedium, int idDomyslnejKategorii, int idDomyslnejPlatformy) {
-    // Stan trybu ustawiamy NAJPIERW — uzupelnijTagi() poniżej zależy od czyTrybEdycji
-    // oraz idEdytowanegoMedium, więc muszą dotyczyć TEGO wywołania. Inaczej tagi odtwarzają
-    // się z opóźnieniem o jedno przełączenie między "Dodaj" a "Edytuj".
     czyTrybEdycji = (idMedium != -1);
     idEdytowanegoMedium = idMedium;
 
     uzupelnijComboBoxy();
     uzupelnijTagi();
-    if (idMedium == -1) {
-        ui->label_6->setText("Dodaj nowe medium");
+    if (!czyTrybEdycji) {
+        ui->lblInfo->setText("Dodaj nowe medium");
         ui->btnPotwierdzDodaj->setText("Dodaj do biblioteki");
         ui->editNowyTytul->clear();
         ui->spinNowyCel->setValue(1);
         ui->spinNowaOcena->setValue(0);
-        ui->spinNowyRok->setValue(0);   // 0 == "—" (nieznany rok)
+        ui->spinNowyRok->setValue(0);
         ui->editNowyTworca->clear();
         if (idDomyslnejKategorii != 0) {
             int indeksKat = ui->comboNowaKategoria->findData(idDomyslnejKategorii);
@@ -74,7 +64,7 @@ void MultimediaFormWidget::przygotujFormularz(int idMedium, int idDomyslnejKateg
             if (indeksPlat != -1) ui->comboNowyTyp->setCurrentIndex(indeksPlat);
         }
     } else {
-        ui->label_6->setText("Edytuj medium");
+        ui->lblInfo->setText("Edytuj medium");
         ui->btnPotwierdzDodaj->setText("Zapisz zmiany");
         for (const auto& m : appController.pobierzWszystkieMultimedia()) {
             if (m->id == idMedium) {
@@ -93,6 +83,17 @@ void MultimediaFormWidget::przygotujFormularz(int idMedium, int idDomyslnejKateg
     }
 }
 
+
+void MultimediaFormWidget::obsluzSzybkiTag() {
+    bool ok;
+    QString nazwa = QInputDialog::getText(this, "Nowy Tag", "Podaj nazwę tagu:", QLineEdit::Normal, "", &ok);
+    if (ok && !nazwa.trimmed().isEmpty()) {
+        if (appController.dodajTag(nazwa.trimmed()) > 0) {
+            uzupelnijTagi();
+        }
+    }
+}
+
 void MultimediaFormWidget::obsluzPotwierdzDodaj() {
     QString tytul = ui->editNowyTytul->text().trimmed();
     if (tytul.isEmpty()) {
@@ -107,7 +108,7 @@ void MultimediaFormWidget::obsluzPotwierdzDodaj() {
     QString tworca = ui->editNowyTworca->text().trimmed();
 
     bool sukces = false;
-    int idDoTagow = -1; // Zmienna na ID do przypisania tagów
+    int idDoTagow = -1;
 
     if (czyTrybEdycji) {
         sukces = appController.aktualizujDaneMedium(idEdytowanegoMedium, tytul, idKat, idPlat, cel, rok, tworca);
@@ -118,7 +119,9 @@ void MultimediaFormWidget::obsluzPotwierdzDodaj() {
     }
 
     if (sukces) {
-        // Zapisujemy tagi dla nowo dodanego lub edytowanego medium.
+        // Zbieramy ID zaznaczonych tagów: przechodzimy po wszystkich pozycjach listy i dla
+        // każdej z zaznaczonym checkboxem (Qt::Checked) odczytujemy ID tagu schowane pod rolą
+        // Qt::UserRole (ustawioną w uzupelnijTagi)
         QList<int> wybraneTagi;
         for (int i = 0; i < ui->listTagi->count(); ++i) {
             if (ui->listTagi->item(i)->checkState() == Qt::Checked) {
@@ -127,7 +130,9 @@ void MultimediaFormWidget::obsluzPotwierdzDodaj() {
         }
         appController.ustawTagiDlaMedium(idDoTagow, wybraneTagi);
 
-        // Zapamiętujemy aktualny wybór przed przeładowaniem comboboxów.
+        // Odświeżamy listy w comboboxach, ale uzupelnijComboBoxy() buduje je od zera i przy
+        // okazji resetuje bieżący wybór (wraca na pozycję 0). Żeby użytkownik nie tracił
+        // wybranej kategorii/platformy po zapisie, zapamiętujemy ich ID
         int zapisaneIdKat = ui->comboNowaKategoria->currentData().toInt();
         int zapisaneIdPlat = ui->comboNowyTyp->currentData().toInt();
         uzupelnijComboBoxy();
@@ -148,24 +153,28 @@ void MultimediaFormWidget::obsluzPotwierdzDodaj() {
     }
 }
 
+// Przebudowuje od zera oba comboboxy (kategorii i platform) na podstawie aktualnych słowników z bazy
 void MultimediaFormWidget::uzupelnijComboBoxy() {
     ui->comboNowaKategoria->clear();
     ui->comboNowyTyp->clear();
 
+    // Placeholder kategorii: data 0 = brak wyboru, pod ROLA_JEDNOSTKA tekst zastępczy, żeby
+    // etykieta celu miała co czytać, dopóki nic nie wybrano.
     ui->comboNowaKategoria->addItem("--- Wybierz kategorię ---", 0);
-    ui->comboNowaKategoria->setItemData(0, "jednostka", Qt::UserRole + 1);
+    ui->comboNowaKategoria->setItemData(0, "jednostka", ROLA_JEDNOSTKA);
 
     auto kategorie = appController.pobierzKategorie();
     auto jednostki = appController.pobierzSlownikJednostek();
     for (const auto& kat : std::as_const(kategorie)) {
-        if (kat.first != 0) {
+        if (kat.first != 0) {   // 0 to "brak wyboru", realne id z bazy startują od 1
             ui->comboNowaKategoria->addItem(kat.second, kat.first);
             int idx = ui->comboNowaKategoria->count() - 1;
-            QString jedn = jednostki.value(kat.first, "Wartość");
-            ui->comboNowaKategoria->setItemData(idx, jedn, Qt::UserRole + 1);
+            QString jedn = jednostki.value(kat.first, "Wartość");   // "Wartość" gdy kategoria nie ma jednostki
+            ui->comboNowaKategoria->setItemData(idx, jedn, ROLA_JEDNOSTKA);
         }
     }
 
+    // Platformy — bez jednostek, tylko placeholder + nazwy.
     ui->comboNowyTyp->addItem("--- Wybierz platformę ---", 0);
     auto platformy = appController.pobierzPlatformy();
     for (const auto& plat : std::as_const(platformy)) {
@@ -210,24 +219,28 @@ void MultimediaFormWidget::obsluzSzybkaKategoria() {
 
 void MultimediaFormWidget::obsluzZmianeKategorii(int indeks) {
     if (indeks >= 0) {
-        QString jednostka = ui->comboNowaKategoria->itemData(indeks, Qt::UserRole + 1).toString();
+        QString jednostka = ui->comboNowaKategoria->itemData(indeks, ROLA_JEDNOSTKA).toString();
         ui->labJednostka->setText(jednostka.isEmpty() ? "Cel:" : "Cel (" + jednostka + "):");
     }
 }
 
+// Buduje listę tagów do zaznaczania: KAŻDY istniejący tag staje się pozycją z checkboxem.
+// W trybie edycji tagi już przypisane do medium są od razu zaznaczone, reszta odznaczona.
 void MultimediaFormWidget::uzupelnijTagi() {
     ui->listTagi->clear();
-    auto wszystkieTagi = appController.pobierzTagi();
+    const auto wszystkieTagi = appController.pobierzTagi();
 
-    // Pobieramy przypisania, aby wiedzieć co zaznaczyć w trybie edycji
+    // Mapa: id medium -> nazwy jego tagów. Wyciągamy listę dla edytowanego medium, żeby wiedzieć,
+    // które pozycje zaznaczyć (w trybie dodawania ta lista jest po prostu pusta).
     QMap<int, QStringList> przypisane = appController.pobierzPrzypisaniaTagow();
     QStringList tagiTegoMedium = przypisane.value(idEdytowanegoMedium);
 
     for (const auto& tag : wszystkieTagi) {
         QListWidgetItem* item = new QListWidgetItem(tag.second, ui->listTagi);
-        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-        item->setData(Qt::UserRole, tag.first);
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);   // włącza checkbox przy pozycji
+        item->setData(Qt::UserRole, tag.first);                    // ID tagu pod rolą UserRole (czyta je zapis)
 
+        // Zaznaczamy tylko w edycji i tylko tagi już przypisane.
         if (czyTrybEdycji && tagiTegoMedium.contains(tag.second)) {
             item->setCheckState(Qt::Checked);
         } else {

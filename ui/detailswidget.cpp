@@ -38,8 +38,7 @@ DetailsWidget::DetailsWidget(AppController& controller, QWidget *parent) :
 
 
     // Postęp zmienia się wyłącznie przez "Dodaj aktywność" (dialog ze stoperem), więc wartość
-    // aktualna i docelowa są tylko do odczytu — pełnią rolę wyświetlacza, nie edytora. Bez strzałek
-    // wyglądają jak etykiety; sam pasek postępu i tak ustawia ustawMedium() na podstawie modelu.
+    // aktualna i docelowa są tylko do odczytu — pełnią rolę wyświetlacza
     ui->spinDetaleAktualny->setReadOnly(true);
     ui->spinDetaleAktualny->setButtonSymbols(QAbstractSpinBox::NoButtons);
     ui->spinDetaleDocelowy->setReadOnly(true);
@@ -97,7 +96,7 @@ void DetailsWidget::ustawMedium(int idMedium) {
         ui->labNazwaPlatformy->setText(podtytul);
         odswiezPrzyciskUlubione(medium->ulubione);
 
-        // Ukończone/Porzucone mają zupełnie inny układ niż aktywne — różne przyciski, brak kontrolek postępu.
+        // Ukończone/Porzucone mają inny układ niż aktywne — różne przyciski, brak kontrolek postępu.
         bool czyZakonczone = (medium->status == Status::Ukonczone || medium->status == Status::Porzucone);
 
         if (czyZakonczone) {
@@ -139,7 +138,7 @@ void DetailsWidget::ustawMedium(int idMedium) {
             ui->frameKontrolkiPostepu->hide();
             ui->progressBarDetale->hide();
             ui->comboDetaleStatus->hide();
-            ui->label_2->hide();
+            ui->lblStatus->hide();   // etykieta "Status:"
             ui->btnSzybkaSesja->hide();
             ui->btnZakonczPodejscie->hide();
             ui->btnDetaleZapisz->hide();
@@ -160,7 +159,7 @@ void DetailsWidget::ustawMedium(int idMedium) {
             ui->frameKontrolkiPostepu->show();
             ui->progressBarDetale->show();
             ui->comboDetaleStatus->show();
-            ui->label_2->show();
+            ui->lblStatus->show();
             ui->btnSzybkaSesja->show();
             ui->btnZakonczPodejscie->show();
             ui->btnDetaleZapisz->show();
@@ -187,7 +186,7 @@ void DetailsWidget::ustawMedium(int idMedium) {
         ui->lblDetaleOcena->blockSignals(false);
 
         ui->lblDetaleOcena->show();
-        ui->label_4->show();
+        ui->lblOcena->show();
 
         ui->spinDetaleDocelowy->setValue(medium->postep.docelowa);
         ui->spinDetaleAktualny->setMaximum(medium->postep.docelowa);
@@ -216,7 +215,10 @@ void DetailsWidget::ustawMedium(int idMedium) {
 
             if (medium->status == Status::WTrakcie && dataStartuPodejscia.isValid()) {
                 int dniOdStartu = dataStartuPodejscia.daysTo(teraz);
-                int dniBezAkcji = medium->dataOstatniejAktywnosci.daysTo(teraz);
+                // Nowe podejście nie ma jeszcze sesji. Brak postępu liczymy od późniejszej
+                // z dat — startu podejścia albo ostatniej sesji — żeby świeże podejście dało 0 dni.
+                QDateTime odKiedyBrakPostepu = qMax(medium->dataOstatniejAktywnosci, dataStartuPodejscia);
+                int dniBezAkcji = odKiedyBrakPostepu.daysTo(teraz);
                 // Czerwony kolor po 30 dniach bez żadnej sesji.
                 QString kolorBrakPostepu = (dniBezAkcji > 30) ? "#e74c3c" : palette().color(QPalette::WindowText).name();
                 tekstLicznikow += QString(" | Podejście aktywne od: <b>%1 dni</b> | Brak postępu od: <b style='color:%2;'>%3 dni</b>").arg(dniOdStartu).arg(kolorBrakPostepu).arg(dniBezAkcji);
@@ -253,8 +255,8 @@ void DetailsWidget::obsluzZapisz() {
     }
 
     if (appController.aktualizujPostep(aktualneIdMedium, nowyStatus, nowaAktualna, nowaDocelowa, ocena)) {
-        ustawMedium(aktualneIdMedium);   // odśwież widok — może zmienił się układ przycisków (np. przejście do widoku zakończonego)
-        emit daneZaktualizowane();       // powiadom resztę aplikacji (np. listę mediów) że dane się zmieniły
+        ustawMedium(aktualneIdMedium);   // odśwież widok
+        emit daneZaktualizowane();       // powiadom resztę aplikacji że dane się zmieniły
         QMessageBox::information(this, "Sukces", "Zapisano zmiany!");
     }
 }
@@ -367,7 +369,7 @@ void DetailsWidget::aktualizujStanPrzyciskowHistorii() {
         ui->btnUsunZaznaczone->setEnabled(true);
         ui->btnUsunZaznaczone->setText("Usuń sesję");
     } else {
-        // Nieznany typ — defensywnie wyłącz przyciski.
+        // Nieznany typ — wyłącz przyciski.
         ui->btnEdytujZaznaczone->setEnabled(false);
         ui->btnUsunZaznaczone->setEnabled(false);
     }
@@ -381,7 +383,7 @@ bool DetailsWidget::pokazDialogSesji(int& przyrost, int& sekundy, QString& notat
     dialog.setMinimumWidth(380);
     auto* glownyUklad = new QVBoxLayout(&dialog);
 
-    // Sekcja postępu — spinner z zakresem ujemnym bo można cofnąć postęp (np. korekta błędu).
+    // Sekcja postępu z zakresem ujemnym bo można cofnąć postęp (np. korekta błędu).
     auto* groupPrzyrost = new QGroupBox("Postęp", &dialog);
     auto* formPrzyrost = new QFormLayout(groupPrzyrost);
     auto* spinPrzyrost = new QSpinBox(&dialog);
@@ -393,8 +395,8 @@ bool DetailsWidget::pokazDialogSesji(int& przyrost, int& sekundy, QString& notat
     // Górny limit przyrostu, żeby nie przekroczyć celu podejścia (np. przy 350/500 zostaje 150).
     // Konkretną wartość liczy wywołujący — dla nowej sesji i dla edycji limit jest inny — a tu
     // tylko ją stosujemy. -1 oznacza brak limitu. qMax(..., przyrost) pilnuje, by limit nie zszedł
-    // poniżej wartości już wpisanej w sesji: inaczej setValue przyciąłby ją i cicho zmienił dane
-    // przy samym otwarciu dialogu edycji. Dolny zakres ujemny zostaje — postęp można cofnąć.
+    // poniżej wartości już wpisanej w sesji.
+    //  Dolny zakres ujemny zostaje — postęp można cofnąć.
     int gornyLimit = 9999;
     QString etykietaPostepu = QString("Zdobyte (%1):").arg(nazwaJednostki);
     if (maksymalnyPrzyrost >= 0) {
@@ -596,8 +598,8 @@ void DetailsWidget::obsluzEdytujZaznaczone() {
 
                 // Limit edycji liczymy z podejścia-rodzica (p), nie z panelu — sesja może należeć
                 // do innego, już zakończonego podejścia. Nowy przyrost nie może wypchnąć sumy ponad
-                // cel: maks = cel - aktualna_podejścia + stary przyrost tej sesji (bo aktualna już
-                // zawiera stary przyrost). Cel <= 0 → brak limitu (-1).
+                // maks = cel - aktualna_podejścia + stary przyrost tej sesji (bo aktualna już
+                // zawiera stary przyrost). Cel <= 0 -> brak limitu (-1).
                 int limit = p.docelowa > 0 ? qMax(0, p.docelowa - p.aktualna + s.przyrost) : -1;
 
                 // Otwórz dialog w trybie edycji (true = walidacja pustych danych wyłączona).
@@ -623,6 +625,15 @@ void DetailsWidget::obsluzUsunZaznaczone() {
     if (!item) return;
 
     const auto typ = static_cast<TypHistoriiElementu>(item->data(0, ROLA_TYP).toInt());
+
+    // Nie pozwalamy usunąć jedynego podejścia
+    if (typ == TypHistoriiElementu::Podejscie && appController.pobierzHistorie(aktualneIdMedium).size() <= 1) {
+        QMessageBox::information(this, "Nie można usunąć",
+            "To jedyne podejście tego medium — nie można go usunąć.\n"
+            "Jeśli chcesz zacząć od nowa, zakończ je i utwórz nowe podejście, "
+            "albo usuń całe medium z biblioteki.");
+        return;
+    }
 
     // Potwierdzenie usunięcia — operacja nieodwracalna.
     QString etykieta = (typ == TypHistoriiElementu::Podejscie) ? "podejście" : "sesję";
@@ -653,8 +664,7 @@ void DetailsWidget::obsluzUsunZaznaczone() {
     emit daneZaktualizowane();
 }
 
-// Aktualizuje wygląd przycisku ulubionych — ikonę i tooltip zależnie od stanu.
-// Wywoływana zarówno przy ładowaniu medium jak i po kliknięciu przycisku.
+// Aktualizuje wygląd przycisku ulubionych
 void DetailsWidget::odswiezPrzyciskUlubione(bool czyUlubione) {
     ui->btnUlubione->setIcon(QIcon(czyUlubione ? ":/icons/heart-filled.svg" : ":/icons/heart-outline.svg"));
     ui->btnUlubione->setIconSize(QSize(22, 22));
@@ -691,7 +701,7 @@ void DetailsWidget::obsluzSzybkaSesja() {
     int idPodejscia = aktywne.id;
     int przyrost = 0; int sekundy = 0; QString notatka;
 
-    // Limit przyrostu = ile brakuje do celu aktywnego podejścia. Cel <= 0 → brak limitu (-1).
+    // Limit przyrostu = ile brakuje do celu aktywnego podejścia. Cel <= 0 -> brak limitu (-1).
     int limit = aktywne.docelowa > 0 ? qMax(0, aktywne.docelowa - aktywne.aktualna) : -1;
 
     // Tryb nowej sesji (false)
@@ -707,7 +717,7 @@ void DetailsWidget::obsluzSzybkaSesja() {
 void DetailsWidget::obsluzNowePodejscie() {
     if (aktualneIdMedium == -1) return;
 
-    // Domyślny cel to poprzedni cel — użytkownik może go zmienić w dialogu.
+    // Domyślny cel to poprzedni cel
     bool ok;
     int nowyCel = QInputDialog::getInt(
         this, "Nowe podejście",
@@ -748,7 +758,7 @@ void DetailsWidget::obsluzCofnijZakonczenie() {
 void DetailsWidget::obsluzZakonczPodejscie() {
     int akt = ui->spinDetaleAktualny->value();
     int doc = ui->spinDetaleDocelowy->value();
-    // Cel osiągnięty jeśli aktualna >= docelowa i docelowa jest sensowna (> 0).
+    // Cel osiągnięty jeśli aktualna >= docelowa i docelowa jest > 0.
     bool osiagnietoCel = (akt >= doc && doc > 0);
 
     const auto historia = appController.pobierzHistorie(aktualneIdMedium);

@@ -10,6 +10,8 @@ class MultimediaFormWidget;
 
 class MultimediaFormWidget : public QWidget
 {
+    // Q_OBJECT: makro wymagane w każdej klasie QObject, która korzysta z sygnałów/slotów,
+    // właściwości (Q_PROPERTY) lub introspekcji.
     Q_OBJECT
 
 public:

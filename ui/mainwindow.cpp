@@ -16,6 +16,7 @@ MainWindow::MainWindow(QWidget *parent)
             "Nie udało się połączyć z bazą danych.\nSprawdź plik config.ini.");
     }
 
+    // Widoki
     osCzasuWidget = new TimelineView(appController, this);
     ui->daneSzczegolowe->addWidget(osCzasuWidget);
 
@@ -34,28 +35,14 @@ MainWindow::MainWindow(QWidget *parent)
     panelNawigacji = new NavigationPanelWidget(appController, this);
     ui->splitter->insertWidget(0, panelNawigacji);
 
-    connect(ui->actionKategorie, &QAction::triggered, this, [this]() {
-        CategoriesDialog dialog(appController, this);
-        dialog.exec();
-        pulpitWidget->odswiezStatystykiGlowne();
-    });
-
-    connect(ui->actionPlatformy, &QAction::triggered, this, [this]() {
-        PlatformsDialog dialog(appController, this);
-        dialog.exec();
-        pulpitWidget->odswiezStatystykiGlowne();
-    });
-
-    connect(ui->actionTagi, &QAction::triggered, this, [this]() {
-        TagsDialog dialog(appController, this);
-        dialog.exec();
-        pulpitWidget->odswiezStatystykiGlowne();
-    });
+    // Połączenia sygnałów
+    connect(ui->actionKategorie, &QAction::triggered, this, [this]() { otworzDialogZarzadzania<CategoriesDialog>(); });
+    connect(ui->actionPlatformy, &QAction::triggered, this, [this]() { otworzDialogZarzadzania<PlatformsDialog>(); });
+    connect(ui->actionTagi,      &QAction::triggered, this, [this]() { otworzDialogZarzadzania<TagsDialog>(); });
 
     connect(ui->actionStronaGlowna, &QAction::triggered, this, [this]() {
         panelNawigacji->show();
-        ui->daneSzczegolowe->setCurrentWidget(pulpitWidget);
-        pulpitWidget->odswiezStatystykiGlowne();
+        pokazPulpit();
     });
 
     connect(ui->actionStatystyki, &QAction::triggered, this, [this]() {
@@ -69,8 +56,7 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     connect(panelNawigacji, &NavigationPanelWidget::zadaniePowrotuDoDashboardu, this, [this]() {
-        ui->daneSzczegolowe->setCurrentWidget(pulpitWidget);
-        pulpitWidget->odswiezStatystykiGlowne();
+        pokazPulpit();
     });
 
     connect(panelNawigacji, &NavigationPanelWidget::zadanieDodaniaMedium, this, [this](int idKat, int idPlat) {
@@ -84,12 +70,11 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     connect(formularzWidget, &MultimediaFormWidget::daneZapisane, this, [this]() {
-        pulpitWidget->odswiezStatystykiGlowne();
-        ui->daneSzczegolowe->setCurrentWidget(pulpitWidget);
+        pokazPulpit();
     });
 
     connect(formularzWidget, &MultimediaFormWidget::formularzAnulowany, this, [this]() {
-        ui->daneSzczegolowe->setCurrentWidget(pulpitWidget);
+        pokazPulpit();
     });
 
     connect(szczegolyWidget, &DetailsWidget::daneZaktualizowane, this, [this]() {
@@ -98,12 +83,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(pulpitWidget, &DashboardWidget::zadaniePokazaniaSzczegolow, this, [this](int id) {
         pokazSzczegolyMedium(id);
-        ui->statusbar->showMessage("Przełączono na szczegóły!", 3000);
     });
 
     connect(statystykiWidget, &StatisticsWidget::zadaniePokazaniaSzczegolow, this, [this](int id) {
         pokazSzczegolyMedium(id);
-        ui->statusbar->showMessage("Otworzono propozycję z Kupki Wstydu.", 3000);
     });
 
     connect(&appController, &AppController::daneZmienione, this, [this]() {
@@ -118,9 +101,9 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
 
+    // Widok startowy
     panelNawigacji->odswiezDrzewo();
-    pulpitWidget->odswiezStatystykiGlowne();
-    ui->daneSzczegolowe->setCurrentWidget(pulpitWidget);
+    pokazPulpit();
 }
 
 MainWindow::~MainWindow()
@@ -132,4 +115,17 @@ void MainWindow::pokazSzczegolyMedium(int idMedium) {
     panelNawigacji->show();
     szczegolyWidget->ustawMedium(idMedium);
     ui->daneSzczegolowe->setCurrentWidget(szczegolyWidget);
+}
+
+void MainWindow::pokazPulpit() {
+    ui->daneSzczegolowe->setCurrentWidget(pulpitWidget);
+    pulpitWidget->odswiezStatystykiGlowne();
+}
+
+// Otwiera modalny dialog zarządzania
+template <typename Dialog>
+void MainWindow::otworzDialogZarzadzania() {
+    Dialog dialog(appController, this);
+    dialog.exec();
+    pulpitWidget->odswiezStatystykiGlowne();
 }

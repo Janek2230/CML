@@ -45,7 +45,7 @@
         </spacer>
        </item>
        <item>
-        <widget class="QLabel" name="label_6">
+        <widget class="QLabel" name="lblInfo">
          <property name="text">
           <string>Dodaj nowe medium</string>
          </property>

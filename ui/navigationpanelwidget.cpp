@@ -17,7 +17,9 @@ NavigationPanelWidget::NavigationPanelWidget(AppController& controller, QWidget 
 {
     ui->setupUi(this);
 
+    // Własne menu kontekstowe (prawy klik) — obsługiwane w pokazMenuDrzewa.
     ui->kategorie->setContextMenuPolicy(Qt::CustomContextMenu);
+    // Zaznaczanie wielu pozycji (Ctrl/Shift) — pod akcje grupowe: usuń / zmień kategorię wielu.
     ui->kategorie->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
     // Przebudowanie drzewa przy każdej zmianie trybu grupowania.
@@ -65,6 +67,8 @@ void NavigationPanelWidget::obsluzWyborElementuDrzewa(QTreeWidgetItem *item, int
     emit zadaniePokazaniaSzczegolow(idWybranegoElementu);
 }
 
+// Filtruje drzewo w miejscu (bez przebudowy): ukrywa tytuły niepasujące do tekstu, a foldery
+// bez żadnego trafienia chowa w całości. Foldery z trafieniami rozwija. Pusty tekst = pokaż wszystko.
 void NavigationPanelWidget::obsluzWyszukiwanie(const QString &tekst)
 {
     if (ui->kategorie->topLevelItemCount() == 0) return;
@@ -94,6 +98,9 @@ void NavigationPanelWidget::zaladujDaneDoDrzewa()
     ui->kategorie->clear();
     listaMultimediow = appController.pobierzWszystkieMultimedia();
 
+    // Tryb grupowania = indeks pozycji w comboGrupowanie. Te numery sterują całą funkcją:
+    //   0 = Kategoria, 1 = Status, 2 = Platforma, 3 = Data dodania (miesiąc rok),
+    //   4 = Tagi (relacja wiele-do-wielu), 5 = Typ nośnika.
     const int trybGrupowania = ui->comboGrupowanie->currentIndex();
 
     // Pobieramy tylko te dane słownikowe, których aktualnie potrzebujemy.
