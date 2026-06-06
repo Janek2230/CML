@@ -37,27 +37,13 @@ DetailsWidget::DetailsWidget(AppController& controller, QWidget *parent) :
     ui->treeHistoria->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
 
 
-    // Zmiana aktualnej wartości - przelicz pasek postępu + auto-zmień status z "Planowane" na "W trakcie".
-    connect(ui->spinDetaleAktualny, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int val) {
-        int maxVal = ui->spinDetaleDocelowy->value();
-        if (maxVal > 0) {
-            int procent = (static_cast<double>(val) / maxVal) * 100;
-            ui->progressBarDetale->setValue(procent);
-        }
-        if (val > 0 && ui->comboDetaleStatus->currentText() == Status::Planowane) {
-            ui->comboDetaleStatus->setCurrentText(Status::WTrakcie);
-        }
-    });
-
-    // Zmiana wartości docelowej - zaktualizuj maksimum spina aktualnego i pasek postępu.
-    connect(ui->spinDetaleDocelowy, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int maxVal) {
-        ui->spinDetaleAktualny->setMaximum(maxVal);
-        int val = ui->spinDetaleAktualny->value();
-        if (maxVal > 0) {
-            int procent = (static_cast<double>(val) / maxVal) * 100;
-            ui->progressBarDetale->setValue(procent);
-        }
-    });
+    // Postęp zmienia się wyłącznie przez "Dodaj aktywność" (dialog ze stoperem), więc wartość
+    // aktualna i docelowa są tylko do odczytu — pełnią rolę wyświetlacza, nie edytora. Bez strzałek
+    // wyglądają jak etykiety; sam pasek postępu i tak ustawia ustawMedium() na podstawie modelu.
+    ui->spinDetaleAktualny->setReadOnly(true);
+    ui->spinDetaleAktualny->setButtonSymbols(QAbstractSpinBox::NoButtons);
+    ui->spinDetaleDocelowy->setReadOnly(true);
+    ui->spinDetaleDocelowy->setButtonSymbols(QAbstractSpinBox::NoButtons);
 
     // Kliknięcie węzła w drzewie historii - pokaż szczegóły wybranego elementu.
     connect(ui->treeHistoria, &QTreeWidget::itemClicked, this, [this](QTreeWidgetItem *item, int) {
@@ -389,7 +375,7 @@ void DetailsWidget::aktualizujStanPrzyciskowHistorii() {
 
 // Wyświetla dialog dodawania lub edycji sesji. Zwraca true jeśli użytkownik zatwierdził,
 // false jeśli anulował lub dane były puste.
-bool DetailsWidget::pokazDialogSesji(int& przyrost, int& sekundy, QString& notatka, const QString& tytul, bool edycja) {
+bool DetailsWidget::pokazDialogSesji(int& przyrost, int& sekundy, QString& notatka, const QString& tytul, bool edycja, int maksymalnyPrzyrost) {
     QDialog dialog(this);
     dialog.setWindowTitle(tytul);
     dialog.setMinimumWidth(380);
@@ -399,14 +385,26 @@ bool DetailsWidget::pokazDialogSesji(int& przyrost, int& sekundy, QString& notat
     auto* groupPrzyrost = new QGroupBox("Postęp", &dialog);
     auto* formPrzyrost = new QFormLayout(groupPrzyrost);
     auto* spinPrzyrost = new QSpinBox(&dialog);
-    spinPrzyrost->setRange(-9999, 9999);
-    spinPrzyrost->setValue(przyrost);
 
     // Nazwa jednostki pobierana z aktywnego widoku detali, żeby etykieta była konkretna (np. "strony").
     QString nazwaJednostki = ui->lblDetaleJednostka->text();
     if(nazwaJednostki.isEmpty()) nazwaJednostki = "jednostek";
 
-    formPrzyrost->addRow(QString("Zdobyte (%1):").arg(nazwaJednostki), spinPrzyrost);
+    // Górny limit przyrostu, żeby nie przekroczyć celu podejścia (np. przy 350/500 zostaje 150).
+    // Konkretną wartość liczy wywołujący — dla nowej sesji i dla edycji limit jest inny — a tu
+    // tylko ją stosujemy. -1 oznacza brak limitu. qMax(..., przyrost) pilnuje, by limit nie zszedł
+    // poniżej wartości już wpisanej w sesji: inaczej setValue przyciąłby ją i cicho zmienił dane
+    // przy samym otwarciu dialogu edycji. Dolny zakres ujemny zostaje — postęp można cofnąć.
+    int gornyLimit = 9999;
+    QString etykietaPostepu = QString("Zdobyte (%1):").arg(nazwaJednostki);
+    if (maksymalnyPrzyrost >= 0) {
+        gornyLimit = qMax(maksymalnyPrzyrost, przyrost);
+        etykietaPostepu = QString("Zdobyte (%1, maks. %2):").arg(nazwaJednostki).arg(gornyLimit);
+    }
+    spinPrzyrost->setRange(-9999, gornyLimit);
+    spinPrzyrost->setValue(przyrost);
+
+    formPrzyrost->addRow(etykietaPostepu, spinPrzyrost);
     glownyUklad->addWidget(groupPrzyrost);
 
     // Sekcja czasu — stoper i ręczna korekta działają niezależnie, ale są zsynchronizowane.
@@ -596,9 +594,15 @@ void DetailsWidget::obsluzEdytujZaznaczone() {
                 int sekundy = s.sekundy;
                 QString notatka = s.notatka;
 
+                // Limit edycji liczymy z podejścia-rodzica (p), nie z panelu — sesja może należeć
+                // do innego, już zakończonego podejścia. Nowy przyrost nie może wypchnąć sumy ponad
+                // cel: maks = cel - aktualna_podejścia + stary przyrost tej sesji (bo aktualna już
+                // zawiera stary przyrost). Cel <= 0 → brak limitu (-1).
+                int limit = p.docelowa > 0 ? qMax(0, p.docelowa - p.aktualna + s.przyrost) : -1;
+
                 // Otwórz dialog w trybie edycji (true = walidacja pustych danych wyłączona).
                 // Jeśli użytkownik kliknął Anuluj, funkcja zwraca false — przerywamy bez zapisu.
-                if (!pokazDialogSesji(przyrost, sekundy, notatka, "Edytuj sesję", true)) {
+                if (!pokazDialogSesji(przyrost, sekundy, notatka, "Edytuj sesję", true, limit)) {
                     return;
                 }
                 if (!appController.aktualizujSesje(idSesji, przyrost, sekundy, notatka)) {
@@ -683,11 +687,15 @@ void DetailsWidget::obsluzSzybkaSesja() {
     if (historia.isEmpty()) return;
 
     // Sesja trafia zawsze do pierwszego podejścia na liście — to jest aktywne podejście.
-    int idPodejscia = historia.first().id;
+    const auto& aktywne = historia.first();
+    int idPodejscia = aktywne.id;
     int przyrost = 0; int sekundy = 0; QString notatka;
 
+    // Limit przyrostu = ile brakuje do celu aktywnego podejścia. Cel <= 0 → brak limitu (-1).
+    int limit = aktywne.docelowa > 0 ? qMax(0, aktywne.docelowa - aktywne.aktualna) : -1;
+
     // Tryb nowej sesji (false)
-    if (pokazDialogSesji(przyrost, sekundy, notatka, "Szybkie dodawanie aktywności", false)) {
+    if (pokazDialogSesji(przyrost, sekundy, notatka, "Szybkie dodawanie aktywności", false, limit)) {
         if (appController.dodajSesje(idPodejscia, przyrost, sekundy, notatka)) {
             ustawMedium(aktualneIdMedium);
             emit daneZaktualizowane();

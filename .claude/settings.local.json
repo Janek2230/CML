@@ -8,7 +8,13 @@
       "Bash(Select-Object LineNumber, Line)",
       "PowerShell($env:PATH = \"C:\\\\Qt\\\\6.10.2\\\\mingw_64\\\\bin;C:\\\\Qt\\\\Tools\\\\mingw1310_64\\\\bin;\" + $env:PATH; & \"C:\\\\Strawberry\\\\c\\\\bin\\\\ninja.exe\" -C \"build\\\\Desktop_Qt_6_10_2_MinGW_64_bit-Debug\" 2>&1 | Select-Object -Last 60)",
       "PowerShell(Get-Process CML -ErrorAction SilentlyContinue)",
-      "Bash(where psql *)"
+      "Bash(where psql *)",
+      "Bash(git rm *)",
+      "PowerShell($bd = \"build\\\\Desktop_Qt_6_11_0_MinGW_64_bit-Debugowa\"; $cm = \\(Get-Command cmake -ErrorAction SilentlyContinue\\); if \\($cm\\) { \"cmake: $\\($cm.Source\\)\" } else { \"cmake NOT on PATH\" }; Test-Path \"$bd\\\\CMakeCache.txt\")",
+      "PowerShell($env:Path = \"C:\\\\Qt\\\\Tools\\\\mingw1310_64\\\\bin;\" + $env:Path; $bd = \"build\\\\Desktop_Qt_6_11_0_MinGW_64_bit-Debugowa\"; cmake --build $bd --parallel 2>&1 | Select-Object -Last 40)",
+      "Bash(grep -vE \"qDebug|//\")",
+      "Bash(cmake --version)",
+      "Bash(cmake --build \"build/Desktop_Qt_6_11_0_MinGW_64_bit-Debugowa\" --target CML)"
     ]
   }
 }

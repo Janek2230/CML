@@ -42,7 +42,9 @@ private:
 
     void aktualizujStanPrzyciskowHistorii();
     void odswiezPrzyciskUlubione(bool czyUlubione);
-    bool pokazDialogSesji(int& przyrost, int& sekundy, QString& notatka, const QString& tytul, bool edycja);
+    // maksymalnyPrzyrost: górny limit pola przyrostu, żeby nie przekroczyć celu podejścia.
+    // -1 oznacza brak limitu (pozycja bez ustalonej wartości docelowej).
+    bool pokazDialogSesji(int& przyrost, int& sekundy, QString& notatka, const QString& tytul, bool edycja, int maksymalnyPrzyrost);
 
     Ui::DetailsWidget *ui;
     AppController& appController;
