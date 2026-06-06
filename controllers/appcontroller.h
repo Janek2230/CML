@@ -5,9 +5,8 @@
 #include <QVariantMap>
 #include "databasemanager.h"
 
-// AppController jest cienką warstwą pośrednią między widżetami UI a DatabaseManager.
-// Jego jedyna odpowiedzialność biznesowa: po każdej mutacji danych emitować daneZmienione(),
-// żeby drzewo nawigacji i dashboard automatycznie się odświeżyły.
+// AppController jest warstwą pośrednią między widżetami UI a DatabaseManager.
+// emituje daneZmienione(), żeby drzewo nawigacji i dashboard automatycznie się odświeżyły.
 // Widżety nigdy nie wywołują DatabaseManager bezpośrednio.
 class AppController : public QObject {
     Q_OBJECT
@@ -16,9 +15,8 @@ public:
 
     bool inicjalizujBaze();
 
-    // --- Multimedia ---
+    // Multimedia
     QList<std::shared_ptr<Multimedia>> pobierzWszystkieMultimedia();
-    QList<std::shared_ptr<Multimedia>> pobierzKupkeWstydu();
     int  dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel, int rokWydania = 0, const QString &tworcy = QString());
     bool aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel, int rokWydania = 0, const QString &tworcy = QString());
     bool usunMedium(int idMedium);
@@ -27,35 +25,33 @@ public:
     bool ustawUlubione(int idMedium, bool ulubione);
     QList<int> pobierzOstatnioAktywne(int limit);
 
-    // --- Postęp ---
+    // Postęp
     bool czyOsiagnietoCel(int aktualna, int docelowa);
-    // aktualizujPostep celowo NIE emituje daneZmienione — patrz implementacja.
     bool aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa, int ocena);
     bool zacznijOdNowa(int idMedium);
 
-    // --- Podejścia ---
+    // Podejścia
     bool dodajPodejscie(int idMedium, const QString& status, int docelowa);
     bool aktualizujPodejscie(int idPodejscia, const QString& status, int aktualna, int docelowa, int ocena, const QString& recenzja);
     bool usunPodejscie(int idPodejscia);
 
-    // --- Sesje ---
+    // Sesje
     bool dodajSesje(int idPodejscia, int przyrost, int sekundy, const QString& notatka);
     bool aktualizujSesje(int idSesji, int przyrost, int sekundy, const QString& notatka);
     bool usunSesje(int idSesji);
 
-    // --- Kategorie ---
+    // Kategorie
     struct KategoriaModel { int id; QString nazwa; QString jednostka; };
     QMap<int, QString>         getCategories();
     QList<QPair<int, QString>> pobierzKategorie();
     QList<KategoriaModel>      pobierzPelneKategorie();
     QStringList                pobierzUnikalneJednostki();
     QMap<int, QString>         pobierzSlownikJednostek();
-    QStringList                pobierzDostepneStatusy();
     bool dodajKategorie(const QString &nazwa, const QString &jednostka);
     bool aktualizujKategorie(int id, const QString &nazwa, const QString &jednostka);
     bool usunKategorie(int idKat, bool usunPowiazane);
 
-    // --- Platformy ---
+    // Platformy
     struct PlatformaModel { int id; QString nazwa; QString typNosnika; };
     QList<QPair<int, QString>> pobierzPlatformy();
     QList<PlatformaModel>      pobierzPelnePlatformy();
@@ -63,7 +59,7 @@ public:
     bool aktualizujPlatforme(int id, const QString &nazwa, const QString &typNosnika = QString());
     bool usunPlatforme(int idPlat, bool usunPowiazane);
 
-    // --- Tagi ---
+    // Tagi
     QList<QPair<int, QString>> pobierzTagi();
     QMap<int, QStringList>     pobierzPrzypisaniaTagow();
     int  dodajTag(const QString &nazwa);
@@ -71,11 +67,11 @@ public:
     bool usunTag(int idTagu);
     bool ustawTagiDlaMedium(int idMedium, const QList<int>& idTagow);
 
-    // --- Historia i podgląd ---
+    // Historia i podgląd
     QList<PodejscieHistoryczne> pobierzHistorie(int idMedium);
     QList<PodejscieHistoryczne> pobierzWszystkieRecenzje();
 
-    // --- Statystyki ---
+    // Statystyki
     QMap<QString, int>  getGlobalStats();
     QVariantMap         pobierzStatystykiPodsumowania();
     QList<QVariantMap>  pobierzPodsumowanieKategorii();
@@ -85,7 +81,7 @@ public:
 
 signals:
     void bladKrytyczny(const QString& wiadomosc);
-    // Emitowany po każdej mutacji danych — wyzwala odświeżenie drzewa i dashboardu.
+    // Emitowany po każdej zmianie danych — wyzwala odświeżenie drzewa i dashboardu.
     void daneZmienione();
 
 private:

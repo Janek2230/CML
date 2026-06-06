@@ -20,7 +20,7 @@ qt_add_executable(CML
     ui/panelnawigacjiwidget.h ui/panelnawigacjiwidget.cpp ui/panelnawigacjiwidget.ui
     ui/timelineview.h ui/timelineview.cpp ui/timelineview.ui
     controllers/appcontroller.h controllers/appcontroller.cpp
-    models/multimedia.h models/platformy.h models/postep.h
+    models/multimedia.h models/postep.h
     models/historia.h models/aktywnosc_statystyki.h
 )
 
