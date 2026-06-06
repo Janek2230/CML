@@ -123,7 +123,7 @@
      <item>
       <widget class="QComboBox" name="comboNowaKategoria">
        <property name="placeholderText">
-        <string>Wybierz kategorię....</string>
+        <string/>
        </property>
       </widget>
      </item>
@@ -153,7 +153,7 @@
      <item>
       <widget class="QComboBox" name="comboNowyTyp">
        <property name="placeholderText">
-        <string>Wybierz platformę....</string>
+        <string/>
        </property>
       </widget>
      </item>

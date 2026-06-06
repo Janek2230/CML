@@ -9,6 +9,8 @@ TagsDialog::TagsDialog(AppController& controller, QWidget *parent)
 {
     ui->setupUi(this);
 
+    // Kolumna 0 trzyma ID tagu (ukryte przed użytkownikiem) — z niego edycja/usuwanie
+    // wiedzą, którego rekordu w bazie dotyczy zaznaczony wiersz.
     ui->tabela->hideColumn(0);
     ui->tabela->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
 

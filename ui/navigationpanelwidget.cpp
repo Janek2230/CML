@@ -56,8 +56,9 @@ void NavigationPanelWidget::odswiezDrzewo()
 
 void NavigationPanelWidget::obsluzWyborElementuDrzewa(QTreeWidgetItem *item, int /*kolumna*/)
 {
+    // parent() == nullptr → węzeł najwyższego poziomu, czyli folder-grupa (nie konkretne medium).
     if (!item || item->parent() == nullptr) {
-        // Kliknięcie w węzeł-folder (gałąź) zwija/rozwija go i wraca do dashboardu.
+        // Kliknięcie w folder tylko zwija/rozwija go (setExpanded przełącza stan isExpanded) i wraca do dashboardu.
         if (item) item->setExpanded(!item->isExpanded());
         emit zadaniePowrotuDoDashboardu();
         return;
@@ -73,6 +74,8 @@ void NavigationPanelWidget::obsluzWyszukiwanie(const QString &tekst)
 {
     if (ui->kategorie->topLevelItemCount() == 0) return;
 
+    // Nawigacja po drzewie: topLevelItem(i) to węzły najwyższego poziomu, kategorie (foldery-grupy, np. kategorie),
+    // a child(j) ich dzieci (media).
     for (int i = 0; i < ui->kategorie->topLevelItemCount(); ++i) {
         QTreeWidgetItem *kategoria = ui->kategorie->topLevelItem(i);
         bool maPasujaceElementy = false;
@@ -96,18 +99,17 @@ void NavigationPanelWidget::obsluzWyszukiwanie(const QString &tekst)
 void NavigationPanelWidget::zaladujDaneDoDrzewa()
 {
     ui->kategorie->clear();
-    listaMultimediow = appController.pobierzWszystkieMultimedia();
+    const auto listaMultimediow = appController.pobierzWszystkieMultimedia();
 
     // Tryb grupowania = indeks pozycji w comboGrupowanie. Te numery sterują całą funkcją:
     //   0 = Kategoria, 1 = Status, 2 = Platforma, 3 = Data dodania (miesiąc rok),
-    //   4 = Tagi (relacja wiele-do-wielu), 5 = Typ nośnika.
+    //   4 = Tagi, 5 = Typ nośnika.
     const int trybGrupowania = ui->comboGrupowanie->currentIndex();
 
-    // Pobieramy tylko te dane słownikowe, których aktualnie potrzebujemy.
     QMap<int, QString>          slownikKategorii;
     QList<QPair<int, QString>>  listaPlatform;
     QMap<int, QStringList>      mapaTagow;
-    QMap<int, QString>          mapaTypowNosnika; // id_platformy → typ_nosnika (tryb 5)
+    QMap<int, QString>          mapaTypowNosnika; // id_platformy -> typ_nosnika (tryb 5)
 
     if (trybGrupowania == 0) slownikKategorii = appController.pobierzSlownikKategorii();
     if (trybGrupowania == 2) listaPlatform    = appController.pobierzPlatformy();
@@ -120,20 +122,20 @@ void NavigationPanelWidget::zaladujDaneDoDrzewa()
     // Mapa istniejących węzłów-folderów, by nie tworzyć duplikatów.
     QMap<QString, QTreeWidgetItem*> wezlyGlowne;
 
-    // Etap 1: Tworzymy foldery dla trybów ze stałą listą grup (Kategoria, Platforma, Tagi).
-    // Dla Status i Data foldery tworzone są dynamicznie podczas przetwarzania multimediów.
+    // Etap 1: Kategoria/Platforma/Tagi mają w bazie własną tabelę-słownik (pełną listę grup),
+    // więc foldery tworzymy z góry — dzięki temu widać też grupy puste (bez żadnego medium).
+    // Status/Data/Typ nośnika nie mają słownika (wynikają z samych mediów), więc ich foldery
+    // powstają dynamicznie w Etapie 2.
     if (trybGrupowania == 0) {
         for (const auto& kat : appController.pobierzKategorie()) {
             QTreeWidgetItem *wezel = new QTreeWidgetItem(ui->kategorie);
             wezel->setText(0, kat.second);
-            wezel->setData(0, Qt::UserRole, kat.first);
             wezlyGlowne.insert(kat.second, wezel);
         }
     } else if (trybGrupowania == 2) {
         for (const auto& plat : listaPlatform) {
             QTreeWidgetItem *wezel = new QTreeWidgetItem(ui->kategorie);
             wezel->setText(0, plat.second);
-            wezel->setData(0, Qt::UserRole, plat.first);
             wezlyGlowne.insert(plat.second, wezel);
         }
     } else if (trybGrupowania == 4) {
@@ -141,13 +143,12 @@ void NavigationPanelWidget::zaladujDaneDoDrzewa()
         for (const auto& tag : appController.pobierzTagi()) {
             QTreeWidgetItem *wezel = new QTreeWidgetItem(ui->kategorie);
             wezel->setText(0, tag.second);
-            wezel->setData(0, Qt::UserRole, tag.first);
             wezlyGlowne.insert(tag.second, wezel);
         }
     }
 
     // Etap 2: Przypisujemy każde medium do odpowiedniego folderu.
-    for (const auto& medium : std::as_const(listaMultimediow)) {
+    for (const auto& medium : listaMultimediow) {
 
         // Tagi to relacja wiele-do-wielu — jedno medium może trafić do kilku folderów.
         if (trybGrupowania == 4) {
@@ -202,10 +203,6 @@ void NavigationPanelWidget::zaladujDaneDoDrzewa()
         if (!wezlyGlowne.contains(nazwaGrupy)) {
             QTreeWidgetItem *nowyWezel = new QTreeWidgetItem(ui->kategorie);
             nowyWezel->setText(0, nazwaGrupy);
-            if (trybGrupowania == 0)
-                nowyWezel->setData(0, Qt::UserRole, medium->idKategorii);
-            else if (trybGrupowania == 2)
-                nowyWezel->setData(0, Qt::UserRole, medium->idPlatformy);
             wezlyGlowne.insert(nazwaGrupy, nowyWezel);
         }
 
@@ -219,7 +216,8 @@ void NavigationPanelWidget::zaladujDaneDoDrzewa()
 
 void NavigationPanelWidget::pokazMenuDrzewa(const QPoint &pos)
 {
-    QList<QTreeWidgetItem*> zaznaczone = ui->kategorie->selectedItems();
+    // selectedItems() — wszystkie aktualnie zaznaczone węzły (multi-select włączony w konstruktorze).
+    const QList<QTreeWidgetItem*> zaznaczone = ui->kategorie->selectedItems();
     if (zaznaczone.isEmpty()) return;
 
     // Zbieramy ID tylko z liści (elementów z rodzicem) — węzły-foldery ignorujemy.
@@ -278,5 +276,6 @@ void NavigationPanelWidget::pokazMenuDrzewa(const QPoint &pos)
         emit zadaniePowrotuDoDashboardu();
     });
 
+    // bierze miejsce prawego kliknięcia w drzewie, przelicza je na pozycję na ekranie i pokazuje tam menu, czekając na wybór
     menu.exec(ui->kategorie->viewport()->mapToGlobal(pos));
 }

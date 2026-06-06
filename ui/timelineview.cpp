@@ -20,20 +20,19 @@ TimelineView::~TimelineView()
 }
 
 // Usuwa wszystkie widgety z layoutu przed ponownym renderowaniem timeline.
-// takeAt(0) wyrywa elementy jeden po jednym; bez tego renderujOsCzasu() dokładałoby
+// takeAt(0) wyciąga elementy jeden po jednym, bez tego renderujOsCzasu() dokładałoby
 // karty na koniec zamiast odświeżać listę od zera.
 void TimelineView::wyczyscLayout(QLayout* layout) {
     if (!layout) return;
     QLayoutItem* item;
     while ((item = layout->takeAt(0)) != nullptr) {
-        // QLayoutItem to opakowanie — sprawdzamy co trzyma w środku,
-        // bo widget i sub-layout usuwa się inaczej.
+        // QLayoutItem to opakowanie: trzyma albo widget, albo pod-layout (albo spacer).
         if (QWidget* w = item->widget()) {
             w->deleteLater();
         } else if (QLayout* layoutPotomny = item->layout()) {
-            wyczyscLayout(layoutPotomny);
+            wyczyscLayout(layoutPotomny);   // pod-layout: najpierw rekurencyjnie opróżniamy jego wnętrze
         }
-        delete item;
+        delete item;   // zawsze: takeAt oddał opakowanie na własność, więc je zwalniamy
     }
 }
 
@@ -93,7 +92,7 @@ void TimelineView::renderujOsCzasu() {
         // i efekt hover bez żadnego dodatkowego kodu.
         QPushButton* karta = new QPushButton();
         karta->setCursor(Qt::PointingHandCursor);
-        karta->setMinimumHeight(90); // Bez tego layout zgniata kafelki do wysokości samego tekstu.
+        karta->setMinimumHeight(90);
         karta->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         karta->setStyleSheet(
             "QPushButton {"
@@ -142,7 +141,8 @@ void TimelineView::pokazDetaleRecenzji(const HistoricalAttempt& p) {
     QString tytulMedium = p.tytulMedium.isEmpty() ? "Nieznany tytuł" : p.tytulMedium;
     QString wlasciwaRecenzja = p.recenzja;
 
-    if (wlasciwaRecenzja.trimmed().isEmpty() || wlasciwaRecenzja.trimmed() == "0") {
+    // Ten sam filtr co w renderujOsCzasu: recenzja równa samej ocenie = brak recenzji
+    if (wlasciwaRecenzja.trimmed().isEmpty() || wlasciwaRecenzja.trimmed() == QString::number(p.ocena)) {
         wlasciwaRecenzja = "Brak recenzji tekstowej.";
     }
 

@@ -7,7 +7,6 @@ AppController::AppController(QObject *parent) : QObject(parent) {}
 
 bool AppController::inicjalizujBaze() {
     if (!menedzerBazy.otworzPolaczenie()) {
-        emit bladKrytyczny("Nie udało się połączyć z bazą danych. Sprawdź plik config.ini.");
         return false;
     }
     return true;
@@ -80,14 +79,6 @@ bool AppController::czyOsiagnietoCel(int aktualna, int docelowa) {
 bool AppController::aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa, int ocena) {
     // Celowo nie emituje daneZmienione() — drzewo i dashboard odświeżają się tylko na żądanie.
     return menedzerBazy.aktualizujPostep(idMedium, status, aktualna, docelowa, ocena);
-}
-
-bool AppController::zacznijOdNowa(int idMedium) {
-    if (menedzerBazy.zacznijOdNowa(idMedium)) {
-        emit daneZmienione();
-        return true;
-    }
-    return false;
 }
 
 // Podejścia

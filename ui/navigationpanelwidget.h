@@ -31,7 +31,6 @@ private slots:
 private:
     Ui::NavigationPanelWidget *ui;
     AppController& appController;
-    QList<std::shared_ptr<Multimedia>> listaMultimediow;
 
     void zaladujDaneDoDrzewa();
 };

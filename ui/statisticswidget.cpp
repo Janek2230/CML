@@ -122,10 +122,10 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
     etykietySlotow << "Pozostałe";
 
     const QList<QColor> kolorySlotow = {
-        QColor("#f1c40f"),            // 1. miejsce — złoto
-        QColor("#bdc3c7"),            // 2. miejsce — srebro
-        QColor("#cd7f32"),            // 3. miejsce — brąz
-        QColor("#2d89ef"),            // 4. miejsce
+        QColor(0xf1, 0xc4, 0x0f),     // 1. miejsce — złoto
+        QColor(0xbd, 0xc3, 0xc7),     // 2. miejsce — srebro
+        QColor(0xcd, 0x7f, 0x32),     // 3. miejsce — brąz
+        QColor(0x2d, 0x89, 0xef),     // 4. miejsce
         QColor(127, 140, 141, 150)    // Pozostałe
     };
 
@@ -256,6 +256,9 @@ bool StatisticsWidget::eventFilter(QObject *watched, QEvent *event) {
 }
 
 void StatisticsWidget::odswiezDane() {
+    // Odświeżamy tylko aktywną zakładkę (index = pozycja w tabWidget):
+    //   0 = Podsumowanie, 1 = Wykres aktywności, 2 = Kupka Wstydu,
+    //   3 = Nigdy nieukończone, 4 = Ulubione.
     int index = ui->tabWidget->currentIndex();
     if (index == 0) odswiezPodsumowanieOgolne();
     else if (index == 1) odswiezWykresAktywnosci();
@@ -390,6 +393,8 @@ void StatisticsWidget::odswiezUlubione() {
     for (const auto& m : ulubione) {
         QWidget* k = zbudujKafelek(m, mapaPlatform, false, false);
         QVBoxLayout* l = qobject_cast<QVBoxLayout*>(k->layout());
+        // insertWidget(2): etykieta ląduje na pozycji 2 layoutu kafelka (po tytule[0] i pasku
+        // postępu[1]), czyli tuż nad wierszem "Platforma". Kolejność zależy od zbudujKafelek.
         if (l && czasMap[m->id] > 0)
             l->insertWidget(2, new QLabel(QString("<b>Łącznie:</b> %1").arg(sformatujCzas(czasMap[m->id])), k));
         listaUlubione->addWidget(k);
@@ -495,6 +500,8 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
     axisAngular->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
     axisAngular->setStartValue(0);
 
+    // Radar (wielokąt) ma sens dopiero od 3 wierzchołków — przy ≤2 tagach pokazujemy
+    // zastępcze "Mało danych" zamiast zdegenerowanej figury.
     if (nTagow > 2) {
         for (int i = 0; i < nTagow; ++i) {
             const qreal norm = (static_cast<qreal>(topTagi[i].value("czasSekundy").toLongLong()) / static_cast<qreal>(maxCzasTagu)) * 100.0;
@@ -869,6 +876,8 @@ void StatisticsWidget::odswiezKupkeWstydu() {
     wypelnijSekcje(ui->sekcjaPrzerwaneLayout, przerwane);
     wypelnijSekcje(ui->sekcjaWstrzymaneLayout, wstrzymane);
 
+    // odswiezKupkeWstydu() biega przy każdym wejściu na zakładkę, a connect dokładałby nowe
+    // połączenie za każdym razem — bez disconnect jeden klik wywoływałby lambdę wielokrotnie.
     disconnect(ui->btnProponujAktywnosc, nullptr, this, nullptr);
     connect(ui->btnProponujAktywnosc, &QPushButton::clicked, this, [this, wszystkieWKupce]() {
         if (wszystkieWKupce.isEmpty()) {

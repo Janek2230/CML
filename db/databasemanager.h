@@ -39,7 +39,6 @@ public:
 
     // Postęp
     bool aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa, int ocena);
-    bool zacznijOdNowa(int idMedium);
 
     // Podejścia
     bool dodajPodejscie(int idMedium, const QString& status, int docelowa);
@@ -82,7 +81,7 @@ public:
 
     // Historia i podgląd
     QList<HistoricalAttempt> pobierzPelnaHistorie(int idMedium);
-    // Pole recenzja w zwróconych obiektach ma format "tytuł|||treść recenzji".
+    // Zwraca zakończone podejścia (z oceną lub recenzją); tytuł medium jest w polu tytulMedium.
     QList<HistoricalAttempt> pobierzWszystkieRecenzje();
 
     // Statystyki

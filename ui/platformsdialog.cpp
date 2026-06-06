@@ -9,6 +9,8 @@ PlatformsDialog::PlatformsDialog(AppController& controller, QWidget *parent)
 {
     ui->setupUi(this);
 
+    // Kolumna 0 trzyma ID platformy (ukryte przed użytkownikiem) — z niego edycja/usuwanie
+    // wiedzą, którego rekordu w bazie dotyczy zaznaczony wiersz.
     ui->tabela->hideColumn(0);
     ui->tabela->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
 
@@ -88,6 +90,7 @@ void PlatformsDialog::obsluzEdytuj()
 
     // Lista typów z aktualnie ustawionym typem zaznaczonym domyślnie.
     const QStringList typy = dostepneTypyNosnika();
+    // indexOf == -1, gdy obecny typ nie jest na liście — qMax cofa do 0 (pierwsza pozycja).
     const int indeksTypu = qMax(0, typy.indexOf(obecnyTyp));
     const QString nowyTyp = QInputDialog::getItem(
         this, "Typ nośnika", "Wybierz typ nośnika:", typy, indeksTypu, false, &ok

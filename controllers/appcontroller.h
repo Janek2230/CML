@@ -28,7 +28,6 @@ public:
     // Postęp
     bool czyOsiagnietoCel(int aktualna, int docelowa);
     bool aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa, int ocena);
-    bool zacznijOdNowa(int idMedium);
 
     // Podejścia
     bool dodajPodejscie(int idMedium, const QString& status, int docelowa);
@@ -80,7 +79,6 @@ public:
     QList<ActivityStatistic>  pobierzDaneDlaWykresu(int zakres, const QString& metryka);
 
 signals:
-    void bladKrytyczny(const QString& wiadomosc);
     // Emitowany po każdej zmianie danych — wyzwala odświeżenie drzewa i dashboardu.
     void daneZmienione();
 

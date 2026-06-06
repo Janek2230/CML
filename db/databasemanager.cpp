@@ -296,39 +296,6 @@ bool DatabaseManager::aktualizujPostep(int idMedium, const QString& status, int 
     return true;
 }
 
-// Rozpoczyna kolejne podejście do medium (numer_podejscia o 1 większy, status 'W trakcie').
-bool DatabaseManager::zacznijOdNowa(int idMedium) {
-    db.transaction();
-
-    QSqlQuery qSel(db);
-    qSel.prepare("SELECT numer_podejscia, wartosc_docelowa FROM podejscia WHERE id_medium = :id ORDER BY numer_podejscia DESC LIMIT 1");
-    qSel.bindValue(":id", idMedium);
-    if (!qSel.exec() || !qSel.next()) {
-        qDebug() << "Błąd zacznijOdNowa (SELECT podejscia):" << qSel.lastError().text();
-        db.rollback();
-        return false;
-    }
-
-    int nowyNumer = qSel.value(0).toInt() + 1;
-    int staryCel = qSel.value(1).toInt();   // nowe podejście dziedziczy cel poprzedniego
-
-    QSqlQuery qIns(db);
-    qIns.prepare("INSERT INTO podejscia (id_medium, numer_podejscia, status, wartosc_aktualna, wartosc_docelowa, data_rozpoczecia) "
-                 "VALUES (:id, :nr, 'W trakcie', 0, :cel, CURRENT_TIMESTAMP)");
-    qIns.bindValue(":id", idMedium);
-    qIns.bindValue(":nr", nowyNumer);
-    qIns.bindValue(":cel", staryCel);
-
-    if (!qIns.exec()) {
-        qDebug() << "Błąd zacznijOdNowa (INSERT podejscia):" << qIns.lastError().text();
-        db.rollback();
-        return false;
-    }
-
-    db.commit();
-    return true;
-}
-
 
 // Podejścia
 
