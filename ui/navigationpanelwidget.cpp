@@ -1,5 +1,5 @@
-#include "panelnawigacjiwidget.h"
-#include "ui_panelnawigacjiwidget.h"
+#include "navigationpanelwidget.h"
+#include "ui_navigationpanelwidget.h"
 
 #include <QDialog>
 #include <QFormLayout>
@@ -10,9 +10,9 @@
 #include <QInputDialog>
 #include <QLocale>
 
-PanelNawigacjiWidget::PanelNawigacjiWidget(AppController& controller, QWidget *parent) :
+NavigationPanelWidget::NavigationPanelWidget(AppController& controller, QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::PanelNawigacjiWidget),
+    ui(new Ui::NavigationPanelWidget),
     appController(controller)
 {
     ui->setupUi(this);
@@ -22,7 +22,7 @@ PanelNawigacjiWidget::PanelNawigacjiWidget(AppController& controller, QWidget *p
 
     // Przebudowanie drzewa przy każdej zmianie trybu grupowania.
     connect(ui->comboGrupowanie, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &PanelNawigacjiWidget::odswiezDrzewo);
+            this, &NavigationPanelWidget::odswiezDrzewo);
 
     connect(ui->btnPowrot, &QPushButton::clicked, this, [this]() {
         emit zadaniePowrotuDoDashboardu();
@@ -33,26 +33,26 @@ PanelNawigacjiWidget::PanelNawigacjiWidget(AppController& controller, QWidget *p
     });
 
     connect(ui->kategorie, &QTreeWidget::itemClicked,
-            this, &PanelNawigacjiWidget::onWybieranieElementuDrzewa);
+            this, &NavigationPanelWidget::obsluzWyborElementuDrzewa);
     connect(ui->wyszukiwarka, &QLineEdit::textChanged,
-            this, &PanelNawigacjiWidget::onWyszukiwanie);
+            this, &NavigationPanelWidget::obsluzWyszukiwanie);
     connect(ui->kategorie, &QTreeWidget::customContextMenuRequested,
-            this, &PanelNawigacjiWidget::pokazMenuDrzewa);
+            this, &NavigationPanelWidget::pokazMenuDrzewa);
 
     zaladujDaneDoDrzewa();
 }
 
-PanelNawigacjiWidget::~PanelNawigacjiWidget()
+NavigationPanelWidget::~NavigationPanelWidget()
 {
     delete ui;
 }
 
-void PanelNawigacjiWidget::odswiezDrzewo()
+void NavigationPanelWidget::odswiezDrzewo()
 {
     zaladujDaneDoDrzewa();
 }
 
-void PanelNawigacjiWidget::onWybieranieElementuDrzewa(QTreeWidgetItem *item, int /*column*/)
+void NavigationPanelWidget::obsluzWyborElementuDrzewa(QTreeWidgetItem *item, int /*kolumna*/)
 {
     if (!item || item->parent() == nullptr) {
         // Kliknięcie w węzeł-folder (gałąź) zwija/rozwija go i wraca do dashboardu.
@@ -65,7 +65,7 @@ void PanelNawigacjiWidget::onWybieranieElementuDrzewa(QTreeWidgetItem *item, int
     emit zadaniePokazaniaSzczegolow(idWybranegoElementu);
 }
 
-void PanelNawigacjiWidget::onWyszukiwanie(const QString &text)
+void NavigationPanelWidget::obsluzWyszukiwanie(const QString &tekst)
 {
     if (ui->kategorie->topLevelItemCount() == 0) return;
 
@@ -75,12 +75,12 @@ void PanelNawigacjiWidget::onWyszukiwanie(const QString &text)
 
         for (int j = 0; j < kategoria->childCount(); ++j) {
             QTreeWidgetItem *dziecko = kategoria->child(j);
-            const bool pasuje = dziecko->text(0).contains(text, Qt::CaseInsensitive);
+            const bool pasuje = dziecko->text(0).contains(tekst, Qt::CaseInsensitive);
             dziecko->setHidden(!pasuje);
             if (pasuje) maPasujaceElementy = true;
         }
 
-        if (text.isEmpty()) {
+        if (tekst.isEmpty()) {
             kategoria->setHidden(false);
         } else {
             kategoria->setHidden(!maPasujaceElementy);
@@ -89,7 +89,7 @@ void PanelNawigacjiWidget::onWyszukiwanie(const QString &text)
     }
 }
 
-void PanelNawigacjiWidget::zaladujDaneDoDrzewa()
+void NavigationPanelWidget::zaladujDaneDoDrzewa()
 {
     ui->kategorie->clear();
     listaMultimediow = appController.pobierzWszystkieMultimedia();
@@ -102,7 +102,7 @@ void PanelNawigacjiWidget::zaladujDaneDoDrzewa()
     QMap<int, QStringList>      mapaTagow;
     QMap<int, QString>          mapaTypowNosnika; // id_platformy → typ_nosnika (tryb 5)
 
-    if (trybGrupowania == 0) slownikKategorii = appController.getCategories();
+    if (trybGrupowania == 0) slownikKategorii = appController.pobierzSlownikKategorii();
     if (trybGrupowania == 2) listaPlatform    = appController.pobierzPlatformy();
     if (trybGrupowania == 4) mapaTagow        = appController.pobierzPrzypisaniaTagow();
     if (trybGrupowania == 5) {
@@ -144,7 +144,7 @@ void PanelNawigacjiWidget::zaladujDaneDoDrzewa()
 
         // Tagi to relacja wiele-do-wielu — jedno medium może trafić do kilku folderów.
         if (trybGrupowania == 4) {
-            QStringList tagiMedium = mapaTagow.value(medium->getId());
+            QStringList tagiMedium = mapaTagow.value(medium->id);
             if (tagiMedium.isEmpty()) tagiMedium << "Brak tagów";
 
             for (const QString& nazwaGrupy : tagiMedium) {
@@ -154,8 +154,8 @@ void PanelNawigacjiWidget::zaladujDaneDoDrzewa()
                     wezlyGlowne.insert(nazwaGrupy, nowyWezel);
                 }
                 QTreeWidgetItem *item = new QTreeWidgetItem(wezlyGlowne[nazwaGrupy]);
-                item->setText(0, medium->getTytul());
-                item->setData(0, Qt::UserRole, medium->getId());
+                item->setText(0, medium->tytul);
+                item->setData(0, Qt::UserRole, medium->id);
             }
             continue;
         }
@@ -164,27 +164,27 @@ void PanelNawigacjiWidget::zaladujDaneDoDrzewa()
         QString nazwaGrupy;
         switch (trybGrupowania) {
         case 0:
-            nazwaGrupy = slownikKategorii.value(medium->getIdKategorii(), "Brak kategorii");
+            nazwaGrupy = slownikKategorii.value(medium->idKategorii, "Brak kategorii");
             break;
         case 1:
-            nazwaGrupy = medium->getStatus();
+            nazwaGrupy = medium->status;
             break;
         case 2:
             nazwaGrupy = "Nieznana platforma";
             for (const auto& plat : listaPlatform) {
-                if (plat.first == medium->getIdPlatformy()) { nazwaGrupy = plat.second; break; }
+                if (plat.first == medium->idPlatformy) { nazwaGrupy = plat.second; break; }
             }
             break;
         case 3: {
             QLocale polski(QLocale::Polish, QLocale::Poland);
-            QDate data = medium->getDataDodania().date();
+            QDate data = medium->dataDodania.date();
             nazwaGrupy = data.isValid()
                 ? QString("%1 %2").arg(polski.standaloneMonthName(data.month())).arg(data.year()).toUpper()
                 : "BRAK DATY";
             break;
         }
         case 5: {
-            const QString typ = mapaTypowNosnika.value(medium->getIdPlatformy());
+            const QString typ = mapaTypowNosnika.value(medium->idPlatformy);
             nazwaGrupy = typ.isEmpty() ? "Nieznany typ nośnika" : typ;
             break;
         }
@@ -196,21 +196,21 @@ void PanelNawigacjiWidget::zaladujDaneDoDrzewa()
             QTreeWidgetItem *nowyWezel = new QTreeWidgetItem(ui->kategorie);
             nowyWezel->setText(0, nazwaGrupy);
             if (trybGrupowania == 0)
-                nowyWezel->setData(0, Qt::UserRole, medium->getIdKategorii());
+                nowyWezel->setData(0, Qt::UserRole, medium->idKategorii);
             else if (trybGrupowania == 2)
-                nowyWezel->setData(0, Qt::UserRole, medium->getIdPlatformy());
+                nowyWezel->setData(0, Qt::UserRole, medium->idPlatformy);
             wezlyGlowne.insert(nazwaGrupy, nowyWezel);
         }
 
         QTreeWidgetItem *item = new QTreeWidgetItem(wezlyGlowne[nazwaGrupy]);
-        item->setText(0, medium->getTytul());
-        item->setData(0, Qt::UserRole, medium->getId());
+        item->setText(0, medium->tytul);
+        item->setData(0, Qt::UserRole, medium->id);
     }
 
     ui->kategorie->expandAll();
 }
 
-void PanelNawigacjiWidget::pokazMenuDrzewa(const QPoint &pos)
+void NavigationPanelWidget::pokazMenuDrzewa(const QPoint &pos)
 {
     QList<QTreeWidgetItem*> zaznaczone = ui->kategorie->selectedItems();
     if (zaznaczone.isEmpty()) return;
@@ -235,11 +235,11 @@ void PanelNawigacjiWidget::pokazMenuDrzewa(const QPoint &pos)
     }
 
     // Podmenu zmiany kategorii — budowane dynamicznie z aktualnej listy kategorii.
-    QMenu *submenuKategorii = menu.addMenu("Zmień kategorię na...");
-    const auto kategorieMap = appController.getCategories();
-    for (auto it = kategorieMap.begin(); it != kategorieMap.end(); ++it) {
+    QMenu *podmenuKategorii = menu.addMenu("Zmień kategorię na...");
+    const auto mapaKategorii = appController.pobierzSlownikKategorii();
+    for (auto it = mapaKategorii.begin(); it != mapaKategorii.end(); ++it) {
         const int idKat = it.key();
-        QAction *akt = submenuKategorii->addAction(it.value());
+        QAction *akt = podmenuKategorii->addAction(it.value());
         connect(akt, &QAction::triggered, this, [this, wybraneId, idKat]() {
             if (!appController.zmienKategorieWielu(wybraneId, idKat)) {
                 QMessageBox::critical(this, "Błąd", "Nie udało się zmienić kategorii w bazie danych.");

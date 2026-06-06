@@ -42,7 +42,7 @@ private:
 
     Ui::StatisticsWidget *ui;
     AppController& appController;
-    QLabel *etykietaTooltip;
+    QLabel *etykietaDymka;
 };
 
 #endif

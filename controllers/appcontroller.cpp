@@ -6,7 +6,7 @@
 AppController::AppController(QObject *parent) : QObject(parent) {}
 
 bool AppController::inicjalizujBaze() {
-    if (!dbManager.openConnection()) {
+    if (!menedzerBazy.otworzPolaczenie()) {
         emit bladKrytyczny("Nie udało się połączyć z bazą danych. Sprawdź plik config.ini.");
         return false;
     }
@@ -16,11 +16,11 @@ bool AppController::inicjalizujBaze() {
 // Multimedia
 
 QList<std::shared_ptr<Multimedia>> AppController::pobierzWszystkieMultimedia() {
-    return dbManager.getAllMultimedia();
+    return menedzerBazy.pobierzWszystkieMultimedia();
 }
 
 int AppController::dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel, int rokWydania, const QString &tworcy) {
-    int id = dbManager.dodajNoweMedium(tytul, idKat, idPlatformy, cel, rokWydania, tworcy);
+    int id = menedzerBazy.dodajNoweMedium(tytul, idKat, idPlatformy, cel, rokWydania, tworcy);
     if (id > 0) {
         emit daneZmienione();
     }
@@ -28,7 +28,7 @@ int AppController::dodajNoweMedium(const QString &tytul, int idKat, int idPlatfo
 }
 
 bool AppController::aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel, int rokWydania, const QString &tworcy) {
-    if (dbManager.aktualizujDaneMedium(id, tytul, idKat, idPlatformy, cel, rokWydania, tworcy)) {
+    if (menedzerBazy.aktualizujDaneMedium(id, tytul, idKat, idPlatformy, cel, rokWydania, tworcy)) {
         emit daneZmienione();
         return true;
     }
@@ -36,15 +36,15 @@ bool AppController::aktualizujDaneMedium(int id, const QString &tytul, int idKat
 }
 
 bool AppController::usunMedium(int idMedium) {
-    if (dbManager.usunMedium(idMedium)) {
+    if (menedzerBazy.usunMedium(idMedium)) {
         emit daneZmienione();
         return true;
     }
     return false;
 }
 
-bool AppController::usunWieleMultimediow(const QList<int>& idList) {
-    if (dbManager.usunWieleMultimediow(idList)) {
+bool AppController::usunWieleMultimediow(const QList<int>& listaId) {
+    if (menedzerBazy.usunWieleMultimediow(listaId)) {
         emit daneZmienione();
         return true;
     }
@@ -52,7 +52,7 @@ bool AppController::usunWieleMultimediow(const QList<int>& idList) {
 }
 
 bool AppController::zmienKategorieWielu(const QList<int>& idMultimediow, int nowaKategoriaId) {
-    if (dbManager.zmienKategorieWielu(idMultimediow, nowaKategoriaId)) {
+    if (menedzerBazy.zmienKategorieWielu(idMultimediow, nowaKategoriaId)) {
         emit daneZmienione();
         return true;
     }
@@ -60,7 +60,7 @@ bool AppController::zmienKategorieWielu(const QList<int>& idMultimediow, int now
 }
 
 bool AppController::ustawUlubione(int idMedium, bool ulubione) {
-    if (dbManager.ustawUlubione(idMedium, ulubione)) {
+    if (menedzerBazy.ustawUlubione(idMedium, ulubione)) {
         emit daneZmienione();
         return true;
     }
@@ -68,7 +68,7 @@ bool AppController::ustawUlubione(int idMedium, bool ulubione) {
 }
 
 QList<int> AppController::pobierzOstatnioAktywne(int limit) {
-    return dbManager.pobierzOstatnioAktywne(limit);
+    return menedzerBazy.pobierzOstatnioAktywne(limit);
 }
 
 // Postęp
@@ -79,11 +79,11 @@ bool AppController::czyOsiagnietoCel(int aktualna, int docelowa) {
 
 bool AppController::aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa, int ocena) {
     // Celowo nie emituje daneZmienione() — drzewo i dashboard odświeżają się tylko na żądanie.
-    return dbManager.aktualizujPostep(idMedium, status, aktualna, docelowa, ocena);
+    return menedzerBazy.aktualizujPostep(idMedium, status, aktualna, docelowa, ocena);
 }
 
 bool AppController::zacznijOdNowa(int idMedium) {
-    if (dbManager.zacznijOdNowa(idMedium)) {
+    if (menedzerBazy.zacznijOdNowa(idMedium)) {
         emit daneZmienione();
         return true;
     }
@@ -93,7 +93,7 @@ bool AppController::zacznijOdNowa(int idMedium) {
 // Podejścia
 
 bool AppController::dodajPodejscie(int idMedium, const QString& status, int docelowa) {
-    if (dbManager.dodajPodejscie(idMedium, status, docelowa)) {
+    if (menedzerBazy.dodajPodejscie(idMedium, status, docelowa)) {
         emit daneZmienione();
         return true;
     }
@@ -101,7 +101,7 @@ bool AppController::dodajPodejscie(int idMedium, const QString& status, int doce
 }
 
 bool AppController::aktualizujPodejscie(int idPodejscia, const QString& status, int aktualna, int docelowa, int ocena, const QString& recenzja) {
-    if (dbManager.aktualizujPodejscie(idPodejscia, status, aktualna, docelowa, ocena, recenzja)) {
+    if (menedzerBazy.aktualizujPodejscie(idPodejscia, status, aktualna, docelowa, ocena, recenzja)) {
         emit daneZmienione();
         return true;
     }
@@ -109,7 +109,7 @@ bool AppController::aktualizujPodejscie(int idPodejscia, const QString& status, 
 }
 
 bool AppController::usunPodejscie(int idPodejscia) {
-    if (dbManager.usunPodejscie(idPodejscia)) {
+    if (menedzerBazy.usunPodejscie(idPodejscia)) {
         emit daneZmienione();
         return true;
     }
@@ -119,7 +119,7 @@ bool AppController::usunPodejscie(int idPodejscia) {
 // Sesje
 
 bool AppController::dodajSesje(int idPodejscia, int przyrost, int sekundy, const QString& notatka) {
-    if (dbManager.dodajSesje(idPodejscia, przyrost, sekundy, notatka)) {
+    if (menedzerBazy.dodajSesje(idPodejscia, przyrost, sekundy, notatka)) {
         emit daneZmienione();
         return true;
     }
@@ -127,7 +127,7 @@ bool AppController::dodajSesje(int idPodejscia, int przyrost, int sekundy, const
 }
 
 bool AppController::aktualizujSesje(int idSesji, int przyrost, int sekundy, const QString& notatka) {
-    if (dbManager.aktualizujSesje(idSesji, przyrost, sekundy, notatka)) {
+    if (menedzerBazy.aktualizujSesje(idSesji, przyrost, sekundy, notatka)) {
         emit daneZmienione();
         return true;
     }
@@ -135,7 +135,7 @@ bool AppController::aktualizujSesje(int idSesji, int przyrost, int sekundy, cons
 }
 
 bool AppController::usunSesje(int idSesji) {
-    if (dbManager.usunSesje(idSesji)) {
+    if (menedzerBazy.usunSesje(idSesji)) {
         emit daneZmienione();
         return true;
     }
@@ -144,17 +144,17 @@ bool AppController::usunSesje(int idSesji) {
 
 // Kategorie
 
-QMap<int, QString> AppController::getCategories() {
-    return dbManager.getCategories();
+QMap<int, QString> AppController::pobierzSlownikKategorii() {
+    return menedzerBazy.pobierzSlownikKategorii();
 }
 
 QList<QPair<int, QString>> AppController::pobierzKategorie() {
-    return dbManager.pobierzKategorie();
+    return menedzerBazy.pobierzKategorie();
 }
 
 QList<AppController::KategoriaModel> AppController::pobierzPelneKategorie() {
     QList<KategoriaModel> lista;
-    auto suroweDane = dbManager.pobierzSuroweKategorie();
+    auto suroweDane = menedzerBazy.pobierzSuroweKategorie();
     for (const auto& wiersz : suroweDane) {
         lista.append({wiersz[0].toInt(), wiersz[1].toString(), wiersz[2].toString()});
     }
@@ -162,15 +162,15 @@ QList<AppController::KategoriaModel> AppController::pobierzPelneKategorie() {
 }
 
 QStringList AppController::pobierzUnikalneJednostki() {
-    return dbManager.pobierzUnikalneJednostki();
+    return menedzerBazy.pobierzUnikalneJednostki();
 }
 
 QMap<int, QString> AppController::pobierzSlownikJednostek() {
-    return dbManager.pobierzSlownikJednostek();
+    return menedzerBazy.pobierzSlownikJednostek();
 }
 
 bool AppController::dodajKategorie(const QString &nazwa, const QString &jednostka) {
-    if (dbManager.dodajKategorie(nazwa, jednostka) > 0) {
+    if (menedzerBazy.dodajKategorie(nazwa, jednostka) > 0) {
         emit daneZmienione();
         return true;
     }
@@ -178,7 +178,7 @@ bool AppController::dodajKategorie(const QString &nazwa, const QString &jednostk
 }
 
 bool AppController::aktualizujKategorie(int id, const QString &nazwa, const QString &jednostka) {
-    if (dbManager.aktualizujKategorie(id, nazwa, jednostka)) {
+    if (menedzerBazy.aktualizujKategorie(id, nazwa, jednostka)) {
         emit daneZmienione();
         return true;
     }
@@ -186,7 +186,7 @@ bool AppController::aktualizujKategorie(int id, const QString &nazwa, const QStr
 }
 
 bool AppController::usunKategorie(int idKat, bool usunPowiazane) {
-    if (dbManager.usunKategorie(idKat, usunPowiazane)) {
+    if (menedzerBazy.usunKategorie(idKat, usunPowiazane)) {
         emit daneZmienione();
         return true;
     }
@@ -196,19 +196,19 @@ bool AppController::usunKategorie(int idKat, bool usunPowiazane) {
 // Platformy
 
 QList<QPair<int, QString>> AppController::pobierzPlatformy() {
-    return dbManager.pobierzPlatformy();
+    return menedzerBazy.pobierzPlatformy();
 }
 
 QList<AppController::PlatformaModel> AppController::pobierzPelnePlatformy() {
     QList<PlatformaModel> lista;
-    for (const auto& wiersz : dbManager.pobierzSurowePlatformy()) {
+    for (const auto& wiersz : menedzerBazy.pobierzSurowePlatformy()) {
         lista.append({wiersz[0].toInt(), wiersz[1].toString(), wiersz[2].toString()});
     }
     return lista;
 }
 
 int AppController::dodajPlatforme(const QString &nazwa, const QString &typNosnika) {
-    int id = dbManager.dodajPlatforme(nazwa, typNosnika);
+    int id = menedzerBazy.dodajPlatforme(nazwa, typNosnika);
     if (id > 0) {
         emit daneZmienione();
     }
@@ -216,7 +216,7 @@ int AppController::dodajPlatforme(const QString &nazwa, const QString &typNosnik
 }
 
 bool AppController::aktualizujPlatforme(int id, const QString &nazwa, const QString &typNosnika) {
-    if (dbManager.aktualizujPlatforme(id, nazwa, typNosnika)) {
+    if (menedzerBazy.aktualizujPlatforme(id, nazwa, typNosnika)) {
         emit daneZmienione();
         return true;
     }
@@ -224,7 +224,7 @@ bool AppController::aktualizujPlatforme(int id, const QString &nazwa, const QStr
 }
 
 bool AppController::usunPlatforme(int idPlat, bool usunPowiazane) {
-    if (dbManager.usunPlatforme(idPlat, usunPowiazane)) {
+    if (menedzerBazy.usunPlatforme(idPlat, usunPowiazane)) {
         emit daneZmienione();
         return true;
     }
@@ -234,15 +234,15 @@ bool AppController::usunPlatforme(int idPlat, bool usunPowiazane) {
 // Tagi
 
 QList<QPair<int, QString>> AppController::pobierzTagi() {
-    return dbManager.pobierzTagi();
+    return menedzerBazy.pobierzTagi();
 }
 
 QMap<int, QStringList> AppController::pobierzPrzypisaniaTagow() {
-    return dbManager.pobierzPrzypisaniaTagow();
+    return menedzerBazy.pobierzPrzypisaniaTagow();
 }
 
 int AppController::dodajTag(const QString &nazwa) {
-    int id = dbManager.dodajTag(nazwa);
+    int id = menedzerBazy.dodajTag(nazwa);
     if (id > 0) {
         emit daneZmienione();
     }
@@ -250,7 +250,7 @@ int AppController::dodajTag(const QString &nazwa) {
 }
 
 bool AppController::aktualizujTag(int id, const QString &nazwa) {
-    if (dbManager.aktualizujTag(id, nazwa)) {
+    if (menedzerBazy.aktualizujTag(id, nazwa)) {
         emit daneZmienione();
         return true;
     }
@@ -258,7 +258,7 @@ bool AppController::aktualizujTag(int id, const QString &nazwa) {
 }
 
 bool AppController::usunTag(int idTagu) {
-    if (dbManager.usunTag(idTagu)) {
+    if (menedzerBazy.usunTag(idTagu)) {
         emit daneZmienione();
         return true;
     }
@@ -266,43 +266,43 @@ bool AppController::usunTag(int idTagu) {
 }
 
 bool AppController::ustawTagiDlaMedium(int idMedium, const QList<int>& idTagow) {
-    return dbManager.ustawTagiDlaMedium(idMedium, idTagow);
+    return menedzerBazy.ustawTagiDlaMedium(idMedium, idTagow);
 }
 
 // Historia i podgląd
 
-QList<PodejscieHistoryczne> AppController::pobierzHistorie(int idMedium) {
-    return dbManager.pobierzPelnaHistorie(idMedium);
+QList<HistoricalAttempt> AppController::pobierzHistorie(int idMedium) {
+    return menedzerBazy.pobierzPelnaHistorie(idMedium);
 }
 
-QList<PodejscieHistoryczne> AppController::pobierzWszystkieRecenzje() {
-    return dbManager.pobierzWszystkieRecenzje();
+QList<HistoricalAttempt> AppController::pobierzWszystkieRecenzje() {
+    return menedzerBazy.pobierzWszystkieRecenzje();
 }
 
 // Statystyki
 
-QMap<QString, int> AppController::getGlobalStats() {
-    return dbManager.getGlobalStats();
+QMap<QString, int> AppController::pobierzStatystykiGlobalne() {
+    return menedzerBazy.pobierzStatystykiGlobalne();
 }
 
 QVariantMap AppController::pobierzStatystykiPodsumowania() {
-    return dbManager.pobierzStatystykiPodsumowania();
+    return menedzerBazy.pobierzStatystykiPodsumowania();
 }
 
 QList<QVariantMap> AppController::pobierzPodsumowanieKategorii() {
-    return dbManager.pobierzPodsumowanieKategorii();
+    return menedzerBazy.pobierzPodsumowanieKategorii();
 }
 
 QList<QVariantMap> AppController::pobierzPodsumowanieTagow() {
-    return dbManager.pobierzPodsumowanieTagow();
+    return menedzerBazy.pobierzPodsumowanieTagow();
 }
 
 QVariantMap AppController::pobierzCiekawostkiStatystyczne() {
-    return dbManager.pobierzCiekawostkiStatystyczne();
+    return menedzerBazy.pobierzCiekawostkiStatystyczne();
 }
 
-QList<StatystykaAktywnosci> AppController::pobierzDaneDlaWykresu(int zakres, const QString& metryka) {
-    auto dane = dbManager.pobierzSuroweDaneStatystyk(zakres, metryka);
+QList<ActivityStatistic> AppController::pobierzDaneDlaWykresu(int zakres, const QString& metryka) {
+    auto dane = menedzerBazy.pobierzSuroweDaneStatystyk(zakres, metryka);
     if (metryka == "czas") {
         for (auto& s : dane) s.wartosc /= 3600.0; // DB przechowuje sekundy; wykres używa godzin.
     }

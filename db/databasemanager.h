@@ -7,12 +7,12 @@
 #include <QSqlQuery>
 
 #include "multimedia.h"
-#include "aktywnosc_statystyki.h"
-#include "historia.h"
+#include "activity_statistics.h"
+#include "history.h"
 
 // DatabaseManager jest jedyną klasą mającą bezpośredni dostęp do bazy danych.
 // Cała warstwa SQL jest zamknięta tutaj — reszta aplikacji posługuje się
-// wyłącznie modelami (Multimedia, PodejscieHistoryczne itp.) i typami Qt.
+// wyłącznie modelami (Multimedia, HistoricalAttempt itp.) i typami Qt.
 //
 // Połączenie czyta konfigurację z config.ini (klucze: database/host,
 // database/name, database/user, database/password).
@@ -22,39 +22,37 @@ private:
 
 public:
     DatabaseManager();
-    ~DatabaseManager() { closeConnection(); }
+    ~DatabaseManager() { zamknijPolaczenie(); }
 
-    // --- Połączenie ---
-    bool openConnection();
-    void closeConnection();
+    // Połączenie
+    bool otworzPolaczenie();
+    void zamknijPolaczenie();
 
-    // --- Multimedia (CRUD) ---
-    QList<std::shared_ptr<Multimedia>> getAllMultimedia();
+    // Multimedia
+    QList<std::shared_ptr<Multimedia>> pobierzWszystkieMultimedia();
     int  dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel, int rokWydania, const QString &tworcy);
     bool aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel, int rokWydania, const QString &tworcy);
     bool usunMedium(int id);
-    bool usunWieleMultimediow(const QList<int>& idList);
+    bool usunWieleMultimediow(const QList<int>& listaId);
     bool zmienKategorieWielu(const QList<int>& idMultimediow, int nowaKategoriaId);
     bool ustawUlubione(int idMedium, bool ulubione);
 
-    // --- Postęp (skrótowa ścieżka zapisu bez pełnego okna sesji) ---
-    // aktualizujPostep celowo NIE emituje sygnału daneZmienione — patrz AppController.
+    // Postęp
     bool aktualizujPostep(int idMedium, const QString& status, int aktualna, int docelowa, int ocena);
     bool zacznijOdNowa(int idMedium);
 
-    // --- Podejścia ---
+    // Podejścia
     bool dodajPodejscie(int idMedium, const QString& status, int docelowa);
     bool aktualizujPodejscie(int idPodejscia, const QString& status, int aktualna, int docelowa, int ocena, const QString& recenzja);
     bool usunPodejscie(int idPodejscia);
 
-    // --- Sesje (dziennik_aktywnosci) ---
-    // Każda operacja na sesji jest transakcją, bo jednocześnie koryguje wartosc_aktualna w podejsciach.
+    // Sesje
     bool dodajSesje(int idPodejscia, int przyrost, int sekundy, const QString& notatka);
     bool aktualizujSesje(int idSesji, int przyrost, int sekundy, const QString& notatka);
     bool usunSesje(int idSesji);
 
-    // --- Kategorie ---
-    QMap<int, QString>           getCategories();
+    // Kategorie
+    QMap<int, QString>           pobierzSlownikKategorii();
     QList<QPair<int, QString>>   pobierzKategorie();
     QList<QList<QVariant>>       pobierzSuroweKategorie();
     QMap<int, QString>           pobierzSlownikJednostek();
@@ -64,7 +62,7 @@ public:
     // usunPowiazane=true: kasuje multimedia tej kategorii; false: ustawia im id_kategorii = NULL.
     bool usunKategorie(int idKat, bool usunPowiazane);
 
-    // --- Platformy ---
+    // Platformy
     QList<QPair<int, QString>> pobierzPlatformy();
     // Pełne dane platform wraz z typem nośnika: wiersz = [id, nazwa, typ_nosnika].
     QList<QList<QVariant>>     pobierzSurowePlatformy();
@@ -73,30 +71,29 @@ public:
     // Analogicznie jak usunKategorie — usunPowiazane kontroluje los multimedia.
     bool usunPlatforme(int idPlat, bool usunPowiazane);
 
-    // --- Tagi ---
+    //Tagi
     QList<QPair<int, QString>>   pobierzTagi();
     QMap<int, QStringList>       pobierzPrzypisaniaTagow();
     int  dodajTag(const QString &nazwa);
     bool aktualizujTag(int id, const QString &nazwa);
     bool usunTag(int idTagu);
-    // Pełna wymiana tagów: DELETE wszystkich przypisań + INSERT nowych (nie inkrementalne).
+    // Pełna wymiana tagów: DELETE wszystkich przypisań + INSERT nowych
     bool ustawTagiDlaMedium(int idMedium, const QList<int>& idTagow);
 
-    // --- Historia i podgląd ---
-    QList<PodejscieHistoryczne> pobierzPelnaHistorie(int idMedium);
-    // Uwaga: pole recenzja w zwróconych obiektach ma format "tytuł|||treść recenzji".
-    QList<PodejscieHistoryczne> pobierzWszystkieRecenzje();
+    // Historia i podgląd
+    QList<HistoricalAttempt> pobierzPelnaHistorie(int idMedium);
+    // Pole recenzja w zwróconych obiektach ma format "tytuł|||treść recenzji".
+    QList<HistoricalAttempt> pobierzWszystkieRecenzje();
 
-    // --- Statystyki ---
-    QMap<QString, int>           getGlobalStats();
+    // Statystyki
+    QMap<QString, int>           pobierzStatystykiGlobalne();
     QVariantMap                  pobierzStatystykiPodsumowania();
     QList<QVariantMap>           pobierzPodsumowanieKategorii();
     QList<QVariantMap>           pobierzPodsumowanieTagow();
     QVariantMap                  pobierzCiekawostkiStatystyczne();
     // Zwraca dane dla wykresu słupkowego; metryka: "czas" (sekundy), "sesje", "jednostki".
-    QList<StatystykaAktywnosci>  pobierzSuroweDaneStatystyk(int zakresDni, const QString& metryka);
+    QList<ActivityStatistic>  pobierzSuroweDaneStatystyk(int zakresDni, const QString& metryka);
 
-    // --- Inne ---
     QList<int> pobierzOstatnioAktywne(int limit);
 };
 

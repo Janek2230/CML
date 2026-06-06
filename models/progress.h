@@ -1,17 +1,17 @@
-#ifndef POSTEP_H
-#define POSTEP_H
+#ifndef PROGRESS_H
+#define PROGRESS_H
 
 #include <QString>
 
 // Stan bieżącego podejścia do medium — osadzony bezpośrednio w obiekcie Multimedia,
 // żeby widoki nie musiały osobno odpytywać tabeli podejść.
-struct Postep {
-    int aktualna;
-    int docelowa;
+struct Progress {
+    int aktualna = 0;
+    int docelowa = 0;
     QString jednostka;
-    int numer_podejscia;
+    int numer_podejscia = 0;
 
-    double getProcent() const {
+    double pobierzProcent() const {
         return (docelowa > 0) ? (static_cast<double>(aktualna) / docelowa * 100.0) : 0.0;
     }
 };

@@ -1,11 +1,11 @@
-#include "tagidialog.h"
-#include "ui_tagidialog.h"
+#include "tagsdialog.h"
+#include "ui_tagsdialog.h"
 #include <QHeaderView>
 #include <QMessageBox>
 #include <QInputDialog>
 
-TagiDialog::TagiDialog(AppController& controller, QWidget *parent)
-    : QDialog(parent), ui(new Ui::TagiDialog), appController(controller)
+TagsDialog::TagsDialog(AppController& controller, QWidget *parent)
+    : QDialog(parent), ui(new Ui::TagsDialog), appController(controller)
 {
     ui->setupUi(this);
 
@@ -14,18 +14,18 @@ TagiDialog::TagiDialog(AppController& controller, QWidget *parent)
 
     wypelnijTabele();
 
-    connect(ui->btnDodaj,    &QPushButton::clicked, this, &TagiDialog::onBtnDodajClicked);
-    connect(ui->btnEdytuj,   &QPushButton::clicked, this, &TagiDialog::onBtnEdytujClicked);
-    connect(ui->btnUsun,     &QPushButton::clicked, this, &TagiDialog::onBtnUsunClicked);
+    connect(ui->btnDodaj,    &QPushButton::clicked, this, &TagsDialog::obsluzDodaj);
+    connect(ui->btnEdytuj,   &QPushButton::clicked, this, &TagsDialog::obsluzEdytuj);
+    connect(ui->btnUsun,     &QPushButton::clicked, this, &TagsDialog::obsluzUsun);
     connect(ui->btnZamknij,  &QPushButton::clicked, this, &QDialog::accept);
 }
 
-TagiDialog::~TagiDialog()
+TagsDialog::~TagsDialog()
 {
     delete ui;
 }
 
-void TagiDialog::wypelnijTabele()
+void TagsDialog::wypelnijTabele()
 {
     ui->tabela->setRowCount(0);
     const auto tagi = appController.pobierzTagi();
@@ -39,7 +39,7 @@ void TagiDialog::wypelnijTabele()
     }
 }
 
-void TagiDialog::onBtnDodajClicked()
+void TagsDialog::obsluzDodaj()
 {
     bool ok = false;
     const QString nazwa = QInputDialog::getText(
@@ -57,7 +57,7 @@ void TagiDialog::onBtnDodajClicked()
     wypelnijTabele();
 }
 
-void TagiDialog::onBtnEdytujClicked()
+void TagsDialog::obsluzEdytuj()
 {
     const int wiersz = ui->tabela->currentRow();
     if (wiersz < 0) {
@@ -82,7 +82,7 @@ void TagiDialog::onBtnEdytujClicked()
     }
 }
 
-void TagiDialog::onBtnUsunClicked()
+void TagsDialog::obsluzUsun()
 {
     const int wiersz = ui->tabela->currentRow();
     if (wiersz < 0) return;

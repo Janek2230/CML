@@ -1,8 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "kategoriedialog.h"
-#include "platformydialog.h"
-#include "tagidialog.h"
+#include "categoriesdialog.h"
+#include "platformsdialog.h"
+#include "tagsdialog.h"
 #include <QMessageBox>
 
 MainWindow::MainWindow(QWidget *parent)
@@ -16,111 +16,111 @@ MainWindow::MainWindow(QWidget *parent)
             "Nie udało się połączyć z bazą danych.\nSprawdź plik config.ini.");
     }
 
-    timelineWidget = new TimelineView(appController, this);
-    ui->daneSzczegolowe->addWidget(timelineWidget);
+    osCzasuWidget = new TimelineView(appController, this);
+    ui->daneSzczegolowe->addWidget(osCzasuWidget);
 
-    statsWidget = new StatisticsWidget(appController, this);
-    ui->daneSzczegolowe->addWidget(statsWidget);
+    statystykiWidget = new StatisticsWidget(appController, this);
+    ui->daneSzczegolowe->addWidget(statystykiWidget);
 
     formularzWidget = new MultimediaFormWidget(appController, this);
     ui->daneSzczegolowe->addWidget(formularzWidget);
 
-    szczegolyWidget = new SzczegolyWidget(appController, this);
+    szczegolyWidget = new DetailsWidget(appController, this);
     ui->daneSzczegolowe->addWidget(szczegolyWidget);
 
-    dashboardWidget = new DashboardWidget(appController, this);
-    ui->daneSzczegolowe->addWidget(dashboardWidget);
+    pulpitWidget = new DashboardWidget(appController, this);
+    ui->daneSzczegolowe->addWidget(pulpitWidget);
 
-    panelNawigacji = new PanelNawigacjiWidget(appController, this);
+    panelNawigacji = new NavigationPanelWidget(appController, this);
     ui->splitter->insertWidget(0, panelNawigacji);
 
     connect(ui->actionKategorie, &QAction::triggered, this, [this]() {
-        KategorieDialog dialog(appController, this);
+        CategoriesDialog dialog(appController, this);
         dialog.exec();
-        dashboardWidget->odswiezStatystykiGlowne();
+        pulpitWidget->odswiezStatystykiGlowne();
     });
 
     connect(ui->actionPlatformy, &QAction::triggered, this, [this]() {
-        PlatformyDialog dialog(appController, this);
+        PlatformsDialog dialog(appController, this);
         dialog.exec();
-        dashboardWidget->odswiezStatystykiGlowne();
+        pulpitWidget->odswiezStatystykiGlowne();
     });
 
     connect(ui->actionTagi, &QAction::triggered, this, [this]() {
-        TagiDialog dialog(appController, this);
+        TagsDialog dialog(appController, this);
         dialog.exec();
-        dashboardWidget->odswiezStatystykiGlowne();
+        pulpitWidget->odswiezStatystykiGlowne();
     });
 
     connect(ui->actionStronaGlowna, &QAction::triggered, this, [this]() {
         panelNawigacji->show();
-        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
-        dashboardWidget->odswiezStatystykiGlowne();
+        ui->daneSzczegolowe->setCurrentWidget(pulpitWidget);
+        pulpitWidget->odswiezStatystykiGlowne();
     });
 
     connect(ui->actionStatystyki, &QAction::triggered, this, [this]() {
         panelNawigacji->hide();
-        ui->daneSzczegolowe->setCurrentWidget(statsWidget);
-        statsWidget->odswiezDane();
+        ui->daneSzczegolowe->setCurrentWidget(statystykiWidget);
+        statystykiWidget->odswiezDane();
     });
 
-    connect(panelNawigacji, &PanelNawigacjiWidget::zadaniePokazaniaSzczegolow, this, [this](int id) {
+    connect(panelNawigacji, &NavigationPanelWidget::zadaniePokazaniaSzczegolow, this, [this](int id) {
         pokazSzczegolyMedium(id);
     });
 
-    connect(panelNawigacji, &PanelNawigacjiWidget::zadaniePowrotuDoDashboardu, this, [this]() {
-        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
-        dashboardWidget->odswiezStatystykiGlowne();
+    connect(panelNawigacji, &NavigationPanelWidget::zadaniePowrotuDoDashboardu, this, [this]() {
+        ui->daneSzczegolowe->setCurrentWidget(pulpitWidget);
+        pulpitWidget->odswiezStatystykiGlowne();
     });
 
-    connect(panelNawigacji, &PanelNawigacjiWidget::zadanieDodaniaMedium, this, [this](int idKat, int idPlat) {
+    connect(panelNawigacji, &NavigationPanelWidget::zadanieDodaniaMedium, this, [this](int idKat, int idPlat) {
         formularzWidget->przygotujFormularz(-1, idKat, idPlat);
         ui->daneSzczegolowe->setCurrentWidget(formularzWidget);
     });
 
-    connect(panelNawigacji, &PanelNawigacjiWidget::zadanieEdycjiMedium, this, [this](int idMedium) {
+    connect(panelNawigacji, &NavigationPanelWidget::zadanieEdycjiMedium, this, [this](int idMedium) {
         formularzWidget->przygotujFormularz(idMedium, 0, 0);
         ui->daneSzczegolowe->setCurrentWidget(formularzWidget);
     });
 
     connect(formularzWidget, &MultimediaFormWidget::daneZapisane, this, [this]() {
-        dashboardWidget->odswiezStatystykiGlowne();
-        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
+        pulpitWidget->odswiezStatystykiGlowne();
+        ui->daneSzczegolowe->setCurrentWidget(pulpitWidget);
     });
 
     connect(formularzWidget, &MultimediaFormWidget::formularzAnulowany, this, [this]() {
-        ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
+        ui->daneSzczegolowe->setCurrentWidget(pulpitWidget);
     });
 
-    connect(szczegolyWidget, &SzczegolyWidget::daneZaktualizowane, this, [this]() {
-        dashboardWidget->odswiezStatystykiGlowne();
+    connect(szczegolyWidget, &DetailsWidget::daneZaktualizowane, this, [this]() {
+        pulpitWidget->odswiezStatystykiGlowne();
     });
 
-    connect(dashboardWidget, &DashboardWidget::zadaniePokazaniaSzczegolow, this, [this](int id) {
+    connect(pulpitWidget, &DashboardWidget::zadaniePokazaniaSzczegolow, this, [this](int id) {
         pokazSzczegolyMedium(id);
         ui->statusbar->showMessage("Przełączono na szczegóły!", 3000);
     });
 
-    connect(statsWidget, &StatisticsWidget::zadaniePokazaniaSzczegolow, this, [this](int id) {
+    connect(statystykiWidget, &StatisticsWidget::zadaniePokazaniaSzczegolow, this, [this](int id) {
         pokazSzczegolyMedium(id);
         ui->statusbar->showMessage("Otworzono propozycję z Kupki Wstydu.", 3000);
     });
 
     connect(&appController, &AppController::daneZmienione, this, [this]() {
         panelNawigacji->odswiezDrzewo();
-        dashboardWidget->odswiezStatystykiGlowne();
+        pulpitWidget->odswiezStatystykiGlowne();
     });
 
     connect(ui->actionMojeRecenzje, &QAction::triggered, this, [this]() {
         panelNawigacji->hide(); // Chowamy panel nawigacji dla pełnoekranowego efektu osi czasu.
-        ui->daneSzczegolowe->setCurrentWidget(timelineWidget);
-        timelineWidget->renderujTimeline();
+        ui->daneSzczegolowe->setCurrentWidget(osCzasuWidget);
+        osCzasuWidget->renderujOsCzasu();
     });
 
 
     panelNawigacji->odswiezDrzewo();
-    dashboardWidget->odswiezStatystykiGlowne();
-    ui->daneSzczegolowe->setCurrentWidget(dashboardWidget);
+    pulpitWidget->odswiezStatystykiGlowne();
+    ui->daneSzczegolowe->setCurrentWidget(pulpitWidget);
 }
 
 MainWindow::~MainWindow()

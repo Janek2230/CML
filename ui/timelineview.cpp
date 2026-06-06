@@ -10,8 +10,8 @@ TimelineView::TimelineView(AppController& controller, QWidget *parent)
     : QWidget(parent), appController(controller), ui(new Ui::TimelineView)
 {
     ui->setupUi(this);
-    mainLayout = qobject_cast<QVBoxLayout*>(ui->scrollAreaWidgetContents->layout());
-    mainLayout->setAlignment(Qt::AlignTop);
+    glownyUklad = qobject_cast<QVBoxLayout*>(ui->scrollAreaWidgetContents->layout());
+    glownyUklad->setAlignment(Qt::AlignTop);
 }
 
 TimelineView::~TimelineView()
@@ -20,7 +20,7 @@ TimelineView::~TimelineView()
 }
 
 // Usuwa wszystkie widgety z layoutu przed ponownym renderowaniem timeline.
-// takeAt(0) wyrywa elementy jeden po jednym; bez tego renderujTimeline() dokładałoby
+// takeAt(0) wyrywa elementy jeden po jednym; bez tego renderujOsCzasu() dokładałoby
 // karty na koniec zamiast odświeżać listę od zera.
 void TimelineView::wyczyscLayout(QLayout* layout) {
     if (!layout) return;
@@ -30,17 +30,17 @@ void TimelineView::wyczyscLayout(QLayout* layout) {
         // bo widget i sub-layout usuwa się inaczej.
         if (QWidget* w = item->widget()) {
             w->deleteLater();
-        } else if (QLayout* childLayout = item->layout()) {
-            wyczyscLayout(childLayout);
+        } else if (QLayout* layoutPotomny = item->layout()) {
+            wyczyscLayout(layoutPotomny);
         }
         delete item;
     }
 }
 
-void TimelineView::renderujTimeline() {
+void TimelineView::renderujOsCzasu() {
     // Czyścimy ekran przed ponownym rysowaniem — żeby nie dokładać kart
     // na już istniejące gdy użytkownik wraca do tej zakładki.
-    wyczyscLayout(mainLayout);
+    wyczyscLayout(glownyUklad);
     const auto recenzje = appController.pobierzWszystkieRecenzje();
 
     // obecnyMiesiacRok śledzi jaki miesiąc był ostatnio narysowany —
@@ -53,7 +53,7 @@ void TimelineView::renderujTimeline() {
         QLabel* puste = new QLabel("Nie masz jeszcze żadnych zakończonych tytułów z recenzją.");
         puste->setStyleSheet("color: #8a8f98; font-size: 16px;");
         puste->setAlignment(Qt::AlignCenter);
-        mainLayout->addWidget(puste);
+        glownyUklad->addWidget(puste);
         return;
     }
 
@@ -66,7 +66,7 @@ void TimelineView::renderujTimeline() {
             obecnyMiesiacRok = dataStr;
             QLabel* naglowek = new QLabel(obecnyMiesiacRok);
             naglowek->setStyleSheet("color: #2d89ef; font-weight: bold; font-size: 20px; margin-top: 15px; border-bottom: 2px solid #333; padding-bottom: 5px;");
-            mainLayout->addWidget(naglowek);
+            glownyUklad->addWidget(naglowek);
         }
 
         QString tytulMedium = p.tytulMedium.isEmpty() ? "Nieznany tytuł" : p.tytulMedium;
@@ -106,23 +106,23 @@ void TimelineView::renderujTimeline() {
             );
 
         // Layout wewnątrz przycisku — QPushButton może trzymać własne widgety,
-        // dzięki temu karta ma tytuł i snippet zamiast jednego napisu.
+        // dzięki temu karta ma tytuł i fragment zamiast jednego napisu.
         QVBoxLayout* l = new QVBoxLayout(karta);
         l->setContentsMargins(15, 15, 15, 15);
         l->setSpacing(5);
 
         QLabel* tytul = new QLabel(QString("<span style='font-size: 16px; font-weight: bold; color: white;'>%1</span> <span style='color: #f1c40f; font-weight: bold;'>(Ocena: %2/10)</span>").arg(tytulMedium).arg(p.ocena));
 
-        QLabel* snippet = new QLabel(podgladTekstu);
-        snippet->setWordWrap(true);
-        snippet->setTextFormat(Qt::RichText); // Bez tego tagi <span> wyświetlają się jako zwykły tekst.
-        snippet->setStyleSheet("color: #bdc3c7; font-style: italic;");
+        QLabel* fragment = new QLabel(podgladTekstu);
+        fragment->setWordWrap(true);
+        fragment->setTextFormat(Qt::RichText); // Bez tego tagi <span> wyświetlają się jako zwykły tekst.
+        fragment->setStyleSheet("color: #bdc3c7; font-style: italic;");
         // Bez tego atrybutu kliknięcie w obszar labela zatrzymuje się na nim
         // i nie dociera do przycisku pod spodem.
-        snippet->setAttribute(Qt::WA_TransparentForMouseEvents);
+        fragment->setAttribute(Qt::WA_TransparentForMouseEvents);
 
         l->addWidget(tytul);
-        l->addWidget(snippet);
+        l->addWidget(fragment);
 
         // Lambda przechwytuje p przez wartość (kopię) — każda karta musi pamiętać
         // swoje własne dane niezależnie od pozostałych kart w pętli.
@@ -131,11 +131,11 @@ void TimelineView::renderujTimeline() {
         });
 
         //dokłada gotową kartę na dół listy
-        mainLayout->addWidget(karta);
+        glownyUklad->addWidget(karta);
     }
 }
 
-void TimelineView::pokazDetaleRecenzji(const PodejscieHistoryczne& p) {
+void TimelineView::pokazDetaleRecenzji(const HistoricalAttempt& p) {
     // "this" jako rodzic dialogu — dialog wycentruje się nad oknem aplikacji
     // i zostanie zamknięty razem z nią gdyby coś poszło nie tak.
     QDialog d(this);
@@ -163,24 +163,24 @@ void TimelineView::pokazDetaleRecenzji(const PodejscieHistoryczne& p) {
     // Osobna scroll area na sesje — niezależna od recenzji
     layout->addWidget(new QLabel("<br><b>Oś czasu sesji (Notatki):</b>"));
     QScrollArea* sa = new QScrollArea();
-    QWidget* content = new QWidget();
-    QVBoxLayout* notesLayout = new QVBoxLayout(content);
+    QWidget* zawartosc = new QWidget();
+    QVBoxLayout* layoutNotatek = new QVBoxLayout(zawartosc);
 
     if (p.sesje.isEmpty()) {
-        notesLayout->addWidget(new QLabel("Brak notatek z przebiegu sesji."));
+        layoutNotatek->addWidget(new QLabel("Brak notatek z przebiegu sesji."));
     } else {
         for (const auto& s : p.sesje) {
             QLabel* n = new QLabel(QString("<span style='color:#2d89ef; font-weight:bold;'>%1</span><br>%2")
                                        .arg(s.data.toString("dd.MM.yyyy HH:mm"), s.notatka.isEmpty() ? "Brak notatki" : s.notatka));
             n->setWordWrap(true);
             n->setStyleSheet("margin-bottom: 5px; padding: 10px; background: #25282a; border-radius: 5px;");
-            notesLayout->addWidget(n);
+            layoutNotatek->addWidget(n);
         }
     }
     // addStretch wypycha wszystkie wpisy do góry zamiast rozciągać je na całą dostępną wysokość.
-    notesLayout->addStretch();
+    layoutNotatek->addStretch();
 
-    sa->setWidget(content);
+    sa->setWidget(zawartosc);
     sa->setWidgetResizable(true);
     layout->addWidget(sa);
 

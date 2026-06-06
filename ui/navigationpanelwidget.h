@@ -1,5 +1,5 @@
-#ifndef PANELNAWIGACJIWIDGET_H
-#define PANELNAWIGACJIWIDGET_H
+#ifndef NAVIGATIONPANELWIDGET_H
+#define NAVIGATIONPANELWIDGET_H
 
 #include <QWidget>
 #include <QTreeWidgetItem>
@@ -7,13 +7,13 @@
 #include "appcontroller.h"
 #include "multimedia.h"
 
-namespace Ui { class PanelNawigacjiWidget; }
+namespace Ui { class NavigationPanelWidget; }
 
-class PanelNawigacjiWidget : public QWidget {
+class NavigationPanelWidget : public QWidget {
     Q_OBJECT
 public:
-    explicit PanelNawigacjiWidget(AppController& controller, QWidget *parent = nullptr);
-    ~PanelNawigacjiWidget();
+    explicit NavigationPanelWidget(AppController& controller, QWidget *parent = nullptr);
+    ~NavigationPanelWidget();
 
     void odswiezDrzewo();
 
@@ -24,12 +24,12 @@ signals:
     void zadaniePowrotuDoDashboardu();
 
 private slots:
-    void onWybieranieElementuDrzewa(QTreeWidgetItem *item, int column);
-    void onWyszukiwanie(const QString &text);
+    void obsluzWyborElementuDrzewa(QTreeWidgetItem *item, int kolumna);
+    void obsluzWyszukiwanie(const QString &tekst);
     void pokazMenuDrzewa(const QPoint &pos);
 
 private:
-    Ui::PanelNawigacjiWidget *ui;
+    Ui::NavigationPanelWidget *ui;
     AppController& appController;
     QList<std::shared_ptr<Multimedia>> listaMultimediow;
 

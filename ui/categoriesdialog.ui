@@ -1,29 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>PlatformyDialog</class>
- <widget class="QDialog" name="PlatformyDialog">
+ <class>CategoriesDialog</class>
+ <widget class="QDialog" name="CategoriesDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>454</width>
+    <width>500</width>
     <height>400</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Zarządzanie Platformami</string>
+   <string>Zarządzanie Kategoriami</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QTableWidget" name="tabela">
-     <property name="editTriggers">
-      <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
-     </property>
      <property name="selectionMode">
-      <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+      <enum>QAbstractItemView::SingleSelection</enum>
      </property>
      <property name="selectionBehavior">
-      <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+      <enum>QAbstractItemView::SelectRows</enum>
+     </property>
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
      </property>
      <column>
       <property name="text">
@@ -37,7 +37,7 @@
      </column>
      <column>
       <property name="text">
-       <string>Typ nośnika</string>
+       <string>Jednostka</string>
       </property>
      </column>
     </widget>
@@ -66,7 +66,7 @@
       </widget>
      </item>
      <item>
-      <spacer name="horizontalSpacer_2">
+      <spacer name="horizontalSpacer">
        <property name="orientation">
         <enum>Qt::Orientation::Horizontal</enum>
        </property>

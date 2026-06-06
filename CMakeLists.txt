@@ -10,18 +10,18 @@ qt_add_executable(CML
     main.cpp
     ui/mainwindow.cpp ui/mainwindow.h ui/mainwindow.ui
     db/databasemanager.h db/databasemanager.cpp
-    ui/kategoriedialog.h ui/kategoriedialog.cpp ui/kategoriedialog.ui
-    ui/platformydialog.h ui/platformydialog.cpp ui/platformydialog.ui
-    ui/tagidialog.h ui/tagidialog.cpp ui/tagidialog.ui
+    ui/categoriesdialog.h ui/categoriesdialog.cpp ui/categoriesdialog.ui
+    ui/platformsdialog.h ui/platformsdialog.cpp ui/platformsdialog.ui
+    ui/tagsdialog.h ui/tagsdialog.cpp ui/tagsdialog.ui
     ui/statisticswidget.h ui/statisticswidget.cpp ui/statisticswidget.ui
     ui/multimediaformwidget.h ui/multimediaformwidget.cpp ui/multimediaformwidget.ui
-    ui/szczegolywidget.h ui/szczegolywidget.cpp ui/szczegolywidget.ui
+    ui/detailswidget.h ui/detailswidget.cpp ui/detailswidget.ui
     ui/dashboardwidget.h ui/dashboardwidget.cpp ui/dashboardwidget.ui
-    ui/panelnawigacjiwidget.h ui/panelnawigacjiwidget.cpp ui/panelnawigacjiwidget.ui
+    ui/navigationpanelwidget.h ui/navigationpanelwidget.cpp ui/navigationpanelwidget.ui
     ui/timelineview.h ui/timelineview.cpp ui/timelineview.ui
     controllers/appcontroller.h controllers/appcontroller.cpp
-    models/multimedia.h models/postep.h
-    models/historia.h models/aktywnosc_statystyki.h
+    models/multimedia.h models/progress.h
+    models/history.h models/activity_statistics.h
 )
 
 qt_add_resources(CML "resources"

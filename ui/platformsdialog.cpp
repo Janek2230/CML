@@ -1,11 +1,11 @@
-#include "platformydialog.h"
-#include "ui_platformydialog.h"
+#include "platformsdialog.h"
+#include "ui_platformsdialog.h"
 #include <QHeaderView>
 #include <QMessageBox>
 #include <QInputDialog>
 
-PlatformyDialog::PlatformyDialog(AppController& controller, QWidget *parent)
-    : QDialog(parent), ui(new Ui::PlatformyDialog), appController(controller)
+PlatformsDialog::PlatformsDialog(AppController& controller, QWidget *parent)
+    : QDialog(parent), ui(new Ui::PlatformsDialog), appController(controller)
 {
     ui->setupUi(this);
 
@@ -14,18 +14,18 @@ PlatformyDialog::PlatformyDialog(AppController& controller, QWidget *parent)
 
     wypelnijTabele();
 
-    connect(ui->btnDodaj,    &QPushButton::clicked, this, &PlatformyDialog::onBtnDodajClicked);
-    connect(ui->btnEdytuj,   &QPushButton::clicked, this, &PlatformyDialog::onBtnEdytujClicked);
-    connect(ui->btnUsun,     &QPushButton::clicked, this, &PlatformyDialog::onBtnUsunClicked);
+    connect(ui->btnDodaj,    &QPushButton::clicked, this, &PlatformsDialog::obsluzDodaj);
+    connect(ui->btnEdytuj,   &QPushButton::clicked, this, &PlatformsDialog::obsluzEdytuj);
+    connect(ui->btnUsun,     &QPushButton::clicked, this, &PlatformsDialog::obsluzUsun);
     connect(ui->btnZamknij,  &QPushButton::clicked, this, &QDialog::accept);
 }
 
-PlatformyDialog::~PlatformyDialog()
+PlatformsDialog::~PlatformsDialog()
 {
     delete ui;
 }
 
-void PlatformyDialog::wypelnijTabele()
+void PlatformsDialog::wypelnijTabele()
 {
     ui->tabela->setRowCount(0);
     const auto platformy = appController.pobierzPelnePlatformy();
@@ -45,7 +45,7 @@ static QStringList dostepneTypyNosnika() {
     return {"Cyfrowy", "Fizyczny", "Streaming", "Papier", "E-book"};
 }
 
-void PlatformyDialog::onBtnDodajClicked()
+void PlatformsDialog::obsluzDodaj()
 {
     bool ok = false;
     const QString nazwa = QInputDialog::getText(
@@ -67,7 +67,7 @@ void PlatformyDialog::onBtnDodajClicked()
     wypelnijTabele();
 }
 
-void PlatformyDialog::onBtnEdytujClicked()
+void PlatformsDialog::obsluzEdytuj()
 {
     const int wiersz = ui->tabela->currentRow();
     if (wiersz < 0) {
@@ -99,7 +99,7 @@ void PlatformyDialog::onBtnEdytujClicked()
     }
 }
 
-void PlatformyDialog::onBtnUsunClicked()
+void PlatformsDialog::obsluzUsun()
 {
     const int wiersz = ui->tabela->currentRow();
     if (wiersz < 0) return;
@@ -119,10 +119,10 @@ void PlatformyDialog::onBtnUsunClicked()
 
     msgBox.exec();
 
-    QAbstractButton *clicked = msgBox.clickedButton();
-    if (clicked != btnPrzenies && clicked != btnUsunWszystko) return;
+    QAbstractButton *klikniety = msgBox.clickedButton();
+    if (klikniety != btnPrzenies && klikniety != btnUsunWszystko) return;
 
-    const bool usunZDetalami = (clicked == btnUsunWszystko);
+    const bool usunZDetalami = (klikniety == btnUsunWszystko);
     if (appController.usunPlatforme(idPlat, usunZDetalami)) {
         wypelnijTabele();
     }

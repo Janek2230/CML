@@ -21,45 +21,45 @@ DashboardWidget::~DashboardWidget() {
 }
 
 void DashboardWidget::odswiezStatystykiGlowne() {
-    auto stats = appController.getGlobalStats();
-    if (stats.value("Suma", 0) == 0) return;
+    auto statystyki = appController.pobierzStatystykiGlobalne();
+    if (statystyki.value("Suma", 0) == 0) return;
 
-    QPieSeries *series = new QPieSeries();
-    series->append("Planowane", stats.value("Planowane", 0));
-    series->append("W trakcie", stats.value("W trakcie", 0));
-    series->append("Wstrzymane", stats.value("Wstrzymane", 0));
-    series->append("Ukończone", stats.value("Ukończone", 0));
-    series->append("Porzucone", stats.value("Porzucone", 0));
+    QPieSeries *seria = new QPieSeries();
+    seria->append(Status::Planowane,  statystyki.value(Status::Planowane, 0));
+    seria->append(Status::WTrakcie,   statystyki.value(Status::WTrakcie, 0));
+    seria->append(Status::Wstrzymane, statystyki.value(Status::Wstrzymane, 0));
+    seria->append(Status::Ukonczone,  statystyki.value(Status::Ukonczone, 0));
+    seria->append(Status::Porzucone,  statystyki.value(Status::Porzucone, 0));
 
-    series->slices().at(0)->setColor(QColor(0x7f, 0x8c, 0x8d));
-    series->slices().at(1)->setColor(QColor(0x29, 0x80, 0xb9));
-    series->slices().at(2)->setColor(QColor(0xf1, 0xc4, 0x0f));
-    series->slices().at(3)->setColor(QColor(0x27, 0xae, 0x60));
-    series->slices().at(4)->setColor(QColor(0xc0, 0x39, 0x2b));
+    seria->slices().at(0)->setColor(QColor(0x7f, 0x8c, 0x8d));
+    seria->slices().at(1)->setColor(QColor(0x29, 0x80, 0xb9));
+    seria->slices().at(2)->setColor(QColor(0xf1, 0xc4, 0x0f));
+    seria->slices().at(3)->setColor(QColor(0x27, 0xae, 0x60));
+    seria->slices().at(4)->setColor(QColor(0xc0, 0x39, 0x2b));
 
     // Aktualizacja etykiet legendy, by pokazywały konkretne wartości (np. "Planowane (15)")
-    for (auto slice : series->slices()) {
-        slice->setLabel(QString("%1 (%2)").arg(slice->label()).arg(slice->value()));
+    for (auto wycinek : seria->slices()) {
+        wycinek->setLabel(QString("%1 (%2)").arg(wycinek->label()).arg(wycinek->value()));
     }
 
-    QChart *chart = new QChart();
-    chart->addSeries(series);
-    chart->setTitle("Status Biblioteki");
+    QChart *wykres = new QChart();
+    wykres->addSeries(seria);
+    wykres->setTitle("Status Biblioteki");
 
-    chart->legend()->setVisible(true);
-    chart->legend()->setAlignment(Qt::AlignRight);
-    chart->setAnimationOptions(QChart::SeriesAnimations);
-    chart->setBackgroundVisible(false);
-    chart->setTitleBrush(QBrush(Qt::white));
-    chart->legend()->setLabelColor(Qt::white);
+    wykres->legend()->setVisible(true);
+    wykres->legend()->setAlignment(Qt::AlignRight);
+    wykres->setAnimationOptions(QChart::SeriesAnimations);
+    wykres->setBackgroundVisible(false);
+    wykres->setTitleBrush(QBrush(Qt::white));
+    wykres->legend()->setLabelColor(Qt::white);
 
-    ui->wykresOwalny->setChart(chart);
+    ui->wykresOwalny->setChart(wykres);
 
     // Czyszczenie układu siatki ze starych kafelków przed wygenerowaniem nowych
-    QLayoutItem *child;
-    while ((child = ui->gridOstatnie->takeAt(0)) != nullptr) {
-        delete child->widget();
-        delete child;
+    QLayoutItem *element;
+    while ((element = ui->gridOstatnie->takeAt(0)) != nullptr) {
+        delete element->widget();
+        delete element;
     }
 
     const QList<int> ostatnieId = appController.pobierzOstatnioAktywne(6);
@@ -68,8 +68,8 @@ void DashboardWidget::odswiezStatystykiGlowne() {
 
     for (int id : ostatnieId) {
         for (const auto& m : lista) {
-            if (m->getId() == id) {
-                QPushButton *btnKafel = new QPushButton(m->getTytul(), this);
+            if (m->id == id) {
+                QPushButton *btnKafel = new QPushButton(m->tytul, this);
 
                 connect(btnKafel, &QPushButton::clicked, this, [this, id]() {
                     emit zadaniePokazaniaSzczegolow(id);

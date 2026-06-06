@@ -15,15 +15,15 @@ public:
     explicit TimelineView(AppController& controller, QWidget *parent = nullptr);
     ~TimelineView();
 
-    void renderujTimeline();
+    void renderujOsCzasu();
 
 private:
     Ui::TimelineView *ui;
     AppController& appController;
-    QVBoxLayout* mainLayout;
+    QVBoxLayout* glownyUklad;
 
     void wyczyscLayout(QLayout* layout);
-    void pokazDetaleRecenzji(const PodejscieHistoryczne& p);
+    void pokazDetaleRecenzji(const HistoricalAttempt& p);
 };
 
 #endif // TIMELINEVIEW_H

@@ -1,30 +1,30 @@
-#ifndef KATEGORIEDIALOG_H
-#define KATEGORIEDIALOG_H
+#ifndef CATEGORIESDIALOG_H
+#define CATEGORIESDIALOG_H
 
 #include <QDialog>
 #include "appcontroller.h"
 
 QT_BEGIN_NAMESPACE
-namespace Ui { class KategorieDialog; }
+namespace Ui { class CategoriesDialog; }
 QT_END_NAMESPACE
 
 // Dialog zarządzania kategoriami — pozwala dodawać, edytować i usuwać kategorie.
 // Każda kategoria ma nazwę i jednostkę (np. "strony", "odcinki"), która
 // jest dziedziczona przez multimedia przypisane do tej kategorii.
-class KategorieDialog : public QDialog {
+class CategoriesDialog : public QDialog {
     Q_OBJECT
 
 public:
-    explicit KategorieDialog(AppController& controller, QWidget *parent = nullptr);
-    ~KategorieDialog();
+    explicit CategoriesDialog(AppController& controller, QWidget *parent = nullptr);
+    ~CategoriesDialog();
 
 private slots:
-    void onBtnDodajClicked();
-    void onBtnEdytujClicked();
-    void onBtnUsunClicked();
+    void obsluzDodaj();
+    void obsluzEdytuj();
+    void obsluzUsun();
 
 private:
-    Ui::KategorieDialog *ui;
+    Ui::CategoriesDialog *ui;
     AppController& appController;
 
     // Czyści tabelę i wypełnia ją aktualnymi danymi z bazy.

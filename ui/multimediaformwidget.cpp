@@ -22,14 +22,14 @@ MultimediaFormWidget::MultimediaFormWidget(AppController& controller, QWidget *p
         emit formularzAnulowany();
     });
 
-    connect(ui->comboNowaKategoria, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MultimediaFormWidget::onComboNowaKategoriaChanged);
+    connect(ui->comboNowaKategoria, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MultimediaFormWidget::obsluzZmianeKategorii);
 
-    connect(ui->btnPotwierdzDodaj, &QPushButton::clicked, this, &MultimediaFormWidget::onBtnPotwierdzDodajClicked);
+    connect(ui->btnPotwierdzDodaj, &QPushButton::clicked, this, &MultimediaFormWidget::obsluzPotwierdzDodaj);
 
-    connect(ui->btnDodajPlatforme, &QPushButton::clicked, this, &MultimediaFormWidget::onBtnSzybkaPlatformaClicked);
-    connect(ui->btnDodajKategorie, &QPushButton::clicked, this, &MultimediaFormWidget::onBtnSzybkaKategoriaClicked);
+    connect(ui->btnDodajPlatforme, &QPushButton::clicked, this, &MultimediaFormWidget::obsluzSzybkaPlatforma);
+    connect(ui->btnDodajKategorie, &QPushButton::clicked, this, &MultimediaFormWidget::obsluzSzybkaKategoria);
 
-    connect(ui->btnDodajTag, &QPushButton::clicked, this, &MultimediaFormWidget::onBtnSzybkiTagClicked);
+    connect(ui->btnDodajTag, &QPushButton::clicked, this, &MultimediaFormWidget::obsluzSzybkiTag);
 }
 
 MultimediaFormWidget::~MultimediaFormWidget()
@@ -37,7 +37,7 @@ MultimediaFormWidget::~MultimediaFormWidget()
     delete ui;
 }
 
-void MultimediaFormWidget::onBtnSzybkiTagClicked() {
+void MultimediaFormWidget::obsluzSzybkiTag() {
     bool ok;
     QString nazwa = QInputDialog::getText(this, "Nowy Tag", "Podaj nazwę tagu:", QLineEdit::Normal, "", &ok);
     if (ok && !nazwa.trimmed().isEmpty()) {
@@ -66,26 +66,26 @@ void MultimediaFormWidget::przygotujFormularz(int idMedium, int idDomyslnejKateg
         ui->spinNowyRok->setValue(0);   // 0 == "—" (nieznany rok)
         ui->editNowyTworca->clear();
         if (idDomyslnejKategorii != 0) {
-            int indexKat = ui->comboNowaKategoria->findData(idDomyslnejKategorii);
-            if (indexKat != -1) ui->comboNowaKategoria->setCurrentIndex(indexKat);
+            int indeksKat = ui->comboNowaKategoria->findData(idDomyslnejKategorii);
+            if (indeksKat != -1) ui->comboNowaKategoria->setCurrentIndex(indeksKat);
         }
         if (idDomyslnejPlatformy != 0) {
-            int indexPlat = ui->comboNowyTyp->findData(idDomyslnejPlatformy);
-            if (indexPlat != -1) ui->comboNowyTyp->setCurrentIndex(indexPlat);
+            int indeksPlat = ui->comboNowyTyp->findData(idDomyslnejPlatformy);
+            if (indeksPlat != -1) ui->comboNowyTyp->setCurrentIndex(indeksPlat);
         }
     } else {
         ui->label_6->setText("Edytuj medium");
         ui->btnPotwierdzDodaj->setText("Zapisz zmiany");
         for (const auto& m : appController.pobierzWszystkieMultimedia()) {
-            if (m->getId() == idMedium) {
-                ui->editNowyTytul->setText(m->getTytul());
-                ui->spinNowyCel->setValue(m->getPostep().docelowa);
-                ui->spinNowaOcena->setValue(m->getOcena());
-                ui->spinNowyRok->setValue(m->getRokWydania());
-                ui->editNowyTworca->setText(m->getTworcy());
-                int idxKat = ui->comboNowaKategoria->findData(m->getIdKategorii());
+            if (m->id == idMedium) {
+                ui->editNowyTytul->setText(m->tytul);
+                ui->spinNowyCel->setValue(m->postep.docelowa);
+                ui->spinNowaOcena->setValue(m->ocena);
+                ui->spinNowyRok->setValue(m->rokWydania);
+                ui->editNowyTworca->setText(m->tworcy);
+                int idxKat = ui->comboNowaKategoria->findData(m->idKategorii);
                 ui->comboNowaKategoria->setCurrentIndex(idxKat != -1 ? idxKat : 0);
-                int idxPlat = ui->comboNowyTyp->findData(m->getIdPlatformy());
+                int idxPlat = ui->comboNowyTyp->findData(m->idPlatformy);
                 ui->comboNowyTyp->setCurrentIndex(idxPlat != -1 ? idxPlat : 0);
                 break;
             }
@@ -93,7 +93,7 @@ void MultimediaFormWidget::przygotujFormularz(int idMedium, int idDomyslnejKateg
     }
 }
 
-void MultimediaFormWidget::onBtnPotwierdzDodajClicked() {
+void MultimediaFormWidget::obsluzPotwierdzDodaj() {
     QString tytul = ui->editNowyTytul->text().trimmed();
     if (tytul.isEmpty()) {
         QMessageBox::warning(this, "Błąd", "Tytuł nie może być pusty!");
@@ -173,7 +173,7 @@ void MultimediaFormWidget::uzupelnijComboBoxy() {
     }
 }
 
-void MultimediaFormWidget::onBtnSzybkaPlatformaClicked() {
+void MultimediaFormWidget::obsluzSzybkaPlatforma() {
     bool ok;
     QString nowaNazwa = QInputDialog::getText(this, "Nowa Platforma", "Podaj nazwę:", QLineEdit::Normal, "", &ok);
     if (ok && !nowaNazwa.trimmed().isEmpty()) {
@@ -184,7 +184,7 @@ void MultimediaFormWidget::onBtnSzybkaPlatformaClicked() {
     }
 }
 
-void MultimediaFormWidget::onBtnSzybkaKategoriaClicked() {
+void MultimediaFormWidget::obsluzSzybkaKategoria() {
     QDialog dialog(this);
     QFormLayout form(&dialog);
     QLineEdit editNazwa(&dialog);
@@ -194,11 +194,11 @@ void MultimediaFormWidget::onBtnSzybkaKategoriaClicked() {
     form.addRow("Nazwa kategorii:", &editNazwa);
     form.addRow("Jednostka:", &comboJednostka);
 
-    QDialogButtonBox buttonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, &dialog);
-    form.addRow(&buttonBox);
+    QDialogButtonBox panelPrzyciskow(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, &dialog);
+    form.addRow(&panelPrzyciskow);
 
-    connect(&buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    connect(&buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    connect(&panelPrzyciskow, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(&panelPrzyciskow, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
     if (dialog.exec() == QDialog::Accepted && !editNazwa.text().trimmed().isEmpty()) {
         QString jednostka = comboJednostka.currentText().trimmed();
@@ -208,9 +208,9 @@ void MultimediaFormWidget::onBtnSzybkaKategoriaClicked() {
     }
 }
 
-void MultimediaFormWidget::onComboNowaKategoriaChanged(int index) {
-    if (index >= 0) {
-        QString jednostka = ui->comboNowaKategoria->itemData(index, Qt::UserRole + 1).toString();
+void MultimediaFormWidget::obsluzZmianeKategorii(int indeks) {
+    if (indeks >= 0) {
+        QString jednostka = ui->comboNowaKategoria->itemData(indeks, Qt::UserRole + 1).toString();
         ui->labJednostka->setText(jednostka.isEmpty() ? "Cel:" : "Cel (" + jednostka + "):");
     }
 }

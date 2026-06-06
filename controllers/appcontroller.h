@@ -20,7 +20,7 @@ public:
     int  dodajNoweMedium(const QString &tytul, int idKat, int idPlatformy, int cel, int rokWydania = 0, const QString &tworcy = QString());
     bool aktualizujDaneMedium(int id, const QString &tytul, int idKat, int idPlatformy, int cel, int rokWydania = 0, const QString &tworcy = QString());
     bool usunMedium(int idMedium);
-    bool usunWieleMultimediow(const QList<int>& idList);
+    bool usunWieleMultimediow(const QList<int>& listaId);
     bool zmienKategorieWielu(const QList<int>& idMultimediow, int nowaKategoriaId);
     bool ustawUlubione(int idMedium, bool ulubione);
     QList<int> pobierzOstatnioAktywne(int limit);
@@ -42,7 +42,7 @@ public:
 
     // Kategorie
     struct KategoriaModel { int id; QString nazwa; QString jednostka; };
-    QMap<int, QString>         getCategories();
+    QMap<int, QString>         pobierzSlownikKategorii();
     QList<QPair<int, QString>> pobierzKategorie();
     QList<KategoriaModel>      pobierzPelneKategorie();
     QStringList                pobierzUnikalneJednostki();
@@ -68,16 +68,16 @@ public:
     bool ustawTagiDlaMedium(int idMedium, const QList<int>& idTagow);
 
     // Historia i podgląd
-    QList<PodejscieHistoryczne> pobierzHistorie(int idMedium);
-    QList<PodejscieHistoryczne> pobierzWszystkieRecenzje();
+    QList<HistoricalAttempt> pobierzHistorie(int idMedium);
+    QList<HistoricalAttempt> pobierzWszystkieRecenzje();
 
     // Statystyki
-    QMap<QString, int>  getGlobalStats();
+    QMap<QString, int>  pobierzStatystykiGlobalne();
     QVariantMap         pobierzStatystykiPodsumowania();
     QList<QVariantMap>  pobierzPodsumowanieKategorii();
     QList<QVariantMap>  pobierzPodsumowanieTagow();
     QVariantMap         pobierzCiekawostkiStatystyczne();
-    QList<StatystykaAktywnosci>  pobierzDaneDlaWykresu(int zakres, const QString& metryka);
+    QList<ActivityStatistic>  pobierzDaneDlaWykresu(int zakres, const QString& metryka);
 
 signals:
     void bladKrytyczny(const QString& wiadomosc);
@@ -85,7 +85,7 @@ signals:
     void daneZmienione();
 
 private:
-    DatabaseManager dbManager;
+    DatabaseManager menedzerBazy;
 };
 
 #endif

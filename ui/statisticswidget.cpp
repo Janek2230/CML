@@ -36,11 +36,11 @@ StatisticsWidget::StatisticsWidget(AppController& controller, QWidget *parent) :
     ui->wykresSlupkowyAktywnosci->viewport()->installEventFilter(this);
 
     // etykieta jest umieszczona wewnątrz pola rysowania wykresu, dzięki czemu pojawia się na wierzchu słupków
-    etykietaTooltip = new QLabel(ui->wykresSlupkowyAktywnosci->viewport());
-    etykietaTooltip->setStyleSheet("background-color: rgba(30, 30, 30, 220); color: white; border: 1px solid #555; border-radius: 4px; padding: 5px;");
+    etykietaDymka = new QLabel(ui->wykresSlupkowyAktywnosci->viewport());
+    etykietaDymka->setStyleSheet("background-color: rgba(30, 30, 30, 220); color: white; border: 1px solid #555; border-radius: 4px; padding: 5px;");
     // bez tego flagi etykieta blokowałaby kliknięcia i ruchy myszy, wykres przestałby wykrywać najechanie na słupki
-    etykietaTooltip->setAttribute(Qt::WA_TransparentForMouseEvents);
-    etykietaTooltip->hide();
+    etykietaDymka->setAttribute(Qt::WA_TransparentForMouseEvents);
+    etykietaDymka->hide();
 
     connect(ui->comboZakresCzasu, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &StatisticsWidget::odswiezWykresAktywnosci);
     connect(ui->comboMetryka, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &StatisticsWidget::odswiezWykresAktywnosci);
@@ -80,20 +80,20 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
 
     if (dane.isEmpty()) {
         // zamiast pustego miejsca pokazujemy komunikat
-        QChart *pustyChart = new QChart();
-        pustyChart->setTitle(QString("Brak aktywności w wybranym okresie (%1)")
+        QChart *pustyWykres = new QChart();
+        pustyWykres->setTitle(QString("Brak aktywności w wybranym okresie (%1)")
                                  .arg(ui->comboZakresCzasu->currentText().toLower()));
 
-        QFont font = pustyChart->titleFont();
+        QFont font = pustyWykres->titleFont();
         font.setPointSize(14);
         font.setBold(true);
-        pustyChart->setTitleFont(font);
-        pustyChart->setTitleBrush(QBrush(QColor(150, 150, 150)));
+        pustyWykres->setTitleFont(font);
+        pustyWykres->setTitleBrush(QBrush(QColor(150, 150, 150)));
 
-        pustyChart->legend()->hide();
-        pustyChart->setBackgroundVisible(false);
+        pustyWykres->legend()->hide();
+        pustyWykres->setBackgroundVisible(false);
 
-        ui->wykresSlupkowyAktywnosci->setChart(pustyChart);
+        ui->wykresSlupkowyAktywnosci->setChart(pustyWykres);
         ui->wykresSlupkowyAktywnosci->setRenderHint(QPainter::Antialiasing);
         return;
     }
@@ -130,13 +130,13 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
     };
 
     QStackedBarSeries *series = new QStackedBarSeries();
-    QMap<QString, QStringList> tekstyTooltipow;
+    QMap<QString, QStringList> tekstyDymkow;
     QList<QBarSet*> setySlotow;
     for (int s = 0; s < etykietySlotow.size(); ++s) {
         QBarSet* set = new QBarSet(etykietySlotow[s]);
         set->setColor(kolorySlotow[s]);
         setySlotow << set;
-        tekstyTooltipow[etykietySlotow[s]] = QStringList();
+        tekstyDymkow[etykietySlotow[s]] = QStringList();
     }
 
     for (const QString& d : unikalneDaty) {
@@ -154,13 +154,13 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
         for (int r = 0; r < TOP_N; ++r) {
             if (r < wDniu.size()) {
                 *setySlotow[r] << wDniu[r].first;
-                tekstyTooltipow[etykietySlotow[r]].append(
+                tekstyDymkow[etykietySlotow[r]].append(
                     QString("<b>%1. %2</b><br>%3 %4")
                         .arg(r + 1)
                         .arg(wDniu[r].second, QString::number(wDniu[r].first, 'f', 1), jednostkaWykresu));
             } else {
                 *setySlotow[r] << 0.0;
-                tekstyTooltipow[etykietySlotow[r]].append("");
+                tekstyDymkow[etykietySlotow[r]].append("");
             }
         }
 
@@ -173,12 +173,12 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
         }
         *setySlotow[TOP_N] << sumaReszty;
         if (sumaReszty > 0.0) {
-            tekstyTooltipow["Pozostałe"].append(
+            tekstyDymkow["Pozostałe"].append(
                 QString("<b>Pozostałe (%1 tytułów)</b><br>Łącznie: %2 %3<br>%4")
                     .arg(wDniu.size() - TOP_N)
                     .arg(QString::number(sumaReszty, 'f', 1), jednostkaWykresu, detaleReszty));
         } else {
-            tekstyTooltipow["Pozostałe"].append("");
+            tekstyDymkow["Pozostałe"].append("");
         }
     }
 
@@ -210,18 +210,18 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
     chart->legend()->setLabelColor(Qt::white);
     chart->setBackgroundVisible(false); // przezroczyste tło żeby widoczne było tło rodzica
 
-    // tekstyTooltipow jest przechwycone przez wartość, bo lambda żyje dłużej niż ta funkcja
-    connect(series, &QStackedBarSeries::hovered, this, [this, tekstyTooltipow](bool status, int index, QBarSet *barset) {
+    // tekstyDymkow jest przechwycone przez wartość, bo lambda żyje dłużej niż ta funkcja
+    connect(series, &QStackedBarSeries::hovered, this, [this, tekstyDymkow](bool status, int index, QBarSet *barset) {
         if (status && index >= 0) {
             QString nazwa = barset->label();
-            QString tekst = tekstyTooltipow.value(nazwa).value(index);
+            QString tekst = tekstyDymkow.value(nazwa).value(index);
             if (!tekst.isEmpty()) {
-                etykietaTooltip->setText(tekst);
-                etykietaTooltip->adjustSize();
-                etykietaTooltip->show();
+                etykietaDymka->setText(tekst);
+                etykietaDymka->adjustSize();
+                etykietaDymka->show();
             }
         } else {
-            etykietaTooltip->hide();
+            etykietaDymka->hide();
         }
     });
 
@@ -232,7 +232,7 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
 
 bool StatisticsWidget::eventFilter(QObject *watched, QEvent *event) {
     if (watched == ui->wykresSlupkowyAktywnosci->viewport() && event->type() == QEvent::MouseMove) {
-        if (!etykietaTooltip->isHidden()) {
+        if (!etykietaDymka->isHidden()) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
 
             // domyślnie etykieta pojawia się 15px w prawo i w dół od kursora, żeby go nie zasłaniać
@@ -240,15 +240,15 @@ bool StatisticsWidget::eventFilter(QObject *watched, QEvent *event) {
             int y = mouseEvent->pos().y() + 15;
 
             // jeśli etykieta wychodziłaby poza prawą lub dolną krawędź, przerzucamy ją na drugą stronę kursora
-            if (x + etykietaTooltip->width() > ui->wykresSlupkowyAktywnosci->viewport()->width()) {
-                x = mouseEvent->pos().x() - etykietaTooltip->width() - 15;
+            if (x + etykietaDymka->width() > ui->wykresSlupkowyAktywnosci->viewport()->width()) {
+                x = mouseEvent->pos().x() - etykietaDymka->width() - 15;
             }
-            if (y + etykietaTooltip->height() > ui->wykresSlupkowyAktywnosci->viewport()->height()) {
-                y = mouseEvent->pos().y() - etykietaTooltip->height() - 15;
+            if (y + etykietaDymka->height() > ui->wykresSlupkowyAktywnosci->viewport()->height()) {
+                y = mouseEvent->pos().y() - etykietaDymka->height() - 15;
             }
 
-            etykietaTooltip->move(x, y);
-            etykietaTooltip->raise(); // gwarantuje że etykieta nie schowa się pod inne elementy wykresu
+            etykietaDymka->move(x, y);
+            etykietaDymka->raise(); // gwarantuje że etykieta nie schowa się pod inne elementy wykresu
         }
     }
     // przekazujemy zdarzenie dalej, żeby Qt mógł je normalnie obsłużyć
@@ -288,13 +288,13 @@ void StatisticsWidget::odswiezNigdyNieukonczone() {
     for (int c = 0; c < maxCols; ++c) siatkaPorzucone->setColumnStretch(c, 1);
 
     for (const auto& m : wszystkie) {
-        const auto historia = appController.pobierzHistorie(m->getId());
+        const auto historia = appController.pobierzHistorie(m->id);
         bool czyKiedykolwiekUkonczone = false;
         bool czyKiedykolwiekPorzucone = false;
 
         for (const auto& p : historia) {
-            if (p.status == "Ukończone") czyKiedykolwiekUkonczone = true;
-            if (p.status == "Porzucone") czyKiedykolwiekPorzucone = true;
+            if (p.status == Status::Ukonczone) czyKiedykolwiekUkonczone = true;
+            if (p.status == Status::Porzucone) czyKiedykolwiekPorzucone = true;
         }
 
         if (czyKiedykolwiekPorzucone && !czyKiedykolwiekUkonczone) {
@@ -334,28 +334,28 @@ void StatisticsWidget::odswiezUlubione() {
     QMap<int, long long> czasMap;
     for (const auto& m : wszystkie) {
         long long sumaSekund = 0;
-        for (const auto& p : appController.pobierzHistorie(m->getId()))
+        for (const auto& p : appController.pobierzHistorie(m->id))
             for (const auto& s : p.sesje) sumaSekund += s.sekundy;
-        czasMap[m->getId()] = sumaSekund;
+        czasMap[m->id] = sumaSekund;
     }
 
     // --- Trzy posortowane listy (wszystkie pozycje, bez limitu Top 5) ---
     QList<std::shared_ptr<Multimedia>> ulubione;
-    for (const auto& m : wszystkie) if (m->getCzyUlubione()) ulubione.append(m);
+    for (const auto& m : wszystkie) if (m->ulubione) ulubione.append(m);
     std::sort(ulubione.begin(), ulubione.end(), [&czasMap](const auto& a, const auto& b) {
-        return czasMap[a->getId()] > czasMap[b->getId()];
+        return czasMap[a->id] > czasMap[b->id];
     });
 
     QList<std::shared_ptr<Multimedia>> rankingCzasu;
-    for (const auto& m : wszystkie) if (czasMap[m->getId()] > 0) rankingCzasu.append(m);
+    for (const auto& m : wszystkie) if (czasMap[m->id] > 0) rankingCzasu.append(m);
     std::sort(rankingCzasu.begin(), rankingCzasu.end(), [&czasMap](const auto& a, const auto& b) {
-        return czasMap[a->getId()] > czasMap[b->getId()];
+        return czasMap[a->id] > czasMap[b->id];
     });
 
     QList<std::shared_ptr<Multimedia>> rankingPodejsc;
-    for (const auto& m : wszystkie) if (m->getPostep().numer_podejscia > 1) rankingPodejsc.append(m);
+    for (const auto& m : wszystkie) if (m->postep.numer_podejscia > 1) rankingPodejsc.append(m);
     std::sort(rankingPodejsc.begin(), rankingPodejsc.end(), [](const auto& a, const auto& b) {
-        return a->getPostep().numer_podejscia > b->getPostep().numer_podejscia;
+        return a->postep.numer_podejscia > b->postep.numer_podejscia;
     });
 
     // --- Trzy kolumny z niezależnym scrollem ---
@@ -390,8 +390,8 @@ void StatisticsWidget::odswiezUlubione() {
     for (const auto& m : ulubione) {
         QWidget* k = zbudujKafelek(m, mapaPlatform, false, false);
         QVBoxLayout* l = qobject_cast<QVBoxLayout*>(k->layout());
-        if (l && czasMap[m->getId()] > 0)
-            l->insertWidget(2, new QLabel(QString("<b>Łącznie:</b> %1").arg(sformatujCzas(czasMap[m->getId()])), k));
+        if (l && czasMap[m->id] > 0)
+            l->insertWidget(2, new QLabel(QString("<b>Łącznie:</b> %1").arg(sformatujCzas(czasMap[m->id])), k));
         listaUlubione->addWidget(k);
     }
     if (ulubione.isEmpty()) listaUlubione->addWidget(new QLabel("Brak ulubionych tytułów."));
@@ -402,7 +402,7 @@ void StatisticsWidget::odswiezUlubione() {
     for (const auto& m : rankingCzasu) {
         QWidget* k = zbudujKafelek(m, mapaPlatform, false, false);
         QVBoxLayout* l = qobject_cast<QVBoxLayout*>(k->layout());
-        if (l) l->insertWidget(2, new QLabel(QString("<b>Łącznie:</b> %1").arg(sformatujCzas(czasMap[m->getId()])), k));
+        if (l) l->insertWidget(2, new QLabel(QString("<b>Łącznie:</b> %1").arg(sformatujCzas(czasMap[m->id])), k));
         listaCzas->addWidget(k);
     }
     if (rankingCzasu.isEmpty()) listaCzas->addWidget(new QLabel("Brak danych o czasie."));
@@ -413,7 +413,7 @@ void StatisticsWidget::odswiezUlubione() {
     for (const auto& m : rankingPodejsc) {
         QWidget* k = zbudujKafelek(m, mapaPlatform, false, false);
         QVBoxLayout* l = qobject_cast<QVBoxLayout*>(k->layout());
-        if (l) l->insertWidget(2, new QLabel(QString("<b>Podejść:</b> %1").arg(m->getPostep().numer_podejscia), k));
+        if (l) l->insertWidget(2, new QLabel(QString("<b>Podejść:</b> %1").arg(m->postep.numer_podejscia), k));
         listaPodejsc->addWidget(k);
     }
     if (rankingPodejsc.isEmpty()) listaPodejsc->addWidget(new QLabel("Brak wielokrotnych podejść."));
@@ -676,15 +676,15 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
 
 
 QDateTime StatisticsWidget::wyznaczDateReferencyjna(const std::shared_ptr<Multimedia>& medium) const {
-    if (medium->getStatus() == "Planowane") {
-        return medium->getDataDodania();
+    if (medium->status == Status::Planowane) {
+        return medium->dataDodania;
     }
 
-    if (medium->getDataOstatniejAktywnosci().isValid()) {
-        return medium->getDataOstatniejAktywnosci();
+    if (medium->dataOstatniejAktywnosci.isValid()) {
+        return medium->dataOstatniejAktywnosci;
     }
 
-    return medium->getDataDodania();
+    return medium->dataDodania;
 }
 
 int StatisticsWidget::policzDniBezczynnosci(const std::shared_ptr<Multimedia>& medium) const {
@@ -726,13 +726,13 @@ QWidget* StatisticsWidget::zbudujKafelek(const std::shared_ptr<Multimedia>& medi
     layout->setContentsMargins(10, 10, 10, 10);
     layout->setSpacing(6);
 
-    auto* labelTytul = new QLabel(medium->getTytul(), kafelek);
+    auto* labelTytul = new QLabel(medium->tytul, kafelek);
     labelTytul->setWordWrap(true);
     labelTytul->setStyleSheet("font-weight: 600;");
     layout->addWidget(labelTytul);
 
     auto* progressBar = new QProgressBar(kafelek);
-    const Postep postep = medium->getPostep();
+    const Progress postep = medium->postep;
     int procent = 0;
     if (postep.docelowa > 0) {
         procent = qBound(0, static_cast<int>((static_cast<double>(postep.aktualna) / static_cast<double>(postep.docelowa)) * 100.0), 100);
@@ -743,7 +743,7 @@ QWidget* StatisticsWidget::zbudujKafelek(const std::shared_ptr<Multimedia>& medi
     progressBar->setFixedHeight(6);
     layout->addWidget(progressBar);
 
-    auto* labelPlatforma = new QLabel(QString("Platforma: %1").arg(mapaPlatform.value(medium->getIdPlatformy(), "Nieznana")), kafelek);
+    auto* labelPlatforma = new QLabel(QString("Platforma: %1").arg(mapaPlatform.value(medium->idPlatformy, "Nieznana")), kafelek);
     layout->addWidget(labelPlatforma);
 
     auto* labelBezczynnosc = new QLabel(QString("Brak aktywności od: %1 dni").arg(policzDniBezczynnosci(medium)), kafelek);
@@ -756,9 +756,9 @@ QWidget* StatisticsWidget::zbudujKafelek(const std::shared_ptr<Multimedia>& medi
         auto* btnWznow = new QPushButton("Wznów", kafelek);
         wierszAkcji->addWidget(btnWznow);
         connect(btnWznow, &QPushButton::clicked, this, [this, medium]() {
-            const Postep postep = medium->getPostep();
-            if (appController.aktualizujPostep(medium->getId(), "W trakcie", postep.aktualna, postep.docelowa, medium->getOcena())) {
-                emit zadaniePokazaniaSzczegolow(medium->getId());
+            const Progress postep = medium->postep;
+            if (appController.aktualizujPostep(medium->id, Status::WTrakcie, postep.aktualna, postep.docelowa, medium->ocena)) {
+                emit zadaniePokazaniaSzczegolow(medium->id);
                 odswiezDane();
             }
         });
@@ -769,8 +769,8 @@ QWidget* StatisticsWidget::zbudujKafelek(const std::shared_ptr<Multimedia>& medi
         auto* btnPorzuc = new QPushButton("Porzuć", kafelek);
         wierszAkcji->addWidget(btnPorzuc);
         connect(btnPorzuc, &QPushButton::clicked, this, [this, medium]() {
-            const Postep postep = medium->getPostep();
-            if (appController.aktualizujPostep(medium->getId(), "Porzucone", postep.aktualna, postep.docelowa, medium->getOcena())) {
+            const Progress postep = medium->postep;
+            if (appController.aktualizujPostep(medium->id, Status::Porzucone, postep.aktualna, postep.docelowa, medium->ocena)) {
                 odswiezDane();
             }
         });
@@ -809,13 +809,13 @@ void StatisticsWidget::odswiezKupkeWstydu() {
     QList<std::shared_ptr<Multimedia>> wszystkieWKupce;
 
     for (const auto& medium : wszystkie) {
-        if (medium->getStatus() == "Planowane") {
+        if (medium->status == Status::Planowane) {
             planowane.append(medium);
             wszystkieWKupce.append(medium);
-        } else if (medium->getStatus() == "W trakcie") {
+        } else if (medium->status == Status::WTrakcie) {
             przerwane.append(medium);
             wszystkieWKupce.append(medium);
-        } else if (medium->getStatus() == "Wstrzymane") {
+        } else if (medium->status == Status::Wstrzymane) {
             wstrzymane.append(medium);
             wszystkieWKupce.append(medium);
         }
@@ -840,7 +840,7 @@ void StatisticsWidget::odswiezKupkeWstydu() {
                 return policzDniBezczynnosci(a) < policzDniBezczynnosci(b);
             });
         ui->labelNajdluzszyPrzestoj->setText(
-            QString("Najdłuższy przestój: %1 (%2 dni)").arg(najdluzszy->getTytul()).arg(policzDniBezczynnosci(najdluzszy))
+            QString("Najdłuższy przestój: %1 (%2 dni)").arg(najdluzszy->tytul).arg(policzDniBezczynnosci(najdluzszy))
         );
     } else {
         ui->labelNajdluzszyPrzestoj->setText("Najdłuższy przestój: Brak pozycji w kupce");
@@ -876,6 +876,6 @@ void StatisticsWidget::odswiezKupkeWstydu() {
             return;
         }
         int indeks = QRandomGenerator::global()->bounded(wszystkieWKupce.size());
-        emit zadaniePokazaniaSzczegolow(wszystkieWKupce.at(indeks)->getId());
+        emit zadaniePokazaniaSzczegolow(wszystkieWKupce.at(indeks)->id);
     });
 }

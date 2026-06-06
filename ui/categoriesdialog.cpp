@@ -1,5 +1,5 @@
-#include "kategoriedialog.h"
-#include "ui_kategoriedialog.h"
+#include "categoriesdialog.h"
+#include "ui_categoriesdialog.h"
 #include <QHeaderView>
 #include <QMessageBox>
 #include <QFormLayout>
@@ -7,8 +7,8 @@
 #include <QComboBox>
 #include <QDialogButtonBox>
 
-KategorieDialog::KategorieDialog(AppController& controller, QWidget *parent)
-    : QDialog(parent), ui(new Ui::KategorieDialog), appController(controller)
+CategoriesDialog::CategoriesDialog(AppController& controller, QWidget *parent)
+    : QDialog(parent), ui(new Ui::CategoriesDialog), appController(controller)
 {
     ui->setupUi(this);
 
@@ -21,18 +21,18 @@ KategorieDialog::KategorieDialog(AppController& controller, QWidget *parent)
 
     wypelnijTabele();
 
-    connect(ui->btnDodaj,    &QPushButton::clicked, this, &KategorieDialog::onBtnDodajClicked);
-    connect(ui->btnEdytuj,   &QPushButton::clicked, this, &KategorieDialog::onBtnEdytujClicked);
-    connect(ui->btnUsun,     &QPushButton::clicked, this, &KategorieDialog::onBtnUsunClicked);
+    connect(ui->btnDodaj,    &QPushButton::clicked, this, &CategoriesDialog::obsluzDodaj);
+    connect(ui->btnEdytuj,   &QPushButton::clicked, this, &CategoriesDialog::obsluzEdytuj);
+    connect(ui->btnUsun,     &QPushButton::clicked, this, &CategoriesDialog::obsluzUsun);
     connect(ui->btnZamknij,  &QPushButton::clicked, this, &QDialog::accept);
 }
 
-KategorieDialog::~KategorieDialog()
+CategoriesDialog::~CategoriesDialog()
 {
     delete ui;
 }
 
-void KategorieDialog::wypelnijTabele()
+void CategoriesDialog::wypelnijTabele()
 {
     ui->tabela->setRowCount(0);
     const auto kategorie = appController.pobierzPelneKategorie();
@@ -47,7 +47,7 @@ void KategorieDialog::wypelnijTabele()
     }
 }
 
-void KategorieDialog::onBtnDodajClicked()
+void CategoriesDialog::obsluzDodaj()
 {
     QDialog dialog(this);
     dialog.setWindowTitle("Nowa Kategoria");
@@ -64,14 +64,14 @@ void KategorieDialog::onBtnDodajClicked()
     comboJednostka.setEditable(true);
     comboJednostka.addItems(appController.pobierzUnikalneJednostki());
 
-    QDialogButtonBox buttonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, &dialog);
+    QDialogButtonBox panelPrzyciskow(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, &dialog);
 
     form.addRow("Nazwa kategorii:", &editNazwa);
     form.addRow("Jednostka:",       &comboJednostka);
-    form.addRow(&buttonBox);
+    form.addRow(&panelPrzyciskow);
 
-    connect(&buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    connect(&buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    connect(&panelPrzyciskow, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(&panelPrzyciskow, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
     if (dialog.exec() != QDialog::Accepted) return;
 
@@ -89,7 +89,7 @@ void KategorieDialog::onBtnDodajClicked()
     wypelnijTabele();
 }
 
-void KategorieDialog::onBtnEdytujClicked()
+void CategoriesDialog::obsluzEdytuj()
 {
     const int wiersz = ui->tabela->currentRow();
     if (wiersz < 0) {
@@ -101,29 +101,29 @@ void KategorieDialog::onBtnEdytujClicked()
     const QString obecnaNazwa     = ui->tabela->item(wiersz, 1)->text();
     const QString obecnaJednostka = ui->tabela->item(wiersz, 2)->text();
 
-    QDialog editDialog(this);
-    editDialog.setWindowTitle("Edytuj: " + obecnaNazwa);
+    QDialog dialogEdycji(this);
+    dialogEdycji.setWindowTitle("Edytuj: " + obecnaNazwa);
 
-    QFormLayout form(&editDialog);
+    QFormLayout form(&dialogEdycji);
 
-    QLineEdit editNazwa(&editDialog);
+    QLineEdit editNazwa(&dialogEdycji);
     editNazwa.setText(obecnaNazwa);
 
-    QComboBox comboJednostka(&editDialog);
+    QComboBox comboJednostka(&dialogEdycji);
     comboJednostka.setEditable(true);
     comboJednostka.addItems(appController.pobierzUnikalneJednostki());
     comboJednostka.setCurrentText(obecnaJednostka);
 
-    QDialogButtonBox bb(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, &editDialog);
+    QDialogButtonBox bb(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, &dialogEdycji);
 
     form.addRow("Nazwa:",     &editNazwa);
     form.addRow("Jednostka:", &comboJednostka);
     form.addRow(&bb);
 
-    connect(&bb, &QDialogButtonBox::accepted, &editDialog, &QDialog::accept);
-    connect(&bb, &QDialogButtonBox::rejected, &editDialog, &QDialog::reject);
+    connect(&bb, &QDialogButtonBox::accepted, &dialogEdycji, &QDialog::accept);
+    connect(&bb, &QDialogButtonBox::rejected, &dialogEdycji, &QDialog::reject);
 
-    if (editDialog.exec() != QDialog::Accepted) return;
+    if (dialogEdycji.exec() != QDialog::Accepted) return;
 
     const QString nowaNazwa = editNazwa.text().trimmed();
     if (nowaNazwa.isEmpty()) return;
@@ -133,7 +133,7 @@ void KategorieDialog::onBtnEdytujClicked()
     }
 }
 
-void KategorieDialog::onBtnUsunClicked()
+void CategoriesDialog::obsluzUsun()
 {
     const int wiersz = ui->tabela->currentRow();
     if (wiersz < 0) return;
@@ -153,10 +153,10 @@ void KategorieDialog::onBtnUsunClicked()
 
     msgBox.exec();
 
-    QAbstractButton *clicked = msgBox.clickedButton();
-    if (clicked != btnPrzenies && clicked != btnUsunWszystko) return;
+    QAbstractButton *klikniety = msgBox.clickedButton();
+    if (klikniety != btnPrzenies && klikniety != btnUsunWszystko) return;
 
-    const bool usunZDetalami = (clicked == btnUsunWszystko);
+    const bool usunZDetalami = (klikniety == btnUsunWszystko);
     if (appController.usunKategorie(idKat, usunZDetalami)) {
         wypelnijTabele();
     }

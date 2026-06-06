@@ -2,56 +2,45 @@
 #define MULTIMEDIA_H
 
 #include <QString>
+#include <QStringList>
 #include <QDateTime>
-#include "postep.h"
+#include "progress.h"
+
+// Dozwolone statusy medium / podejścia — jedyne źródło prawdy po stronie C++.
+// Wartości MUSZĄ odpowiadać enumowi typ_statusu w bazie (SQL/01_init_schemaV3.sql),
+// bo trafiają wprost do kolumny status. UI dzieli je na edytowalne (wybór w combo)
+// i terminalne (ustawiane dedykowanymi przyciskami "zakończ"/"porzuć").
+namespace Status {
+    inline const QString Planowane  = QStringLiteral("Planowane");
+    inline const QString WTrakcie   = QStringLiteral("W trakcie");
+    inline const QString Wstrzymane = QStringLiteral("Wstrzymane");
+    inline const QString Ukonczone  = QStringLiteral("Ukończone");
+    inline const QString Porzucone  = QStringLiteral("Porzucone");
+
+    inline QStringList edytowalne() { return { Planowane, WTrakcie, Wstrzymane }; }
+    inline QStringList terminalne() { return { Ukonczone, Porzucone }; }
+    inline QStringList wszystkie()  { return { Planowane, WTrakcie, Wstrzymane, Ukonczone, Porzucone }; }
+}
 
 // Pojedyncze medium w bibliotece — książka, gra, serial, film itp.
-// Obiekt jest tworzony przez getAllMultimedia() i przekazywany jako shared_ptr.
-// Pola uzupełniane setterami (dataDodania, ocena, ulubione...) są opcjonalne
-// i ustawiane zaraz po konstrukcji na podstawie kolejnych kolumn zapytania SQL.
-class Multimedia {
-private:
-    int id;
+// Obiekt jest tworzony przez pobierzWszystkieMultimedia() i przekazywany jako shared_ptr.
+// Pola opcjonalne (dataDodania, ocena, ulubione...) wypełnia się zaraz po konstrukcji
+// na podstawie kolejnych kolumn zapytania SQL; domyślne wartości chronią przed UB,
+// gdy kolumna jest pusta lub pole nie zostanie ustawione.
+struct Multimedia {
+    int id = 0;
     QString tytul;
-    int idKategorii;
+    int idKategorii = 0;
     QString status;
-    Postep postep;
+    Progress postep;
     QDateTime dataDodania;
     QDateTime dataOstatniejAktywnosci;
-    int ocena = 0; // Inicjalizacja chroni przed UB gdy setOcena() nie zostało wywołane.
+    int ocena = 0;
 
-    int idPlatformy;
+    int idPlatformy = 0;
     bool ulubione = false;
-    int rokWydania = 0;   // 0 == nieznany; ustawiane setterem na podstawie kolumny rok_wydania.
+    int rokWydania = 0;   // 0 == nieznany; z kolumny rok_wydania.
     QString tworcy;       // Autor / reżyser / studio; może być puste.
-
-public:
-    Multimedia(int id, QString tytul, int idKat, int idPlat, QString status, Postep postep)
-        : id(id), tytul(tytul), idKategorii(idKat), idPlatformy(idPlat), status(status), postep(postep) {}
-
-    int getId() const { return id; }
-    QString getTytul() const { return tytul; }
-    int getIdKategorii() const { return idKategorii; }
-    QString getStatus() const { return status; }
-    Postep getPostep() const { return postep; }
-    QDateTime getDataDodania() const { return dataDodania; }
-    int getIdPlatformy() const { return idPlatformy; }
-
-    int getOcena() const { return ocena; }
-    void setOcena(int o) { ocena = o; }
-    bool getCzyUlubione() const { return ulubione; }
-    void setCzyUlubione(bool val) { ulubione = val; }
-    QDateTime getDataOstatniejAktywnosci() const { return dataOstatniejAktywnosci; }
-    void setDataOstatniejAktywnosci(const QDateTime &d) { dataOstatniejAktywnosci = d; }
-
-    int getRokWydania() const { return rokWydania; }
-    void setRokWydania(int rok) { rokWydania = rok; }
-    QString getTworcy() const { return tworcy; }
-    void setTworcy(const QString &t) { tworcy = t; }
-
-    void setDataDodania(const QDateTime &data) { dataDodania = data; }
-    void setPostep(Postep nowyPostep) { postep = nowyPostep; }
-    void setStatus(QString nowyStatus) { status = nowyStatus; }
 };
 
 #endif

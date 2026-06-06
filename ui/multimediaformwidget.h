@@ -23,12 +23,12 @@ signals:
     void daneZapisane();
 
 private slots:
-    void onBtnPotwierdzDodajClicked();
-    void onComboNowaKategoriaChanged(int index);
+    void obsluzPotwierdzDodaj();
+    void obsluzZmianeKategorii(int indeks);
 
-    void onBtnSzybkaPlatformaClicked();
-    void onBtnSzybkaKategoriaClicked();
-    void onBtnSzybkiTagClicked();
+    void obsluzSzybkaPlatforma();
+    void obsluzSzybkaKategoria();
+    void obsluzSzybkiTag();
 
 private:
     Ui::MultimediaFormWidget *ui;
