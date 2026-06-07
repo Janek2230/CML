@@ -1,21 +1,6 @@
 -- =====================================================================
---  CML — Realistyczny seed pod pokaz  [PostgreSQL]
--- =====================================================================
 --  Symuluje rok korzystania z aplikacji (ostatnie 12 miesięcy, licząc od dziś).
 --  ~52 realne tytuły (gry/książki/seriale/filmy) z prawdziwymi twórcami i latami.
---
---  Wymusza logikę odczytaną z kodu:
---   * tylko NAJNOWSZE podejście bywa aktywne — starsze są zawsze terminalne
---     (Ukończone/Porzucone z datą zakończenia),
---   * wartosc_aktualna podejścia == suma przyrostów jego sesji,
---   * czas_zakonczenia = czas_rozpoczecia + czas_trwania_sekundy,
---   * spójność statusu i dat (Planowane bez dat/sesji, W trakcie bez daty końca itd.),
---   * godziny sesji z przewagą wieczoru/nocy (pod statystykę "Nocny Marek"),
---   * recenzje = lorem ipsum o zmiennej długości.
---
---  URUCHAMIAĆ PO 01_init_schemaV3.sql (czysty schemat V3).
---    psql -U postgres -d cml -f 01_init_schemaV3.sql
---    psql -U postgres -d cml -f 04_Dane_Pokaz.sql
 -- =====================================================================
 
 BEGIN;

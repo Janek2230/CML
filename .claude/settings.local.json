@@ -15,7 +15,12 @@
       "PowerShell($cmds = \"pdflatex\",\"xelatex\",\"lualatex\",\"latexmk\"; foreach \\($c in $cmds\\) { $p = Get-Command $c -ErrorAction SilentlyContinue; if \\($p\\) { \"FOUND: $c -> $\\($p.Source\\)\" } else { \"missing: $c\" } })",
       "PowerShell($env:TEXMFHOME=$null; pdflatex -interaction=nonstopmode -halt-on-error sprawozdanie.tex | Select-Object -Last 25)",
       "Bash(git status *)",
-      "Bash(cmake --build \"build/Desktop_Qt_6_11_0_MinGW_64_bit-Debugowa\" --target CML -j 4)"
+      "Bash(cmake --build \"build/Desktop_Qt_6_11_0_MinGW_64_bit-Debugowa\" --target CML -j 4)",
+      "Read(//c/c/Users/Janek/Downloads/**)",
+      "Bash(echo \"begin lstlisting: $\\(grep -c '\\\\\\\\begin{lstlisting}' raport.tex\\)\")",
+      "Bash(echo \"end lstlisting:   $\\(grep -c '\\\\\\\\end{lstlisting}' raport.tex\\)\")",
+      "Bash(echo \"begin figure:     $\\(grep -c '\\\\\\\\begin{figure}' raport.tex\\)\")",
+      "Bash(echo \"end figure:       $\\(grep -c '\\\\\\\\end{figure}' raport.tex\\)\")"
     ]
   }
 }
