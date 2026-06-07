@@ -11,7 +11,11 @@
       "Bash(pdflatex -interaction=nonstopmode -halt-on-error struktura_podglad.tex)",
       "Bash(echo \"PDFLATEX EXIT: $?\")",
       "Bash(pdftocairo -png -r 200 -singlefile struktura_podglad.pdf struktura_podglad)",
-      "Bash(echo \"PNG EXIT: $?\")"
+      "Bash(echo \"PNG EXIT: $?\")",
+      "PowerShell($cmds = \"pdflatex\",\"xelatex\",\"lualatex\",\"latexmk\"; foreach \\($c in $cmds\\) { $p = Get-Command $c -ErrorAction SilentlyContinue; if \\($p\\) { \"FOUND: $c -> $\\($p.Source\\)\" } else { \"missing: $c\" } })",
+      "PowerShell($env:TEXMFHOME=$null; pdflatex -interaction=nonstopmode -halt-on-error sprawozdanie.tex | Select-Object -Last 25)",
+      "Bash(git status *)",
+      "Bash(cmake --build \"build/Desktop_Qt_6_11_0_MinGW_64_bit-Debugowa\" --target CML -j 4)"
     ]
   }
 }

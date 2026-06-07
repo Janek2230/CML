@@ -29,7 +29,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>4</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -199,6 +199,9 @@
                 <property name="showGrid">
                  <bool>false</bool>
                 </property>
+                <attribute name="verticalHeaderVisible">
+                 <bool>false</bool>
+                </attribute>
                 <column>
                  <property name="text">
                   <string>Tag</string>
@@ -224,6 +227,37 @@
              <property name="title">
               <string>Ściana Chwały</string>
              </property>
+             <layout class="QHBoxLayout" name="layoutOsiagniec">
+              <property name="spacing">
+               <number>30</number>
+              </property>
+              <property name="leftMargin">
+               <number>15</number>
+              </property>
+              <property name="topMargin">
+               <number>20</number>
+              </property>
+              <property name="rightMargin">
+               <number>15</number>
+              </property>
+              <property name="bottomMargin">
+               <number>15</number>
+              </property>
+              <item>
+               <layout class="QVBoxLayout" name="kolumnaLewa">
+                <property name="spacing">
+                 <number>10</number>
+                </property>
+               </layout>
+              </item>
+              <item>
+               <layout class="QVBoxLayout" name="kolumnaPrawa">
+                <property name="spacing">
+                 <number>10</number>
+                </property>
+               </layout>
+              </item>
+             </layout>
             </widget>
            </item>
           </layout>
@@ -440,8 +474,8 @@ QPushButton:pressed {
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>298</width>
-                  <height>462</height>
+                  <width>300</width>
+                  <height>480</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="sekcjaPlanowaneLayout"/>
@@ -475,8 +509,8 @@ QPushButton:pressed {
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>298</width>
-                  <height>462</height>
+                  <width>300</width>
+                  <height>480</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="sekcjaPrzerwaneLayout"/>
@@ -510,8 +544,8 @@ QPushButton:pressed {
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>298</width>
-                  <height>462</height>
+                  <width>300</width>
+                  <height>480</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="sekcjaWstrzymaneLayout"/>
@@ -541,10 +575,11 @@ QPushButton:pressed {
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>922</width>
-            <height>587</height>
+            <width>926</width>
+            <height>598</height>
            </rect>
           </property>
+          <layout class="QGridLayout" name="siatkaPorzucone" columnstretch="1,1,1,1"/>
          </widget>
         </widget>
        </item>
@@ -565,10 +600,141 @@ QPushButton:pressed {
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>922</width>
-            <height>587</height>
+            <width>926</width>
+            <height>598</height>
            </rect>
           </property>
+          <layout class="QHBoxLayout" name="layoutUlubioneKolumny">
+           <property name="spacing">
+            <number>12</number>
+           </property>
+           <item>
+            <layout class="QVBoxLayout" name="kolumnaUlubione">
+             <item>
+              <widget class="QLabel" name="lblNaglowekUlubione">
+               <property name="styleSheet">
+                <string notr="true">font-size: 15px; font-weight: bold; padding: 4px; color: #ffffff;</string>
+               </property>
+               <property name="text">
+                <string>Oznaczone jako ulubione</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QScrollArea" name="scrollUlubione">
+               <property name="frameShape">
+                <enum>QFrame::Shape::NoFrame</enum>
+               </property>
+               <property name="horizontalScrollBarPolicy">
+                <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+               </property>
+               <property name="widgetResizable">
+                <bool>true</bool>
+               </property>
+               <widget class="QWidget" name="contentUlubione">
+                <property name="geometry">
+                 <rect>
+                  <x>0</x>
+                  <y>0</y>
+                  <width>288</width>
+                  <height>544</height>
+                 </rect>
+                </property>
+                <layout class="QVBoxLayout" name="listaUlubione">
+                 <property name="spacing">
+                  <number>8</number>
+                 </property>
+                </layout>
+               </widget>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QVBoxLayout" name="kolumnaCzas">
+             <item>
+              <widget class="QLabel" name="lblNaglowekCzas">
+               <property name="styleSheet">
+                <string notr="true">font-size: 15px; font-weight: bold; padding: 4px; color: #ffffff;</string>
+               </property>
+               <property name="text">
+                <string>Najwięcej spędzonego czasu</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QScrollArea" name="scrollCzas">
+               <property name="frameShape">
+                <enum>QFrame::Shape::NoFrame</enum>
+               </property>
+               <property name="horizontalScrollBarPolicy">
+                <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+               </property>
+               <property name="widgetResizable">
+                <bool>true</bool>
+               </property>
+               <widget class="QWidget" name="contentCzas">
+                <property name="geometry">
+                 <rect>
+                  <x>0</x>
+                  <y>0</y>
+                  <width>288</width>
+                  <height>544</height>
+                 </rect>
+                </property>
+                <layout class="QVBoxLayout" name="listaCzas">
+                 <property name="spacing">
+                  <number>8</number>
+                 </property>
+                </layout>
+               </widget>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QVBoxLayout" name="kolumnaPodejsc">
+             <item>
+              <widget class="QLabel" name="lblNaglowekPodejsc">
+               <property name="styleSheet">
+                <string notr="true">font-size: 15px; font-weight: bold; padding: 4px; color: #ffffff;</string>
+               </property>
+               <property name="text">
+                <string>Najbardziej wytrwałe (najwięcej podejść)</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QScrollArea" name="scrollPodejsc">
+               <property name="frameShape">
+                <enum>QFrame::Shape::NoFrame</enum>
+               </property>
+               <property name="horizontalScrollBarPolicy">
+                <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+               </property>
+               <property name="widgetResizable">
+                <bool>true</bool>
+               </property>
+               <widget class="QWidget" name="contentPodejsc">
+                <property name="geometry">
+                 <rect>
+                  <x>0</x>
+                  <y>0</y>
+                  <width>302</width>
+                  <height>544</height>
+                 </rect>
+                </property>
+                <layout class="QVBoxLayout" name="listaPodejsc">
+                 <property name="spacing">
+                  <number>8</number>
+                 </property>
+                </layout>
+               </widget>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
          </widget>
         </widget>
        </item>

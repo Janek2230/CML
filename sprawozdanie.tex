@@ -1,0 +1,1058 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Kodowanie i język ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage{lmodern}
+
+% --- Dodatki ---
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{hyperref}
+\geometry{margin=2.3cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!50!black,
+    urlcolor=blue!50!black
+}
+
+% --- Kolory do listingów ---
+\definecolor{kolorKomentarz}{rgb}{0.35,0.55,0.35}
+\definecolor{kolorSlowo}{rgb}{0.10,0.30,0.70}
+\definecolor{kolorString}{rgb}{0.62,0.20,0.18}
+\definecolor{kolorTlo}{rgb}{0.975,0.975,0.97}
+\definecolor{kolorLinie}{rgb}{0.55,0.55,0.55}
+
+% --- Styl listingu C++ ---
+% literate = podmiana znaków, których pdfLaTeX nie umie wyświetlić w kodzie
+% (polskie litery oraz myślniki, strzałki itp. z komentarzy w kodzie)
+\lstdefinestyle{cpp}{
+    language=C++,
+    backgroundcolor=\color{kolorTlo},
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{kolorSlowo}\bfseries,
+    commentstyle=\color{kolorKomentarz}\itshape,
+    stringstyle=\color{kolorString},
+    numbers=left,
+    numberstyle=\tiny\color{kolorLinie},
+    numbersep=8pt,
+    showstringspaces=false,
+    breaklines=true,
+    breakatwhitespace=false,
+    frame=single,
+    rulecolor=\color{kolorLinie},
+    framesep=5pt,
+    tabsize=4,
+    columns=fullflexible,
+    keepspaces=true,
+    extendedchars=true,
+    literate=%
+        {ą}{{\k{a}}}1 {ć}{{\'c}}1 {ę}{{\k{e}}}1 {ł}{{\l}}1 {ń}{{\'n}}1
+        {ó}{{\'o}}1 {ś}{{\'s}}1 {ź}{{\'z}}1 {ż}{{\.z}}1
+        {Ą}{{\k{A}}}1 {Ć}{{\'C}}1 {Ę}{{\k{E}}}1 {Ł}{{\L}}1 {Ń}{{\'N}}1
+        {Ó}{{\'O}}1 {Ś}{{\'S}}1 {Ź}{{\'Z}}1 {Ż}{{\.Z}}1
+        {—}{{---}}1 {–}{{--}}1 {„}{{,,}}1 {”}{{''}}1 {’}{{'}}1
+        {→}{{$\rightarrow$}}1 {≤}{{$\leq$}}1 {≥}{{$\geq$}}1
+        {·}{{$\cdot$}}1 {…}{{...}}1
+}
+\lstset{style=cpp}
+
+% --- Strona tytułowa ---
+\title{\textbf{Sprawozdanie z projektu CML} \\[4pt]
+\large Przegląd najciekawszych fragmentów kodu}
+\author{Aplikacja do zarządzania biblioteką multimediów (Qt + PostgreSQL)}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+% =====================================================================
+\section{Wstęp}
+% =====================================================================
+
+CML (\emph{Collection Media Library}) to program napisany w C++ z użyciem
+biblioteki \textbf{Qt}, który pozwala prowadzić własną bibliotekę multimediów
+(książki, gry, seriale, filmy itd.). Dla każdej pozycji można śledzić postęp,
+zapisywać sesje (np. ile czasu się spędziło), zaczynać kolejne podejścia do
+tego samego tytułu, przypisywać tagi, kategorie i platformy, a na końcu oglądać
+rozbudowane statystyki. Dane trzymane są w bazie \textbf{PostgreSQL}.
+
+Kod jest podzielony na trzy warstwy:
+
+\begin{itemize}
+    \item \textbf{Warstwa bazy danych} (\texttt{databasemanager.cpp}) --- rozmawia
+    bezpośrednio z bazą, wykonuje zapytania SQL i zwraca gotowe dane.
+    \item \textbf{Kontroler} (\texttt{appcontroller.cpp}) --- pośrednik między
+    bazą a interfejsem. Po każdej udanej zmianie w bazie wysyła sygnał, dzięki
+    czemu interfejs sam się odświeża.
+    \item \textbf{Interfejs} (pliki w katalogu \texttt{ui/}) --- okna i widżety,
+    które widzi użytkownik.
+\end{itemize}
+
+W tym sprawozdaniu z każdego pliku \texttt{.cpp} wyciągnęliśmy najciekawsze
+fragmenty i opisaliśmy prostym językiem, jak działają i do czego służą. Pominięto
+pliki generowane automatycznie przez Qt/CMake (katalog \texttt{build/}, pliki
+\texttt{moc\_*}, \texttt{qrc\_*}), bo nie są pisane ręcznie.
+
+% =====================================================================
+\section{\texttt{main.cpp} --- punkt startowy programu}
+% =====================================================================
+
+Ten plik jest banalnie krótki --- to tylko start aplikacji. Mimo to warto
+zrozumieć, co się tutaj dzieje, bo to fundament każdego programu w Qt.
+
+\begin{lstlisting}[caption={Uruchomienie aplikacji}]
+int main(int argc, char *argv[])
+{
+    QApplication a(argc, argv);
+    MainWindow w;
+    w.show();
+    return QCoreApplication::exec();
+}
+\end{lstlisting}
+
+\textbf{Jak to działa:} \texttt{QApplication} to „silnik” całej aplikacji Qt ---
+ustawia obsługę zdarzeń (kliknięcia, naciśnięcia klawiszy itd.). Potem tworzymy
+główne okno \texttt{MainWindow} i pokazujemy je przez \texttt{w.show()}.
+Najważniejsza jest ostatnia linia: \texttt{exec()} uruchamia tzw. \emph{pętlę
+zdarzeń}. To ona sprawia, że program nie kończy się od razu, tylko „stoi" i czeka
+na reakcje użytkownika --- dopóki nie zamkniemy okna, program cały czas nasłuchuje,
+co robi użytkownik, i odpowiada na to.
+
+% =====================================================================
+\section{\texttt{appcontroller.cpp} --- warstwa pośrednia}
+% =====================================================================
+
+Kontroler to „kelner” między interfejsem a bazą. Sam prawie nic nie liczy ---
+przekazuje żądania do bazy. Ma jednak dwie ważne sztuczki.
+
+\subsection{Sygnał \texttt{daneZmienione()} --- automatyczne odświeżanie}
+
+\begin{lstlisting}[caption={Po udanej zmianie w bazie wysyłamy sygnał}]
+int AppController::dodajNoweMedium(const QString &tytul, /* ... */) {
+    int id = menedzerBazy.dodajNoweMedium(tytul, /* ... */);
+    if (id > 0) {
+        emit daneZmienione();   // powiadom interfejs, że coś się zmieniło
+    }
+    return id;
+}
+\end{lstlisting}
+
+\textbf{Jak to działa:} prawie każda metoda kontrolera (dodawanie, usuwanie,
+edycja) po sukcesie woła \texttt{emit daneZmienione()}. To wysłanie sygnału ---
+swego rodzaju ogłoszenie „dane się zmieniły!”. Interfejs jest podłączony pod ten
+sygnał (patrz \texttt{mainwindow.cpp}) i automatycznie odświeża drzewo oraz pulpit.
+
+\textbf{Do czego służy:} dzięki temu nie trzeba w 20 miejscach ręcznie pamiętać
+o odświeżeniu widoku. Jedno ogłoszenie i całe UI samo się aktualizuje.
+
+\subsection{\texttt{pobierzDaneDlaWykresu} --- zamiana sekund na godziny}
+
+\begin{lstlisting}[caption={Jedyne miejsce z prawdziwą logiką liczenia}]
+QList<ActivityStatistic> AppController::pobierzDaneDlaWykresu(int zakres,
+                                                  const QString& metryka) {
+    auto dane = menedzerBazy.pobierzSuroweDaneStatystyk(zakres, metryka);
+    if (metryka == "czas") {
+        for (auto& s : dane) s.wartosc /= 3600.0; // sekundy -> godziny
+    }
+    return dane;
+}
+\end{lstlisting}
+
+\textbf{Jak to działa:} baza przechowuje czas w sekundach (wygodnie do liczenia),
+ale wykres ma pokazywać godziny (czytelniej dla człowieka). Dlatego zanim dane
+trafią do wykresu, dzielimy każdą wartość przez 3600 ($3600 = 60 \times 60$ sekund).
+To przeliczenie robimy tylko dla metryki „czas” --- przy liczbie sesji czy
+zdobytych jednostek nie ma czego przeliczać.
+
+% =====================================================================
+\section{\texttt{databasemanager.cpp} --- serce komunikacji z bazą}
+% =====================================================================
+
+To najbogatszy plik w projekcie. Tu mieszka cały SQL. Wybraliśmy cztery
+najciekawsze fragmenty.
+
+\subsection{\texttt{pobierzWszystkieMultimedia} --- jedno medium = jego najnowsze podejście}
+
+\begin{lstlisting}[caption={Sprytne zapytanie z funkcją okna i DISTINCT ON}]
+QSqlQuery query(
+    "SELECT DISTINCT ON (m.id) "
+    "m.id, m.tytul, p.status, k.id, k.jednostka, "
+    "p.wartosc_aktualna, p.wartosc_docelowa, m.data_dodania, "
+    "m.id_platformy, p.ocena, m.czy_ulubione, "
+    "COALESCE(MAX(COALESCE(d.czas_zakonczenia, d.czas_rozpoczecia)) "
+    "         OVER (PARTITION BY p.id), m.data_dodania) AS ostatnia_aktywnosc, "
+    "p.numer_podejscia, m.rok_wydania, m.tworcy "
+    "FROM multimedia m "
+    "LEFT JOIN kategorie k ON m.id_kategorii = k.id "
+    "LEFT JOIN podejscia p ON m.id = p.id_medium "
+    "LEFT JOIN dziennik_aktywnosci d ON p.id = d.id_podejscia "
+    "ORDER BY m.id, p.numer_podejscia DESC;",
+    db
+);
+
+while (query.next()) {
+    auto medium = std::make_shared<Multimedia>();
+    medium->id    = query.value(0).toInt();
+    medium->tytul = query.value(1).toString();
+    // ... (przepisanie pozostałych pól)
+    lista.append(medium);
+}
+\end{lstlisting}
+
+\textbf{Jak to działa --- po kawałku:}
+\begin{itemize}
+    \item \texttt{DISTINCT ON (m.id)} --- jedno medium może mieć wiele podejść,
+    a my chcemy w wyniku tylko jeden wiersz na medium. To polecenie z grupy
+    wierszy o tym samym \texttt{m.id} zostawia tylko \emph{pierwszy}. A który jest
+    „pierwszy”? Decyduje o tym \texttt{ORDER BY ... numer\_podejscia DESC} ---
+    sortujemy podejścia od najnowszego, więc zostaje najnowsze podejście.
+    \item \texttt{LEFT JOIN} --- doklejamy dane z innych tabel (kategoria,
+    podejście, sesje). „LEFT” gwarantuje, że medium pokaże się \emph{nawet}, jeśli
+    nie ma jeszcze kategorii czy żadnej sesji.
+    \item \texttt{COALESCE(a, b)} --- zwraca pierwszą wartość, która nie jest pusta
+    (NULL). Tutaj: jeśli nie ma daty sesji, bierzemy datę dodania medium.
+    \item \texttt{MAX(...) OVER (PARTITION BY p.id)} --- to tzw. funkcja okna.
+    Liczy maksimum (najświeższą datę sesji) \emph{w obrębie jednego podejścia},
+    ale bez zwijania wierszy do jednego. Dzięki temu obok każdego medium mamy datę
+    jego ostatniej aktywności.
+\end{itemize}
+
+\textbf{Do czego służy:} to główne zapytanie aplikacji --- jednym strzałem
+pobiera listę wszystkich pozycji z najważniejszymi danymi, gotową do wyświetlenia.
+
+\subsection{\texttt{dodajNoweMedium} --- transakcja „wszystko albo nic”}
+
+\begin{lstlisting}[caption={Dwa wpisy do bazy w jednej transakcji}]
+db.transaction();   // start transakcji
+
+QSqlQuery query1(db);
+// RETURNING id -> PostgreSQL od razu zwróci id nowego wiersza
+query1.prepare("INSERT INTO multimedia (tytul, id_kategorii, /* ... */) "
+               "VALUES (:tytul, :idKat, /* ... */) RETURNING id");
+query1.bindValue(":tytul", tytul);
+// id=0 znaczy "nie wybrano" -> zamiast 0 wstawiamy NULL
+query1.bindValue(":idKat", idKat > 0 ? QVariant(idKat)
+                                     : QVariant(QMetaType::fromType<int>()));
+
+if (!query1.exec() || !query1.next()) {
+    db.rollback();   // coś padło -> cofnij WSZYSTKO
+    return -1;
+}
+int noweId = query1.value(0).toInt();   // odczyt id z RETURNING
+
+QSqlQuery query2(db);
+query2.prepare("INSERT INTO podejscia (id_medium, numer_podejscia, /* ... */) "
+               "VALUES (:id, 1, 0, :cel, 'Planowane')");
+query2.bindValue(":id", noweId);
+query2.bindValue(":cel", cel);
+if (!query2.exec()) { db.rollback(); return -1; }
+
+db.commit();   // dopiero teraz zapis na stałe
+return noweId;
+\end{lstlisting}
+
+\textbf{Jak to działa:} dodanie medium to tak naprawdę dwa wpisy --- sam tytuł
+oraz jego pierwsze podejście. Te dwie operacje muszą się udać razem. Dlatego
+opakowujemy je w \emph{transakcję}: \texttt{db.transaction()} ją otwiera,
+a \texttt{db.commit()} na końcu zapisuje na stałe. Gdyby cokolwiek po drodze padło,
+\texttt{db.rollback()} cofa wszystko --- baza nie zostaje w połowicznym, zepsutym
+stanie (np. medium bez podejścia).
+
+\textbf{Dwie dodatkowe sztuczki:} \texttt{RETURNING id} sprawia, że po wstawieniu
+od razu dostajemy nadane id (nie trzeba osobnego zapytania). A wstawianie
+\texttt{NULL} zamiast zera (gdy użytkownik nic nie wybrał) odróżnia „brak wyboru”
+od prawdziwej wartości 0.
+
+\subsection{\texttt{pobierzSuroweDaneStatystyk} --- budowanie zapytania jak z klocków}
+
+\begin{lstlisting}[caption={Część zapytania zależy od wyboru użytkownika}]
+QString funkcjaAgregujaca;
+if      (metryka == "czas")      funkcjaAgregujaca = "SUM(d.czas_trwania_sekundy)";
+else if (metryka == "sesje")     funkcjaAgregujaca = "COUNT(d.id)";
+else if (metryka == "jednostki") funkcjaAgregujaca = "SUM(d.przyrost_jednostek)";
+
+// Format daty na osi X dobieramy do długości zakresu
+QString formatDaty;
+if      (zakresDni <= 30)   formatDaty = "'DD.MM'";    // pojedyncze dni
+else if (zakresDni <= 365)  formatDaty = "'MM.YYYY'";  // miesiące
+else if (zakresDni > 1000)  formatDaty = "'YYYY'";     // lata
+else                        formatDaty = "'YYYY-MM'";
+
+// %1, %2, %3 to FRAGMENTY SQL, dlatego nie da się ich podać przez bindValue
+QString sql = QString(R"(
+    SELECT TO_CHAR(/* data */, %1) as kategoria_czasu,
+           m.tytul, %2 as wartosc
+    FROM dziennik_aktywnosci d
+    JOIN podejscia p ON d.id_podejscia = p.id
+    JOIN multimedia m ON p.id_medium = m.id
+    WHERE /* data */ >= CURRENT_DATE - INTERVAL '%3 days'
+    GROUP BY kategoria_czasu, m.tytul
+)").arg(formatDaty).arg(funkcjaAgregujaca).arg(zakresDni);
+\end{lstlisting}
+
+\textbf{Jak to działa:} wykres aktywności może pokazywać różne rzeczy (czas, liczbę
+sesji, zdobyte jednostki) i różne zakresy (tydzień, rok, cała historia). Zamiast
+pisać osobne zapytanie na każdą kombinację, sklejamy zapytanie z gotowych
+fragmentów --- najpierw wybieramy odpowiednią funkcję sumującą i format daty,
+a potem wstawiamy je w szablon przez \texttt{QString::arg} (\texttt{\%1},
+\texttt{\%2}, \texttt{\%3}).
+
+\textbf{Ważny szczegół:} normalnie wartości wstawia się bezpiecznie przez
+\texttt{bindValue}, ale tutaj wstawiamy \emph{fragmenty samego SQL} (nazwę funkcji,
+wzór daty), a tego \texttt{bindValue} nie potrafi --- ono podstawia tylko wartości,
+nie kawałki polecenia. Dlatego tu sklejamy tekst ręcznie.
+
+\subsection{\texttt{pobierzCiekawostkiStatystyczne} --- zabawne statystyki}
+
+\begin{lstlisting}[caption={Pora doby i dominująca dekada}]
+// Pora doby: przypisz każdej sesji etykietę wg godziny, weź najpopularniejszą
+q8.prepare(R"(
+    SELECT pora FROM (
+        SELECT CASE
+            WHEN EXTRACT(HOUR FROM czas_rozpoczecia) BETWEEN 6 AND 11  THEN 'Rano'
+            WHEN EXTRACT(HOUR FROM czas_rozpoczecia) BETWEEN 12 AND 17 THEN 'Popoludnie'
+            WHEN EXTRACT(HOUR FROM czas_rozpoczecia) BETWEEN 18 AND 23 THEN 'Wieczor'
+            ELSE 'Noc'
+        END AS pora, SUM(czas_trwania_sekundy) AS suma
+        FROM dziennik_aktywnosci
+        GROUP BY pora ORDER BY suma DESC LIMIT 1
+    ) AS najaktywniejsza
+)");
+
+// Dominujaca dekada: 1997 / 10 * 10 = 1990 (dzielenie calkowite ucina koncowke)
+q6.prepare(R"(
+    SELECT (rok_wydania / 10) * 10 AS dekada, COUNT(*) AS ilosc
+    FROM multimedia WHERE rok_wydania > 0
+    GROUP BY dekada ORDER BY ilosc DESC LIMIT 1
+)");
+\end{lstlisting}
+
+\textbf{Jak to działa:} ta funkcja zbiera „ciekawostki” do panelu statystyk ---
+każda to małe, niezależne zapytanie. W pierwszym przykładzie \texttt{CASE ... END}
+działa jak ciąg „jeżeli... to...” --- patrzy na godzinę rozpoczęcia sesji
+(\texttt{EXTRACT(HOUR ...)}) i przykleja etykietę (Rano, Popołudnie, Wieczór, Noc).
+Potem sumujemy czas dla każdej pory i bierzemy tę z największą sumą --- stąd wiemy,
+czy użytkownik to „Nocny Marek”, czy „Ranny Ptaszek”.
+
+W drugim przykładzie liczymy najpopularniejszą dekadę. Sztuczka to dzielenie
+całkowite: \texttt{1997 / 10} daje 199 (końcówka odpada), a po pomnożeniu przez 10
+wychodzi 1990 --- czyli „lata 90.”.
+
+\textbf{Ciekawostka:} w tej funkcji jest też zapytanie z \texttt{EXTRACT(ISODOW ...)},
+które zwraca numer dnia tygodnia (1 = poniedziałek, 7 = niedziela) --- aplikacja
+podaje na tej podstawie najbardziej aktywny dzień tygodnia.
+
+% =====================================================================
+\section{\texttt{mainwindow.cpp} --- okno główne i centrum dowodzenia}
+% =====================================================================
+
+Główne okno spina wszystkie panele w jedną całość i decyduje, który widok jest
+aktualnie pokazywany.
+
+\subsection{Łączenie sygnałów lambdami}
+
+\begin{lstlisting}[caption={Reakcje na zdarzenia z paneli}]
+// Klik w drzewie nawigacji -> pokaz szczegoly wybranego medium
+connect(panelNawigacji, &NavigationPanelWidget::zadaniePokazaniaSzczegolow,
+        this, [this](int id) { pokazSzczegolyMedium(id); });
+
+// Po KAZDEJ zmianie danych w bazie odswiez drzewo i pulpit
+connect(&appController, &AppController::daneZmienione, this, [this]() {
+    panelNawigacji->odswiezDrzewo();
+    pulpitWidget->odswiezStatystykiGlowne();
+});
+\end{lstlisting}
+
+\textbf{Jak to działa:} \texttt{connect} łączy sygnał (coś się stało) ze slotem
+(co zrobić). Tutaj używamy \emph{lambd} --- małych funkcji pisanych w miejscu.
+Pierwsze połączenie mówi: „gdy panel poprosi o pokazanie szczegółów medium,
+wywołaj \texttt{pokazSzczegolyMedium}”. Drugie to wspomniana wcześniej magia
+odświeżania --- okno nasłuchuje sygnału \texttt{daneZmienione()} z kontrolera
+i samo aktualizuje widok.
+
+\textbf{Do czego służy:} to spina całą aplikację. Panele nie muszą się nawzajem
+znać --- wysyłają sygnały, a okno główne decyduje, co z nimi zrobić.
+
+\subsection{Szablon \texttt{otworzDialogZarzadzania} --- jedna metoda na wiele okien}
+
+\begin{lstlisting}[caption={Generyczne otwieranie dialogów}]
+template <typename Dialog>
+void MainWindow::otworzDialogZarzadzania() {
+    Dialog dialog(appController, this);
+    dialog.exec();                              // pokaz i czekaj az uzytkownik zamknie
+    pulpitWidget->odswiezStatystykiGlowne();    // po zamknieciu odswiez pulpit
+}
+
+// Uzycie - ten sam kod dla trzech roznych okien:
+connect(ui->actionKategorie, &QAction::triggered, this,
+        [this]() { otworzDialogZarzadzania<CategoriesDialog>(); });
+connect(ui->actionPlatformy, &QAction::triggered, this,
+        [this]() { otworzDialogZarzadzania<PlatformsDialog>(); });
+connect(ui->actionTagi, &QAction::triggered, this,
+        [this]() { otworzDialogZarzadzania<TagsDialog>(); });
+\end{lstlisting}
+
+\textbf{Jak to działa:} dialogi Kategorie, Platformy i Tagi otwiera się tak samo
+(utwórz, pokaż, po zamknięciu odśwież pulpit). Zamiast pisać trzy prawie
+identyczne metody, używamy \emph{szablonu} --- \texttt{template <typename Dialog>}
+oznacza „wstaw tu dowolny typ okna”. Przy wywołaniu podajemy konkretny typ
+w nawiasach ostrych, np. \texttt{<CategoriesDialog>}.
+
+\textbf{Do czego służy:} mniej powtórzonego kodu. Jeden szablon obsługuje wszystkie
+trzy okna --- a jak dojdzie czwarte, wystarczy jedna linijka.
+
+% =====================================================================
+\section{\texttt{dashboardwidget.cpp} --- pulpit startowy}
+% =====================================================================
+
+Pulpit to pierwszy ekran po uruchomieniu: wykres kołowy ze statusami biblioteki
+oraz kafelki ostatnio używanych pozycji.
+
+\subsection{Wykres kołowy statusów}
+
+\begin{lstlisting}[caption={Budowa wykresu kołowego}]
+QPieSeries *seria = new QPieSeries();
+seria->append(Status::Planowane, statystyki.value(Status::Planowane, 0));
+seria->append(Status::WTrakcie,  statystyki.value(Status::WTrakcie, 0));
+// ... pozostale statusy
+
+// Kolory wycinkow wg kolejnosci dodania
+seria->slices().at(0)->setColor(QColor(0x7f, 0x8c, 0x8d));
+seria->slices().at(3)->setColor(QColor(0x27, 0xae, 0x60));
+
+// Doklej liczbe do etykiety: "Planowane" -> "Planowane (15)"
+for (auto wycinek : seria->slices()) {
+    wycinek->setLabel(QString("%1 (%2)").arg(wycinek->label()).arg(wycinek->value()));
+}
+
+QChart *wykres = new QChart();
+wykres->addSeries(seria);
+wykres->setTitle("Status Biblioteki");
+ui->wykresOwalny->setChart(wykres);
+\end{lstlisting}
+
+\textbf{Jak to działa:} \texttt{QPieSeries} to „ciasto”, a każde \texttt{append} dokłada
+wycinek --- nazwę statusu i liczbę pozycji w tym statusie. Potem ręcznie ustawiamy
+kolory (np. zielony dla ukończonych) i w pętli dopisujemy do każdej etykiety
+liczbę w nawiasie. Na końcu wkładamy serię do wykresu i pokazujemy.
+Na samej górze funkcji jest jeszcze zabezpieczenie: jeśli biblioteka jest pusta,
+funkcja kończy się od razu --- nie ma czego rysować.
+
+\subsection{Kafelki „ostatnio aktywne” z łamaniem wierszy}
+
+\begin{lstlisting}[caption={Czyszczenie siatki i układanie kafelków po 2 w rzędzie}]
+// Najpierw usun stare kafelki, zeby nie dokladac do poprzednich
+QLayoutItem *element;
+while ((element = ui->gridOstatnie->takeAt(0)) != nullptr) {
+    delete element->widget();
+    delete element;
+}
+
+const QList<int> ostatnieId = appController.pobierzOstatnioAktywne(6);
+int wiersz = 0, kolumna = 0;
+for (int id : ostatnieId) {
+    // ... (znajdz medium o tym id) ...
+    QPushButton *btnKafel = new QPushButton(m->tytul, this);
+    connect(btnKafel, &QPushButton::clicked, this, [this, id]() {
+        emit zadaniePokazaniaSzczegolow(id);
+    });
+    ui->gridOstatnie->addWidget(btnKafel, wiersz, kolumna);
+
+    kolumna++;
+    if (kolumna > 1) { kolumna = 0; wiersz++; }   // maks. 2 kafelki w rzedzie
+}
+\end{lstlisting}
+
+\textbf{Jak to działa:} najpierw pętla \texttt{takeAt(0)} wyjmuje i kasuje stare
+kafelki --- bez tego przy każdym odświeżeniu dokładałyby się nowe na stare.
+Potem dla sześciu ostatnio używanych pozycji tworzymy przyciski. Łamanie wierszy
+to prosta arytmetyka: zwiększamy numer kolumny, a gdy przekroczy 1 (czyli mamy
+już 2 kafelki w rzędzie), wracamy do kolumny 0 i schodzimy do następnego wiersza.
+
+% =====================================================================
+\section{\texttt{detailswidget.cpp} --- ekran szczegółów pozycji}
+% =====================================================================
+
+To jeden z najbardziej rozbudowanych widoków --- pokazuje wszystko o jednej
+pozycji: postęp, historię podejść i sesji, ocenę, recenzję. Wybraliśmy cztery
+fragmenty.
+
+\subsection{Dialog sesji ze stoperem}
+
+\begin{lstlisting}[caption={Stoper zsynchronizowany ze spinnerami h/m/s}]
+int lacznieSekund = sekundy;
+
+// Lambda: jednoczesnie odswieza wyswietlacz stopera i trzy spinnery
+auto odswiezWyswietlacz = [&]() {
+    int h = lacznieSekund / 3600;
+    int m = (lacznieSekund % 3600) / 60;
+    int s = lacznieSekund % 60;
+
+    // blockSignals: programowa zmiana spinnera NIE wywola naszego kodu z powrotem
+    // (inaczej powstalaby nieskonczona petla)
+    spinH->blockSignals(true); spinM->blockSignals(true); spinS->blockSignals(true);
+    spinH->setValue(h); spinM->setValue(m); spinS->setValue(s);
+    spinH->blockSignals(false); spinM->blockSignals(false); spinS->blockSignals(false);
+
+    lblStoper->setText(QString("%1:%2:%3")
+        .arg(h,2,10,QChar('0')).arg(m,2,10,QChar('0')).arg(s,2,10,QChar('0')));
+};
+
+// Timer tykajacy co sekunde -> dodaje 1 sekunde i odswieza widok
+QTimer* czasomierz = new QTimer(&dialog);
+connect(czasomierz, &QTimer::timeout, [&]() { lacznieSekund++; odswiezWyswietlacz(); });
+
+// Jeden przycisk pelni dwie role: Start i Pauza
+connect(btnStart, &QPushButton::clicked, [&]() {
+    if (czasomierz->isActive()) czasomierz->stop();   // bylo wlaczone -> pauza
+    else                        czasomierz->start(1000); // bylo wylaczone -> start
+});
+\end{lstlisting}
+
+\textbf{Jak to działa:} okno dodawania sesji ma stoper, który tyka co sekundę
+(\texttt{QTimer} z odstępem 1000\,ms), oraz trzy pola na ręczne wpisanie godzin,
+minut i sekund. Obie rzeczy są ze sobą zsynchronizowane --- gdy stoper tyka,
+pola się zmieniają, a gdy ręcznie zmienisz pola, zmienia się stoper.
+
+\textbf{Najważniejsza sztuczka --- \texttt{blockSignals}:} gdyby program ustawiał
+wartość pola, a to pole automatycznie wywoływało kod przeliczający czas, ten kod
+znowu ustawiłby pole i tak w kółko (nieskończona pętla). \texttt{blockSignals(true)}
+na chwilę „wycisza” pola, żeby zmiana programowa nie odpaliła reakcji.
+
+\subsection{Drzewo historii --- podejścia i sesje}
+
+\begin{lstlisting}[caption={Podejście jako rodzic, sesja jako dziecko}]
+for (const auto& p : historia) {
+    // Podejscie = wezel-rodzic, dodawany do korzenia drzewa
+    QTreeWidgetItem *wezelPodejscia = new QTreeWidgetItem(ui->treeHistoria);
+    wezelPodejscia->setText(0, QString("Podejscie #%1 (%2)").arg(p.numer).arg(p.status));
+    // Ukryte dane: TYP wezla i ID rekordu w bazie (czytane po kliknieciu)
+    wezelPodejscia->setData(0, ROLA_TYP, static_cast<int>(TypHistoriiElementu::Podejscie));
+    wezelPodejscia->setData(0, ROLA_ID, p.id);
+
+    for (int i = 0; i < p.sesje.size(); ++i) {
+        const auto& s = p.sesje[i];
+        // Sesja = wezel-dziecko podpiety pod podejscie
+        QTreeWidgetItem *wezelSesji = new QTreeWidgetItem(wezelPodejscia);
+        wezelSesji->setText(0, QString("Sesja #%1").arg(p.sesje.size() - i));
+        wezelSesji->setData(0, ROLA_ID, s.id);
+        // HTML ze szczegolami - pokazywany w panelu na dole po kliknieciu
+        wezelSesji->setData(0, Qt::UserRole, infoSesja);
+    }
+}
+ui->treeHistoria->expandAll();
+\end{lstlisting}
+
+\textbf{Jak to działa:} historia ma dwa poziomy: podejścia (rodzice) i należące
+do nich sesje (dzieci). Tworzymy więc drzewo --- nowy \texttt{QTreeWidgetItem}
+z drzewem jako rodzicem to węzeł najwyższego poziomu, a z innym węzłem jako
+rodzicem --- dziecko.
+
+\textbf{Sprytny trik --- ukryte dane:} w każdym węźle chowamy dodatkowe informacje
+przez \texttt{setData} z własnymi „rolami” (\texttt{ROLA\_TYP}, \texttt{ROLA\_ID}).
+Użytkownik ich nie widzi, ale gdy kliknie węzeł, program odczytuje te dane i wie,
+czy kliknięto podejście czy sesję i którego rekordu w bazie dotyczy. Pod rolą
+\texttt{Qt::UserRole} chowamy też gotowy opis HTML do pokazania w panelu na dole.
+
+\subsection{Dynamiczne pokazywanie i ukrywanie kontrolek}
+
+\begin{lstlisting}[caption={Inny układ dla pozycji zakończonej i aktywnej}]
+bool czyZakonczone = (medium->status == Status::Ukonczone ||
+                      medium->status == Status::Porzucone);
+if (czyZakonczone) {
+    ui->lblWielkiStatus->setText(medium->status.toUpper());
+    ui->frameKontrolkiPostepu->hide();   // brak edycji postepu
+    ui->comboDetaleStatus->hide();
+    ui->btnNowePodejscie->show();         // za to: "Nowe podejscie" / "Cofnij"
+} else {
+    ui->lblWielkiStatus->hide();
+    ui->frameKontrolkiPostepu->show();   // pelna edycja postepu
+    ui->comboDetaleStatus->show();
+}
+
+// Licznik "Brak postepu od: X dni" - po 30 dniach robi sie czerwony
+int dniBezAkcji = odKiedyBrakPostepu.daysTo(teraz);
+QString kolor = (dniBezAkcji > 30) ? "#e74c3c"
+                                   : palette().color(QPalette::WindowText).name();
+\end{lstlisting}
+
+\textbf{Jak to działa:} ten sam ekran wygląda inaczej w zależności od stanu
+pozycji. Jeśli tytuł jest ukończony lub porzucony, chowamy kontrolki postępu
+(nie ma już czego zmieniać) i pokazujemy duży napis ze statusem oraz przyciski
+„Nowe podejście” i „Cofnij zakończenie”. Dla aktywnego tytułu jest odwrotnie ---
+pełna edycja postępu.
+
+\textbf{Miły detal:} aplikacja liczy, ile dni minęło bez postępu. Jeśli ponad 30,
+licznik robi się czerwony (\texttt{\#e74c3c}) --- delikatne przypomnienie, że
+o tytule zapomniałeś.
+
+\subsection{Automatyczne ukończenie po osiągnięciu celu}
+
+\begin{lstlisting}[caption={Pytanie o automatyczne zamknięcie pozycji}]
+// Jesli aktualna == docelowa, a uzytkownik sam nie ustawil "Ukonczone",
+// pytamy, czy zamknac pozycje automatycznie.
+if (nowyStatus != Status::Ukonczone &&
+    appController.czyOsiagnietoCel(nowaAktualna, nowaDocelowa)) {
+    auto odp = QMessageBox::question(this, "Automatyczne ukonczenie",
+        "Wartosc aktualna zrownala sie z docelowa. "
+        "Po zapisaniu status zmieni sie na 'Ukonczone'. Kontynuowac?",
+        QMessageBox::Yes | QMessageBox::No);
+    if (odp == QMessageBox::No) return;
+    nowyStatus = Status::Ukonczone;
+}
+
+if (appController.aktualizujPostep(aktualneIdMedium, nowyStatus,
+                                  nowaAktualna, nowaDocelowa, ocena)) {
+    ustawMedium(aktualneIdMedium);   // odswiez widok
+    emit daneZaktualizowane();       // powiadom reszte aplikacji
+}
+\end{lstlisting}
+
+\textbf{Jak to działa:} przy zapisie program sprawdza, czy wartość aktualna
+zrównała się z docelową (np. przeczytałeś 350 z 350 stron). Jeśli tak, a status
+nie jest jeszcze „Ukończone”, wyskakuje pytanie, czy automatycznie zamknąć pozycję.
+To wygoda --- użytkownik nie musi pamiętać o ręcznej zmianie statusu, ale ma też
+prawo odmówić (\texttt{return} przerywa zapis).
+
+% =====================================================================
+\section{\texttt{navigationpanelwidget.cpp} --- panel z drzewem po lewej}
+% =====================================================================
+
+To panel boczny z drzewem pozycji oraz wyszukiwarką. Pozwala grupować bibliotekę
+na kilka sposobów.
+
+\subsection{Grupowanie drzewa na 6 sposobów}
+
+\begin{lstlisting}[caption={Jedno medium trafia do odpowiedniego folderu}]
+const int trybGrupowania = ui->comboGrupowanie->currentIndex();
+// 0=Kategoria 1=Status 2=Platforma 3=Data 4=Tagi 5=Typ nosnika
+
+for (const auto& medium : listaMultimediow) {
+    // Tagi: jedno medium moze trafic do KILKU folderow (relacja wiele-do-wielu)
+    if (trybGrupowania == 4) {
+        QStringList tagiMedium = mapaTagow.value(medium->id);
+        if (tagiMedium.isEmpty()) tagiMedium << "Brak tagow";
+        for (const QString& nazwaGrupy : tagiMedium) {
+            // ... dodaj medium do folderu o nazwie nazwaGrupy ...
+        }
+        continue;
+    }
+
+    // Pozostale tryby: jedno medium = jeden folder
+    QString nazwaGrupy;
+    switch (trybGrupowania) {
+    case 0: nazwaGrupy = slownikKategorii.value(medium->idKategorii, "Brak kategorii"); break;
+    case 1: nazwaGrupy = medium->status; break;
+    case 3: {
+        QLocale polski(QLocale::Polish, QLocale::Poland);
+        QDate data = medium->dataDodania.date();
+        nazwaGrupy = QString("%1 %2").arg(polski.standaloneMonthName(data.month()))
+                                     .arg(data.year()).toUpper();
+        break;
+    }
+    // ...
+    }
+    // ... znajdz lub utworz folder i wstaw do niego medium ...
+}
+\end{lstlisting}
+
+\textbf{Jak to działa:} użytkownik wybiera z listy rozwijanej sposób grupowania,
+a jego numer steruje całą funkcją. Konstrukcja \texttt{switch} dla każdego trybu
+ustala, do jakiej grupy (folderu) trafia dane medium --- po kategorii, statusie,
+platformie, miesiącu dodania itd.
+
+\textbf{Wyjątek --- tagi:} tagi to relacja „wiele-do-wielu” (jedno medium może mieć
+kilka tagów), więc obsługujemy je osobno --- to samo medium dodajemy do każdego
+folderu z jego tagiem. Dlatego ten przypadek ma własną pętlę i \texttt{continue}.
+
+\subsection{Wyszukiwarka filtrująca „w miejscu”}
+
+\begin{lstlisting}[caption={Ukrywanie niepasujących pozycji bez przebudowy drzewa}]
+for (int i = 0; i < ui->kategorie->topLevelItemCount(); ++i) {
+    QTreeWidgetItem *kategoria = ui->kategorie->topLevelItem(i);   // folder
+    bool maPasujaceElementy = false;
+
+    for (int j = 0; j < kategoria->childCount(); ++j) {
+        QTreeWidgetItem *dziecko = kategoria->child(j);            // medium
+        const bool pasuje = dziecko->text(0).contains(tekst, Qt::CaseInsensitive);
+        dziecko->setHidden(!pasuje);
+        if (pasuje) maPasujaceElementy = true;
+    }
+
+    if (tekst.isEmpty()) {
+        kategoria->setHidden(false);                // pusty tekst -> pokaz wszystko
+    } else {
+        kategoria->setHidden(!maPasujaceElementy);  // folder bez trafien znika
+        if (maPasujaceElementy) kategoria->setExpanded(true);
+    }
+}
+\end{lstlisting}
+
+\textbf{Jak to działa:} zamiast przebudowywać całe drzewo przy każdej wpisanej
+literze, po prostu chowamy i pokazujemy istniejące elementy. Przechodzimy po
+folderach, a w każdym po pozycjach. \texttt{contains(..., Qt::CaseInsensitive)}
+sprawdza, czy tytuł zawiera wpisany tekst (bez znaczenia wielkość liter).
+Niepasujące pozycje chowamy. Jeśli w folderze nie zostało żadne trafienie,
+chowamy też cały folder; a jeśli coś zostało --- rozwijamy go, żeby od razu było
+widać wynik. Pusty tekst przywraca pełny widok.
+
+% =====================================================================
+\section{\texttt{multimediaformwidget.cpp} --- formularz dodawania i edycji}
+% =====================================================================
+
+Formularz służy do dodawania nowej pozycji i edycji istniejącej. Ten sam
+formularz obsługuje oba przypadki.
+
+\subsection{Lista tagów z checkboxami}
+
+\begin{lstlisting}[caption={Budowa listy i odczyt zaznaczonych tagów}]
+// Budowa: kazdy tag = pozycja z checkboxem
+for (const auto& tag : wszystkieTagi) {
+    QListWidgetItem* item = new QListWidgetItem(tag.second, ui->listTagi);
+    item->setFlags(item->flags() | Qt::ItemIsUserCheckable);  // wlacz checkbox
+    item->setData(Qt::UserRole, tag.first);                   // schowaj ID tagu
+    // W trybie edycji juz przypisane tagi sa od razu zaznaczone
+    if (czyTrybEdycji && tagiTegoMedium.contains(tag.second))
+        item->setCheckState(Qt::Checked);
+    else
+        item->setCheckState(Qt::Unchecked);
+}
+
+// Odczyt przy zapisie: zbieramy ID zaznaczonych tagow
+QList<int> wybraneTagi;
+for (int i = 0; i < ui->listTagi->count(); ++i)
+    if (ui->listTagi->item(i)->checkState() == Qt::Checked)
+        wybraneTagi.append(ui->listTagi->item(i)->data(Qt::UserRole).toInt());
+appController.ustawTagiDlaMedium(idDoTagow, wybraneTagi);
+\end{lstlisting}
+
+\textbf{Jak to działa:} każdy istniejący tag dostaje swój wiersz na liście
+z polem do zaznaczenia (\texttt{Qt::ItemIsUserCheckable} włącza checkbox).
+Tak jak w drzewie historii, chowamy ID tagu pod \texttt{Qt::UserRole} ---
+na liście widać tylko nazwę, ale program pamięta, który to tag.
+W trybie edycji tagi już przypisane do pozycji są od razu zaznaczone.
+Przy zapisie przechodzimy po liście i zbieramy ID tylko tych zaznaczonych.
+
+\subsection{Etykieta celu zależna od kategorii}
+
+\begin{lstlisting}[caption={Podpis celu zmienia się razem z jednostką kategorii}]
+// Pod kazda kategoria w combo chowamy jej jednostke (np. "strony")
+ui->comboNowaKategoria->setItemData(idx, jedn, ROLA_JEDNOSTKA);
+
+// Po zmianie kategorii podmieniamy etykiete celu
+void MultimediaFormWidget::obsluzZmianeKategorii(int indeks) {
+    QString jednostka = ui->comboNowaKategoria->itemData(indeks, ROLA_JEDNOSTKA).toString();
+    ui->labJednostka->setText(jednostka.isEmpty() ? "Cel:" : "Cel (" + jednostka + "):");
+}
+\end{lstlisting}
+
+\textbf{Jak to działa:} każda kategoria ma swoją jednostkę (książki --- strony,
+seriale --- odcinki). Przy budowie listy rozwijanej chowamy tę jednostkę pod
+kategorią. Gdy użytkownik wybierze inną kategorię, odczytujemy jej jednostkę
+i podmieniamy podpis pola celu, np. na „Cel (strony):” albo „Cel (odcinki):”.
+
+\textbf{Do czego służy:} drobiazg, ale formularz od razu mówi, w czym podajesz
+cel --- nie trzeba zgadywać, czy chodzi o strony, godziny czy odcinki.
+
+% =====================================================================
+\section{\texttt{statisticswidget.cpp} --- panel statystyk i wykresów}
+% =====================================================================
+
+Najbardziej „efekciarski” widok --- pełno wykresów i zestawień. Wybraliśmy cztery
+fragmenty.
+
+\subsection{Wykres słupkowy z rankingiem wewnątrz słupka}
+
+\begin{lstlisting}[caption={Każdy słupek pokazuje swoich liderów}]
+const int TOP_N = 4;   // miejsca 1-4, reszta laduje w "Pozostale"
+
+for (const QString& d : unikalneDaty) {
+    // (wartosc, tytul) dla tego slupka, posortowane malejaco
+    QList<QPair<double, QString>> wDniu;
+    for (auto it = mapaSerii.begin(); it != mapaSerii.end(); ++it) {
+        const double val = it.value().value(d, 0.0);
+        if (val > 0.0) wDniu.append({val, it.key()});
+    }
+    std::sort(wDniu.begin(), wDniu.end(), [](const auto& a, const auto& b) {
+        return a.first > b.first;   // od najwiekszej wartosci
+    });
+
+    // Miejsca 1..TOP_N - po jednym tytule na miejsce (lub 0, gdy brak)
+    for (int r = 0; r < TOP_N; ++r) {
+        if (r < wDniu.size()) *setySlotow[r] << wDniu[r].first;
+        else                  *setySlotow[r] << 0.0;
+    }
+    // Slot zbiorczy "Pozostale" - suma wszystkiego poza pierwsza czworka
+    double sumaReszty = 0.0;
+    for (int r = TOP_N; r < wDniu.size(); ++r) sumaReszty += wDniu[r].first;
+    *setySlotow[TOP_N] << sumaReszty;
+}
+\end{lstlisting}
+
+\textbf{Jak to działa:} to wykres słupkowy „skumulowany” --- każdy słupek
+(np. jeden dzień) składa się z kilku kolorowych kawałków. Dla każdego słupka
+osobno sortujemy tytuły malejąco i przypisujemy je do „miejsc” 1--4, a wszystko
+poniżej sumujemy w jeden kawałek „Pozostałe”.
+
+\textbf{Najważniejsze:} kolor oznacza \emph{miejsce w rankingu}, a nie konkretny
+tytuł --- pierwsze miejsce zawsze złote, drugie srebrne, trzecie brązowe. Dzięki
+temu każdy słupek pokazuje swoich własnych liderów, a po najechaniu myszą
+w dymku widać, jaki to tytuł i ile dokładnie.
+
+\subsection{Pływający dymek podążający za kursorem}
+
+\begin{lstlisting}[caption={Filtr zdarzeń przesuwający etykietę i odbijający ją od krawędzi}]
+bool StatisticsWidget::eventFilter(QObject *watched, QEvent *event) {
+    if (watched == ui->wykresSlupkowyAktywnosci->viewport()
+        && event->type() == QEvent::MouseMove) {
+        if (!etykietaDymka->isHidden()) {
+            QMouseEvent *m = static_cast<QMouseEvent*>(event);
+            int x = m->pos().x() + 15;   // 15px obok kursora, by go nie zaslaniac
+            int y = m->pos().y() + 15;
+
+            // Jesli dymek wychodzilby za krawedz - przerzuc na druga strone kursora
+            auto *vp = ui->wykresSlupkowyAktywnosci->viewport();
+            if (x + etykietaDymka->width()  > vp->width())
+                x = m->pos().x() - etykietaDymka->width()  - 15;
+            if (y + etykietaDymka->height() > vp->height())
+                y = m->pos().y() - etykietaDymka->height() - 15;
+
+            etykietaDymka->move(x, y);
+            etykietaDymka->raise();   // dymek zawsze na wierzchu
+        }
+    }
+    return QWidget::eventFilter(watched, event);
+}
+\end{lstlisting}
+
+\textbf{Jak to działa:} \texttt{eventFilter} to „podsłuch” zdarzeń --- przechwytuje
+ruchy myszy nad wykresem. Gdy dymek jest widoczny, ustawiamy go 15 pikseli obok
+kursora (żeby go nie zasłaniać). Jeśli dymek wyszedłby poza prawą lub dolną
+krawędź wykresu, przerzucamy go na drugą stronę kursora --- dzięki temu zawsze
+mieści się w obszarze wykresu. \texttt{raise()} pilnuje, żeby dymek był na wierzchu.
+
+\subsection{Wykres radarowy (profil tagów)}
+
+\begin{lstlisting}[caption={Wielokąt z najczęstszych tagów}]
+// Radar (wielokat) ma sens dopiero od 3 wierzcholkow
+if (nTagow > 2) {
+    for (int i = 0; i < nTagow; ++i) {
+        // normalizacja do 0-100% wzgledem najwiekszego tagu
+        const qreal norm = (qreal(topTagi[i].value("czasSekundy").toLongLong())
+                            / qreal(maxCzasTagu)) * 100.0;
+        radarSeries->append(i, norm);
+        axisAngular->append(topTagi[i].value("tag").toString(), i);
+    }
+    // Domkniecie figury: powtarzamy pierwszy punkt na koncu (kat = 360 stopni)
+    const qreal normZamkniecie = (qreal(topTagi[0].value("czasSekundy").toLongLong())
+                                  / qreal(maxCzasTagu)) * 100.0;
+    radarSeries->append(nTagow, normZamkniecie);
+    axisAngular->setRange(0, nTagow);
+} else {
+    radarSeries->append(0, 0);
+    axisAngular->append("Malo danych", 1);
+}
+\end{lstlisting}
+
+\textbf{Jak to działa:} wykres radarowy to wielokąt, którego wierzchołki to
+najczęstsze tagi, a „wysięg” każdego wierzchołka pokazuje, ile czasu poszło na
+dany tag. Wartości \emph{normalizujemy} do skali 0--100\% --- największy tag dostaje
+100\%, reszta proporcjonalnie. To pozwala porównać tagi niezależnie od tego, czy
+liczymy w minutach, czy godzinach.
+
+\textbf{Dwie pułapki, które kod obsługuje:} po pierwsze, żeby figura była zamknięta,
+trzeba powtórzyć pierwszy punkt na końcu (inaczej zostałaby „dziura” między
+ostatnim a pierwszym wierzchołkiem). Po drugie, wielokąt ma sens dopiero od 3
+wierzchołków --- przy 1--2 tagach pokazujemy zastępcze „Mało danych” zamiast
+zdegenerowanej figury.
+
+\subsection{„Kupka Wstydu” --- losowa propozycja}
+
+\begin{lstlisting}[caption={Losowanie pozycji do nadrobienia}]
+// disconnect przed connect: ta funkcja biega przy kazdym wejsciu na zakladke.
+// Bez tego polaczenia by sie mnozyly i jeden klik wywolywalby lambde wielokrotnie.
+disconnect(ui->btnProponujAktywnosc, nullptr, this, nullptr);
+connect(ui->btnProponujAktywnosc, &QPushButton::clicked, this,
+        [this, wszystkieWKupce]() {
+    if (wszystkieWKupce.isEmpty()) {
+        QMessageBox::information(this, "Kupka Wstydu", "Brak pozycji do zaproponowania.");
+        return;
+    }
+    int indeks = QRandomGenerator::global()->bounded(wszystkieWKupce.size());
+    emit zadaniePokazaniaSzczegolow(wszystkieWKupce.at(indeks)->id);
+});
+\end{lstlisting}
+
+\textbf{Jak to działa:} „Kupka Wstydu” to lista zaczętych, ale niedokończonych
+pozycji. Przycisk „Zaproponuj aktywność” losuje jedną z nich:
+\texttt{QRandomGenerator::global()->bounded(n)} zwraca losową liczbę od 0 do
+$n-1$, czyli losowy indeks na liście. Potem wysyłamy sygnał, żeby pokazać
+szczegóły wylosowanej pozycji.
+
+\textbf{Ważny detal --- \texttt{disconnect}:} ta funkcja uruchamia się za każdym
+razem, gdy wchodzisz na zakładkę. Gdybyśmy tylko dodawali połączenie
+(\texttt{connect}), to po pięciu wejściach jeden klik wywołałby losowanie pięć
+razy. Dlatego najpierw \texttt{disconnect} kasuje stare połączenia, a dopiero
+potem robimy świeże.
+
+% =====================================================================
+\section{\texttt{categoriesdialog.cpp} --- okno zarządzania kategoriami}
+% =====================================================================
+
+Okno do dodawania, edycji i usuwania kategorii. Najciekawsze jest usuwanie ---
+bo kategoria może mieć przypisane pozycje.
+
+\subsection{Usuwanie z wyborem losu zawartości}
+
+\begin{lstlisting}[caption={Własne przyciski i rozpoznanie, który kliknięto}]
+QMessageBox msgBox(this);
+msgBox.setText("Usuwasz kategorie: <b>" + nazwa + "</b><br>Co robimy z zawartoscia?");
+
+// Zapamietujemy wskazniki, by potem rozpoznac KTORY przycisk kliknieto
+QPushButton *btnPrzenies     = msgBox.addButton("Przenies do 'Brak'", QMessageBox::ActionRole);
+QPushButton *btnUsunWszystko = msgBox.addButton("Usun wszystko",      QMessageBox::DestructiveRole);
+msgBox.addButton("Anuluj", QMessageBox::RejectRole);
+
+msgBox.exec();
+
+QAbstractButton *klikniety = msgBox.clickedButton();
+if (klikniety != btnPrzenies && klikniety != btnUsunWszystko) return;  // anulowano
+
+const bool usunZDetalami = (klikniety == btnUsunWszystko);
+if (appController.usunKategorie(idKat, usunZDetalami)) {
+    wypelnijTabele();
+}
+\end{lstlisting}
+
+\textbf{Jak to działa:} zwykłe okienko ma przyciski Tak/Nie, ale tutaj potrzebne
+są trzy opcje, więc dodajemy własne przyciski przez \texttt{addButton}.
+Zapamiętujemy wskaźniki do nich, bo po zamknięciu \texttt{clickedButton()} mówi
+tylko, który obiekt kliknięto --- porównujemy go z naszymi wskaźnikami, żeby wiedzieć,
+co użytkownik wybrał. „Przenieś do Brak” odpina pozycje od kategorii (zostają
+w bibliotece), a „Usuń wszystko” kasuje je razem z kategorią.
+
+\subsection{Edytowalna lista jednostek}
+
+\begin{lstlisting}[caption={Podpowiedzi z bazy, ale można wpisać własną}]
+QComboBox comboJednostka(&dialog);
+comboJednostka.setEditable(true);                                  // mozna wpisac wlasna
+comboJednostka.addItems(appController.pobierzUnikalneJednostki()); // + podpowiedzi z bazy
+// ...
+const QString jednostka = comboJednostka.currentText().trimmed();
+// Gdy puste -> domyslnie "szt."
+appController.dodajKategorie(nazwa, jednostka.isEmpty() ? "szt." : jednostka);
+\end{lstlisting}
+
+\textbf{Jak to działa:} lista jednostek jest \emph{edytowalna}
+(\texttt{setEditable(true)}) --- użytkownik może wybrać gotową podpowiedź
+(pobraną z bazy z już istniejących kategorii) albo wpisać zupełnie nową, np.
+„rozdziały”. Gdy zostawi pole puste, podstawiamy sensowną wartość domyślną „szt.”.
+
+% =====================================================================
+\section{\texttt{platformsdialog.cpp} --- okno zarządzania platformami}
+% =====================================================================
+
+Działa podobnie jak okno kategorii, więc pokazujemy tylko to, co tu jest inne ---
+wybór typu nośnika z gotowej listy.
+
+\subsection{Wybór z listy przez \texttt{QInputDialog::getItem}}
+
+\begin{lstlisting}[caption={Gotowa lista rozwijana zamiast wpisywania}]
+const QString typ = QInputDialog::getItem(
+    this, "Typ nosnika", "Wybierz typ nosnika:",
+    dostepneTypyNosnika(),   // {"Cyfrowy","Fizyczny","Streaming","Papier","E-book"}
+    0,        // domyslnie zaznaczona pozycja
+    false,    // false = lista zamknieta (uzytkownik nie wpisze swojego)
+    &ok);
+\end{lstlisting}
+
+\textbf{Jak to działa:} \texttt{QInputDialog::getItem} pokazuje gotowe okienko
+z listą rozwijaną. Podajemy zestaw dozwolonych typów nośnika, a parametr
+\texttt{false} oznacza, że listy nie da się edytować --- użytkownik musi wybrać
+jedną z gotowych opcji. To zabezpieczenie przed literówkami i bałaganem
+(„Cyfrowy” vs „cyfrowe” vs „cyfra”).
+
+\subsection{Domyślne zaznaczenie aktualnego typu}
+
+\begin{lstlisting}[caption={Lista otwiera się na obecnej wartości}]
+const QStringList typy = dostepneTypyNosnika();
+// indexOf zwraca -1, gdy obecnego typu nie ma na liscie;
+// qMax cofa wtedy do 0 (pierwsza pozycja), zeby nie podac blednego indeksu
+const int indeksTypu = qMax(0, typy.indexOf(obecnyTyp));
+const QString nowyTyp = QInputDialog::getItem(
+    this, "Typ nosnika", "Wybierz typ nosnika:", typy, indeksTypu, false, &ok);
+\end{lstlisting}
+
+\textbf{Jak to działa:} przy edycji wygodnie jest, gdy lista od razu pokazuje
+obecny typ platformy. \texttt{indexOf} znajduje pozycję obecnego typu na liście.
+Jest jednak haczyk --- gdyby tego typu nie było na liście, \texttt{indexOf}
+zwróciłby $-1$, co byłoby błędnym indeksem. Dlatego \texttt{qMax(0, ...)} pilnuje,
+żeby wynik nigdy nie spadł poniżej zera --- w najgorszym razie zaznaczy się
+pierwsza pozycja.
+
+% =====================================================================
+\section{\texttt{tagsdialog.cpp} --- okno zarządzania tagami}
+% =====================================================================
+
+Najprostsze z trzech okien zarządzania. Mimo to ma dwie warte uwagi rzeczy.
+
+\subsection{Wygodne rozpakowanie pary (structured bindings)}
+
+\begin{lstlisting}[caption={Rozpakowanie pary id--nazwa w pętli}]
+const auto tagi = appController.pobierzTagi();   // lista par (id, nazwa)
+int wiersz = 0;
+for (const auto& [id, nazwa] : tagi) {           // rozpakowanie pary na 2 zmienne
+    ui->tabela->insertRow(wiersz);
+    ui->tabela->setItem(wiersz, 0, new QTableWidgetItem(QString::number(id)));
+    ui->tabela->setItem(wiersz, 1, new QTableWidgetItem(nazwa));
+    wiersz++;
+}
+\end{lstlisting}
+
+\textbf{Jak to działa:} \texttt{pobierzTagi} zwraca listę par „(id, nazwa)”.
+Zapis \texttt{for (const auto\& [id, nazwa] : tagi)} to tzw. \emph{structured
+bindings} --- od razu rozkłada parę na dwie czytelne zmienne. Bez tego musielibyśmy
+pisać \texttt{tag.first} i \texttt{tag.second}, co jest mniej zrozumiałe.
+
+\subsection{Najprostsze usuwanie --- bez pytania o zawartość}
+
+\begin{lstlisting}[caption={Usunięcie tagu kasuje tylko powiązania}]
+// Tag nie pyta "co z zawartoscia" - usuwa tylko powiazania w tabeli
+// posredniej multimedia_tagi. Same multimedia zostaja nietkniete.
+const auto odp = QMessageBox::question(this, "Usun tag",
+    QString("Czy na pewno usunac tag \"%1\"?\n"
+            "Powiazania z mediami zostana usuniete.").arg(nazwa),
+    QMessageBox::Yes | QMessageBox::No);
+if (odp != QMessageBox::Yes) return;
+appController.usunTag(idTagu);
+\end{lstlisting}
+
+\textbf{Jak to działa:} przy kategoriach i platformach trzeba było pytać, co zrobić
+z przypisanymi pozycjami. Przy tagach nie ma tego problemu --- usunięcie tagu
+kasuje tylko \emph{powiązania} w osobnej tabeli łączącej (\texttt{multimedia\_tagi}),
+a same pozycje zostają nietknięte. Dlatego wystarczy zwykłe potwierdzenie Tak/Nie.
+
+\textbf{Do czego służy:} pokazuje, że nie wszystko trzeba komplikować --- gdy dane
+są luźno powiązane, prosta operacja w zupełności wystarcza.
+
+% =====================================================================
+\section{Podsumowanie}
+% =====================================================================
+
+Projekt CML, choć z pozoru to „zwykła aplikacja okienkowa”, kryje sporo ciekawych
+rozwiązań. Po stronie bazy widać przemyślany SQL --- funkcje okna, transakcje
+„wszystko albo nic” i dynamiczne sklejanie zapytań. Po stronie interfejsu
+przewijają się powtarzalne, sprytne wzorce: chowanie danych w węzłach
+(\texttt{Qt::UserRole}), automatyczne odświeżanie przez sygnały, czy
+\texttt{blockSignals} ratujące przed nieskończonymi pętlami. Widać też dbałość
+o drobiazgi (dymki, liczniki dni, kolory ostrzegawcze), które sprawiają, że
+z programu po prostu wygodnie się korzysta.
+
+\end{document}
