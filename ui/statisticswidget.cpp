@@ -273,7 +273,6 @@ void StatisticsWidget::odswiezDane() {
 }
 
 void StatisticsWidget::odswiezNigdyNieukonczone() {
-    // Pusta siatka (siatkaPorzucone, columnstretch=1,1,1,1) jest w .ui — tu tylko czyścimy i wypełniamy.
     wyczyscLayout(ui->siatkaPorzucone);
     ui->siatkaPorzucone->setAlignment(Qt::AlignTop);
 
@@ -490,7 +489,7 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
 
     auto* axisRadial = new QValueAxis();
     axisRadial->setRange(0, 100);
-    axisRadial->setVisible(false); // Ukrywamy siatkę cyferek, żeby nie śmieciła
+    axisRadial->setVisible(false);
     polar->addAxis(axisRadial, QPolarChart::PolarOrientationRadial);
     radarSeries->attachAxis(axisRadial);
 
@@ -498,10 +497,8 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
     ui->chartSummaryRadar->setRenderHint(QPainter::Antialiasing);
 
 
-    // TABELA TAGÓW — tryby kolumn ustawione raz w konstruktorze, ukrycie nagłówka pionowego w .ui.
+    // TABELA TAGÓW
     ui->tableSummaryTagi->setRowCount(0);
-
-
 
     const int limitTagow = qMin(10, tagi.size());
     for (int i = 0; i < limitTagow; ++i) {
@@ -522,8 +519,6 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
     // CIEKAWOSTKI "Ściana Chwały"
     QVariantMap ciekawostki = appController.pobierzCiekawostkiStatystyczne();
 
-    // Dwukolumnowy szkielet (layoutOsiagniec + kolumnaLewa/kolumnaPrawa) jest w .ui — tu tylko
-    // czyścimy obie kolumny i wstawiamy etykiety od nowa. Layoutów NIE kasujemy: należą do Designera.
     wyczyscLayout(ui->kolumnaLewa);
     wyczyscLayout(ui->kolumnaPrawa);
 
@@ -539,7 +534,7 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
         ? QString("%1 lat").arg(qRound(ciekawostki.value("sredniWiekNadrabiania").toDouble()))
         : "Brak danych";
 
-    // Pora doby → persona. Surowa nazwa pory z bazy ('Noc'/'Rano'/...) mapowana na chwytliwy tytuł.
+    // Pora doby
     const QString pora = ciekawostki.value("poraDoby", "").toString();
     QString poraPersona = "Brak danych";
     QString poraOpis = "Najaktywniejsza pora doby";
@@ -548,10 +543,9 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
     else if (pora == "Popołudnie") { poraPersona = "Popołudniowy Gracz";   poraOpis = "Najwięcej czasu po południu (12–18)"; }
     else if (pora == "Wieczór")    { poraPersona = "Wieczorny Maratończyk"; poraOpis = "Najwięcej czasu wieczorem (18–24)"; }
 
-    // Kolejność dobrana pod układ dwukolumnowy: lewa = rekordy konsumpcji, prawa = Twój profil/gust.
     struct Osiagniecie { QString tytul; QString wartosc; QString podtytul; };
     QList<Osiagniecie> osiagniecia = {
-        // --- Kolumna lewa (rekordy) ---
+        // Kolumna lewa
         {"Maratończyk (Najdłuższa sesja)",
          ciekawostki.value("rekordSesjaTytul", "Brak").toString(),
          sformatujCzas(ciekawostki.value("rekordSesjaCzas", 0).toLongLong())},
@@ -568,7 +562,7 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
          ciekawostki.value("uparyTytul", "Brak").toString(),
          QString("Podejścia: %1").arg(ciekawostki.value("uparyIlosc", 0).toInt())},
 
-        // --- Kolumna prawa (profil / gust) ---
+        // Kolumna prawa
         {"Twój dzień na relaks",
          ciekawostki.value("najlepszyDzien", "Brak").toString(),
          "Najbardziej aktywny dzień tygodnia"},
@@ -586,7 +580,7 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
          "Średnie opóźnienie między premierą a dodaniem"}
     };
 
-    // (size+1)/2 → przy 8 kafelkach daje 4 w lewej, 4 w prawej (i poprawnie dzieli nieparzyste).
+    // (size+1)/2 → przy 8 kafelkach daje 4 w lewej, 4 w prawej
     const int progKolumny = (osiagniecia.size() + 1) / 2;
     for (int i = 0; i < osiagniecia.size(); ++i) {
         const auto& os = osiagniecia[i];
@@ -677,7 +671,7 @@ QWidget* StatisticsWidget::zbudujKafelek(const std::shared_ptr<Multimedia>& medi
     progressBar->setFixedHeight(6);
     layout->addWidget(progressBar);
 
-    // Opcjonalna linia statystyki (np. "Łącznie: 12h 30m") tuż pod paskiem postępu, nad "Platforma".
+    // Opcjonalna linia statystyki
     if (!dodatkowaLinia.isEmpty()) {
         layout->addWidget(new QLabel(dodatkowaLinia, kafelek));
     }
@@ -725,9 +719,14 @@ QWidget* StatisticsWidget::zbudujKafelek(const std::shared_ptr<Multimedia>& medi
     return kafelek;
 }
 
+// Odświeża zakładkę "Kupka Wstydu" — zestawienie pozycji zaległych:
+// zaplanowanych, przerwanych (rozpoczętych, ale porzuconych) i wstrzymanych.
+// Wylicza wskaźnik zaległości oraz najdłuższy przestój, a następnie buduje
+// trzy sekcje z kafelkami i podpina przycisk losującego propozycję aktywności.
 void StatisticsWidget::odswiezKupkeWstydu() {
     const auto wszystkie = appController.pobierzWszystkieMultimedia();
     const int suma = wszystkie.size();
+    // Brak jakichkolwiek pozycji
     if (suma == 0) {
         ui->labelWskaznikZaleglosci->setText("Wskaźnik zaległości: 0 / 0 (0%)");
         ui->labelNajdluzszyPrzestoj->setText("Najdłuższy przestój: Brak danych");
@@ -737,13 +736,17 @@ void StatisticsWidget::odswiezKupkeWstydu() {
         return;
     }
 
+    // Mapa idPlatformy -> nazwa, używana przy budowaniu kafelków.
     const QMap<int, QString> platformy = mapaPlatform();
 
+    // Trzy osobne listy na poszczególne kategorie + lista zbiorcza całej "kupki",
+    // która jest wskaźnikiem, wyboru najdłuższego przestoju i losowania.
     QList<std::shared_ptr<Multimedia>> planowane;
     QList<std::shared_ptr<Multimedia>> przerwane;
     QList<std::shared_ptr<Multimedia>> wstrzymane;
     QList<std::shared_ptr<Multimedia>> wszystkieWKupce;
 
+    // Do "kupki" trafiają tylko te 3 statusy
     for (const auto& medium : wszystkie) {
         if (medium->status == Status::Planowane) {
             planowane.append(medium);
@@ -757,6 +760,7 @@ void StatisticsWidget::odswiezKupkeWstydu() {
         }
     }
 
+    // Sortujemy, najbardziej zaniedbane pozycje będą na górze listy.
     auto porownajPoStarosci = [this](const std::shared_ptr<Multimedia>& a, const std::shared_ptr<Multimedia>& b) {
         return wyznaczDateReferencyjna(a) < wyznaczDateReferencyjna(b);
     };
@@ -764,12 +768,14 @@ void StatisticsWidget::odswiezKupkeWstydu() {
     std::sort(przerwane.begin(), przerwane.end(), porownajPoStarosci);
     std::sort(wstrzymane.begin(), wstrzymane.end(), porownajPoStarosci);
 
+    // Wskaźnik zaległości = jaki procent całej biblioteki tkwi w "kupce".
     const int iloscWkupce = wszystkieWKupce.size();
     const int procent = static_cast<int>((static_cast<double>(iloscWkupce) / static_cast<double>(suma)) * 100.0);
     ui->labelWskaznikZaleglosci->setText(
         QString("Wskaźnik zaległości: %1 / %2 (%3%)").arg(iloscWkupce).arg(suma).arg(procent)
     );
 
+    // Najdłuższy przestój: szukamy pozycji o największej liczbie dni bezczynności.
     if (!wszystkieWKupce.isEmpty()) {
         auto najdluzszy = *std::max_element(wszystkieWKupce.begin(), wszystkieWKupce.end(),
             [this](const std::shared_ptr<Multimedia>& a, const std::shared_ptr<Multimedia>& b) {
@@ -779,13 +785,17 @@ void StatisticsWidget::odswiezKupkeWstydu() {
             QString("Najdłuższy przestój: %1 (%2 dni)").arg(najdluzszy->tytul).arg(policzDniBezczynnosci(najdluzszy))
         );
     } else {
+        // Lista pusta — wszystkie pozycje są ukończone/porzucone, więc nie ma przestoju.
         ui->labelNajdluzszyPrzestoj->setText("Najdłuższy przestój: Brak pozycji w kupce");
     }
 
+    // Czyścimy stare kafelki
     wyczyscLayout(ui->sekcjaPlanowaneLayout);
     wyczyscLayout(ui->sekcjaPrzerwaneLayout);
     wyczyscLayout(ui->sekcjaWstrzymaneLayout);
 
+    // Pomocnicza lambda: wypełnia podany layout kafelkami danej sekcji.
+    // Dla pustej sekcji wstawia szary placeholder "Brak pozycji".
     auto wypelnijSekcje = [this, &platformy](QBoxLayout* layout, const QList<std::shared_ptr<Multimedia>>& sekcja) {
         if (sekcja.isEmpty()) {
             auto* labelPusto = new QLabel("Brak pozycji", this);
@@ -798,20 +808,25 @@ void StatisticsWidget::odswiezKupkeWstydu() {
         for (const auto& medium : sekcja) {
             layout->addWidget(zbudujKafelek(medium, platformy));
         }
+            // Dosuwa zawartość do góry (kafelki nie rozpychają się w pionie).
         layout->addStretch();
     };
 
+    // Renderujemy każdą z trzech kolumn osobno.
     wypelnijSekcje(ui->sekcjaPlanowaneLayout, planowane);
     wypelnijSekcje(ui->sekcjaPrzerwaneLayout, przerwane);
     wypelnijSekcje(ui->sekcjaWstrzymaneLayout, wstrzymane);
 
-    // Bez disconnect jeden klik wywoływałby lambdę wielokrotnie.
+    // Przycisk "Zaproponuj aktywność" losuje jedną pozycję z całej kupki.
+    // Bez disconnect jeden klik wywoływałby lambdę wielokrotnie (kolejne odświeżenia
+    // podpinałyby ten sam sygnał ponownie)
     disconnect(ui->btnProponujAktywnosc, nullptr, this, nullptr);
     connect(ui->btnProponujAktywnosc, &QPushButton::clicked, this, [this, wszystkieWKupce]() {
         if (wszystkieWKupce.isEmpty()) {
             QMessageBox::information(this, "Kupka Wstydu", "Brak pozycji do zaproponowania.");
             return;
         }
+        // Losowy indeks z zakresu [0, rozmiar) i emit pokazanie szczegółów medium.
         int indeks = QRandomGenerator::global()->bounded(wszystkieWKupce.size());
         emit zadaniePokazaniaSzczegolow(wszystkieWKupce.at(indeks)->id);
     });
