@@ -36,6 +36,8 @@ NavigationPanelWidget::NavigationPanelWidget(AppController& controller, QWidget 
 
     connect(ui->kategorie, &QTreeWidget::itemClicked,
             this, &NavigationPanelWidget::obsluzWyborElementuDrzewa);
+
+    //Każd wpisnay symbol w polu wyszukiwania wywołuje funkcję wyszukiwania
     connect(ui->wyszukiwarka, &QLineEdit::textChanged,
             this, &NavigationPanelWidget::obsluzWyszukiwanie);
     connect(ui->kategorie, &QTreeWidget::customContextMenuRequested,

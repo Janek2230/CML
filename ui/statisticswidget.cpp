@@ -413,17 +413,26 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
     ui->lblSummaryJednostkiTotal->setText(formatujKPI("Zdobyte jednostki", QString::number(stats.value("jednostkiTotal", 0).toLongLong())));
     ui->lblSummaryUlubionyTag->setText(formatujKPI("Ulubiony tag", stats.value("ulubionyTag", "Brak danych").toString()));
 
-    // WYKRES KOŁOWY (Kategorie)
+    // WYKRES KOŁOWY (Kategorie) — pokazujemy tylko 5 kategorii z największym czasem.
+    constexpr int LIMIT_KATEGORII = 5;
     const QList<QVariantMap> kategorie = appController.pobierzPodsumowanieKategorii();
     QPieSeries *pie = new QPieSeries();
 
+    int liczbaZCzasem = 0;
     for (const auto& kat : kategorie) {
         const long long sekundy = kat.value("czasSekundy").toLongLong();
-        if (sekundy > 0) {
+        if (sekundy <= 0) continue;
+        ++liczbaZCzasem;
+        if (pie->count() < LIMIT_KATEGORII) {
             pie->append(QString("%1 (%2)").arg(kat.value("kategoria").toString(), sformatujCzas(sekundy)), static_cast<qreal>(sekundy));
         }
     }
     if (pie->slices().isEmpty()) pie->append("Brak danych", 1);
+
+    // Dopisujemy "(Top 5)" tylko gdy kategorii z czasem jest więcej niż limit
+    ui->groupBoxKategorieCzas->setTitle(liczbaZCzasem > LIMIT_KATEGORII
+        ? QString("Czas w kategoriach (Top %1)").arg(LIMIT_KATEGORII)
+        : "Czas w kategoriach");
 
     QChart *chartPie = new QChart();
     chartPie->addSeries(pie);

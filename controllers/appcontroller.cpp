@@ -257,7 +257,11 @@ bool AppController::usunTag(int idTagu) {
 }
 
 bool AppController::ustawTagiDlaMedium(int idMedium, const QList<int>& idTagow) {
-    return menedzerBazy.ustawTagiDlaMedium(idMedium, idTagow);
+    if (menedzerBazy.ustawTagiDlaMedium(idMedium, idTagow)) {
+        emit daneZmienione();
+        return true;
+    }
+    return false;
 }
 
 // Historia i podgląd

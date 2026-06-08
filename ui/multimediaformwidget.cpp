@@ -143,9 +143,14 @@ void MultimediaFormWidget::obsluzPotwierdzDodaj() {
 
         ui->lblKomunikatFormularza->setStyleSheet("color: green; font-weight: bold;");
         ui->lblKomunikatFormularza->setText(czyTrybEdycji ? "Zaktualizowano: " + tytul : "Dodano do biblioteki: " + tytul);
-        ui->editNowyTytul->clear();
-        ui->spinNowyRok->setValue(0);
-        ui->editNowyTworca->clear();
+        // W trybie dodawania czyścimy pola, żeby od razu wpisać kolejną pozycję.
+        // W trybie edycji zostawiamy wartości — użytkownik dalej widzi to, co właśnie zapisał.
+        if (!czyTrybEdycji) {
+            ui->editNowyTytul->clear();
+            ui->spinNowyRok->setValue(0);
+            ui->editNowyTworca->clear();
+        }
+        QTimer::singleShot(4000, this, [this]() { ui->lblKomunikatFormularza->clear(); });
     } else {
         ui->lblKomunikatFormularza->setStyleSheet("color: red; font-weight: bold;");
         ui->lblKomunikatFormularza->setText("Błąd bazy danych!");
