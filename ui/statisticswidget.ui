@@ -29,7 +29,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>4</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -142,7 +142,7 @@
            <item>
             <widget class="QGroupBox" name="groupBoxRadar">
              <property name="title">
-              <string>Profil aktywności (top kategorii)</string>
+              <string>Profil aktywności (top 5 tagów)</string>
              </property>
              <layout class="QVBoxLayout" name="verticalLayoutSummaryRadar">
               <property name="leftMargin">
@@ -474,8 +474,8 @@ QPushButton:pressed {
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>300</width>
-                  <height>480</height>
+                  <width>298</width>
+                  <height>462</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="sekcjaPlanowaneLayout"/>
@@ -509,8 +509,8 @@ QPushButton:pressed {
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>300</width>
-                  <height>480</height>
+                  <width>298</width>
+                  <height>462</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="sekcjaPrzerwaneLayout"/>
@@ -544,8 +544,8 @@ QPushButton:pressed {
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>300</width>
-                  <height>480</height>
+                  <width>298</width>
+                  <height>462</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="sekcjaWstrzymaneLayout"/>
@@ -575,11 +575,11 @@ QPushButton:pressed {
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>926</width>
-            <height>598</height>
+            <width>922</width>
+            <height>587</height>
            </rect>
           </property>
-          <layout class="QGridLayout" name="siatkaPorzucone" columnstretch="1,1,1,1"/>
+          <layout class="QGridLayout" name="siatkaPorzucone" columnstretch="1"/>
          </widget>
         </widget>
        </item>
@@ -600,8 +600,8 @@ QPushButton:pressed {
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>926</width>
-            <height>598</height>
+            <width>922</width>
+            <height>587</height>
            </rect>
           </property>
           <layout class="QHBoxLayout" name="layoutUlubioneKolumny">
@@ -636,8 +636,8 @@ QPushButton:pressed {
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>288</width>
-                  <height>544</height>
+                  <width>284</width>
+                  <height>528</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="listaUlubione">
@@ -678,8 +678,8 @@ QPushButton:pressed {
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>288</width>
-                  <height>544</height>
+                  <width>284</width>
+                  <height>528</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="listaCzas">
@@ -721,7 +721,7 @@ QPushButton:pressed {
                   <x>0</x>
                   <y>0</y>
                   <width>302</width>
-                  <height>544</height>
+                  <height>528</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="listaPodejsc">
