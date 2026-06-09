@@ -18,9 +18,9 @@ NavigationPanelWidget::NavigationPanelWidget(AppController& controller, QWidget 
     ui->setupUi(this);
 
     // Własne menu kontekstowe (prawy klik) — obsługiwane w pokazMenuDrzewa.
-    ui->kategorie->setContextMenuPolicy(Qt::CustomContextMenu);
+    ui->drzewoMedow->setContextMenuPolicy(Qt::CustomContextMenu);
     // Zaznaczanie wielu pozycji (Ctrl/Shift) — pod akcje grupowe: usuń / zmień kategorię wielu.
-    ui->kategorie->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    ui->drzewoMedow->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
     // Przebudowanie drzewa przy każdej zmianie trybu grupowania.
     connect(ui->comboGrupowanie, QOverload<int>::of(&QComboBox::currentIndexChanged),
@@ -34,13 +34,13 @@ NavigationPanelWidget::NavigationPanelWidget(AppController& controller, QWidget 
         emit zadanieDodaniaMedium(0, 0);
     });
 
-    connect(ui->kategorie, &QTreeWidget::itemClicked,
+    connect(ui->drzewoMedow, &QTreeWidget::itemClicked,
             this, &NavigationPanelWidget::obsluzWyborElementuDrzewa);
 
     //Każd wpisnay symbol w polu wyszukiwania wywołuje funkcję wyszukiwania
     connect(ui->wyszukiwarka, &QLineEdit::textChanged,
             this, &NavigationPanelWidget::obsluzWyszukiwanie);
-    connect(ui->kategorie, &QTreeWidget::customContextMenuRequested,
+    connect(ui->drzewoMedow, &QTreeWidget::customContextMenuRequested,
             this, &NavigationPanelWidget::pokazMenuDrzewa);
 
     zaladujDaneDoDrzewa();
@@ -74,12 +74,12 @@ void NavigationPanelWidget::obsluzWyborElementuDrzewa(QTreeWidgetItem *item, int
 // bez żadnego trafienia chowa w całości. Foldery z trafieniami rozwija. Pusty tekst = pokaż wszystko.
 void NavigationPanelWidget::obsluzWyszukiwanie(const QString &tekst)
 {
-    if (ui->kategorie->topLevelItemCount() == 0) return;
+    if (ui->drzewoMedow->topLevelItemCount() == 0) return;
 
     // Nawigacja po drzewie: topLevelItem(i) to węzły najwyższego poziomu, kategorie (foldery-grupy, np. kategorie),
     // a child(j) ich dzieci (media).
-    for (int i = 0; i < ui->kategorie->topLevelItemCount(); ++i) {
-        QTreeWidgetItem *kategoria = ui->kategorie->topLevelItem(i);
+    for (int i = 0; i < ui->drzewoMedow->topLevelItemCount(); ++i) {
+        QTreeWidgetItem *kategoria = ui->drzewoMedow->topLevelItem(i);
         bool maPasujaceElementy = false;
 
         for (int j = 0; j < kategoria->childCount(); ++j) {
@@ -100,7 +100,7 @@ void NavigationPanelWidget::obsluzWyszukiwanie(const QString &tekst)
 
 void NavigationPanelWidget::zaladujDaneDoDrzewa()
 {
-    ui->kategorie->clear();
+    ui->drzewoMedow->clear();
     const auto listaMultimediow = appController.pobierzWszystkieMultimedia();
 
     // Tryb grupowania = indeks pozycji w comboGrupowanie. Te numery sterują całą funkcją:
@@ -130,20 +130,20 @@ void NavigationPanelWidget::zaladujDaneDoDrzewa()
     // powstają dynamicznie w Etapie 2.
     if (trybGrupowania == 0) {
         for (const auto& kat : appController.pobierzKategorie()) {
-            QTreeWidgetItem *wezel = new QTreeWidgetItem(ui->kategorie);
+            QTreeWidgetItem *wezel = new QTreeWidgetItem(ui->drzewoMedow);
             wezel->setText(0, kat.second);
             wezlyGlowne.insert(kat.second, wezel);
         }
     } else if (trybGrupowania == 2) {
         for (const auto& plat : listaPlatform) {
-            QTreeWidgetItem *wezel = new QTreeWidgetItem(ui->kategorie);
+            QTreeWidgetItem *wezel = new QTreeWidgetItem(ui->drzewoMedow);
             wezel->setText(0, plat.second);
             wezlyGlowne.insert(plat.second, wezel);
         }
     } else if (trybGrupowania == 4) {
         // Ładujemy wszystkie tagi z bazy, żeby puste tagi też pojawiły się w drzewie.
         for (const auto& tag : appController.pobierzTagi()) {
-            QTreeWidgetItem *wezel = new QTreeWidgetItem(ui->kategorie);
+            QTreeWidgetItem *wezel = new QTreeWidgetItem(ui->drzewoMedow);
             wezel->setText(0, tag.second);
             wezlyGlowne.insert(tag.second, wezel);
         }
@@ -159,7 +159,7 @@ void NavigationPanelWidget::zaladujDaneDoDrzewa()
 
             for (const QString& nazwaGrupy : tagiMedium) {
                 if (!wezlyGlowne.contains(nazwaGrupy)) {
-                    QTreeWidgetItem *nowyWezel = new QTreeWidgetItem(ui->kategorie);
+                    QTreeWidgetItem *nowyWezel = new QTreeWidgetItem(ui->drzewoMedow);
                     nowyWezel->setText(0, nazwaGrupy);
                     wezlyGlowne.insert(nazwaGrupy, nowyWezel);
                 }
@@ -203,7 +203,7 @@ void NavigationPanelWidget::zaladujDaneDoDrzewa()
         }
 
         if (!wezlyGlowne.contains(nazwaGrupy)) {
-            QTreeWidgetItem *nowyWezel = new QTreeWidgetItem(ui->kategorie);
+            QTreeWidgetItem *nowyWezel = new QTreeWidgetItem(ui->drzewoMedow);
             nowyWezel->setText(0, nazwaGrupy);
             wezlyGlowne.insert(nazwaGrupy, nowyWezel);
         }
@@ -213,13 +213,13 @@ void NavigationPanelWidget::zaladujDaneDoDrzewa()
         item->setData(0, Qt::UserRole, medium->id);
     }
 
-    ui->kategorie->expandAll();
+    ui->drzewoMedow->expandAll();
 }
 
 void NavigationPanelWidget::pokazMenuDrzewa(const QPoint &pos)
 {
     // selectedItems() — wszystkie aktualnie zaznaczone węzły (multi-select włączony w konstruktorze).
-    const QList<QTreeWidgetItem*> zaznaczone = ui->kategorie->selectedItems();
+    const QList<QTreeWidgetItem*> zaznaczone = ui->drzewoMedow->selectedItems();
     if (zaznaczone.isEmpty()) return;
 
     // Zbieramy ID tylko z liści (elementów z rodzicem) — węzły-foldery ignorujemy.
@@ -279,5 +279,5 @@ void NavigationPanelWidget::pokazMenuDrzewa(const QPoint &pos)
     });
 
     // bierze miejsce prawego kliknięcia w drzewie, przelicza je na pozycję na ekranie i pokazuje tam menu, czekając na wybór
-    menu.exec(ui->kategorie->viewport()->mapToGlobal(pos));
+    menu.exec(ui->drzewoMedow->viewport()->mapToGlobal(pos));
 }

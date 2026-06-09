@@ -108,7 +108,7 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
 
     for (const auto& wiersz : dane) {
         QString data = wiersz.data;
-        QString seria = wiersz.nazwaSerii;
+        QString seria = wiersz.nazwaSerii; //Nazwa pojedynczego medium
         double wartosc = wiersz.wartosc;
 
         if (!unikalneDaty.contains(data)) unikalneDaty.append(data);
@@ -130,7 +130,7 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
         QColor(0xf1, 0xc4, 0x0f),     // 1. miejsce — złoto
         QColor(0xbd, 0xc3, 0xc7),     // 2. miejsce — srebro
         QColor(0xcd, 0x7f, 0x32),     // 3. miejsce — brąz
-        QColor(0x2d, 0x89, 0xef),     // 4. miejsce
+        QColor(0x2d, 0x89, 0xef),     // 4. miejsce - niebeiski
         QColor(127, 140, 141, 150)    // Pozostałe
     };
 
@@ -143,27 +143,37 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
         setySlotow << set;
         tekstyDymkow[etykietySlotow[s]] = QStringList();
     }
-
+    //Budowanie rankingu dla konkretnegu słupka (zgodne z wybranym zakresem)
     for (const QString& d : unikalneDaty) {
         // (tytuł, wartość) dla tego słupka, posortowane malejąco.
         QList<QPair<double, QString>> wDniu;
         for (auto it = mapaSerii.begin(); it != mapaSerii.end(); ++it) {
+            //it.value odcztuje wartość odpowiadającą dacie d, jeśli
+            //nie odczyta nic zwraca 0.0
             const double val = it.value().value(d, 0.0);
+            //it.key to z kolei klucz iteratora (tytuł)
             if (val > 0.0) wDniu.append({val, it.key()});
         }
+        //Sortujemy malejąco, pierwszy na liście będzie tytuł z największą liczbą godzin
         std::sort(wDniu.begin(), wDniu.end(), [](const QPair<double, QString>& a, const QPair<double, QString>& b) {
             return a.first > b.first;
         });
 
         // Sloty 1..TOP_N — pojedynczy tytuł na danym miejscu (lub 0 gdy brak).
+        //wDniu zawiera (wartość,nazwa)
         for (int r = 0; r < TOP_N; ++r) {
             if (r < wDniu.size()) {
+                // setySlotow[r] to wskaźnik (QBarSet*) na slot danego miejsca w rankingu;
+                // * wyłuskuje sam obiekt QBarSet, żeby operatorem << dopisać do niego wartość —
+                // ta wartość = wysokość tego segmentu słupka w danym dniu
                 *setySlotow[r] << wDniu[r].first;
+                //Ustawienie zawartości dymku widocznego po najechaniu na fragment słupka
                 tekstyDymkow[etykietySlotow[r]].append(
                     QString("<b>%1. %2</b><br>%3 %4")
-                        .arg(r + 1)
-                        .arg(wDniu[r].second, QString::number(wDniu[r].first, 'f', 1), jednostkaWykresu));
+                        .arg(r + 1).arg(wDniu[r].second, QString::number(wDniu[r].first, 'f', 1), jednostkaWykresu));
             } else {
+                // mniej aktywnych tytułów niż TOP_N -> to miejsce w rankingu zostaje puste:
+                // wartość 0.0 (segment o zerowej wysokości) i pusty dymek
                 *setySlotow[r] << 0.0;
                 tekstyDymkow[etykietySlotow[r]].append("");
             }
@@ -176,6 +186,7 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
             sumaReszty += wDniu[r].first;
             detaleReszty += QString("- %1: %2 %3<br>").arg(wDniu[r].second, QString::number(wDniu[r].first, 'f', 1), jednostkaWykresu);
         }
+        //Ustawienie wielkości fragmentu z pozostałymi tytułami
         *setySlotow[TOP_N] << sumaReszty;
         if (sumaReszty > 0.0) {
             tekstyDymkow["Pozostałe"].append(
@@ -187,6 +198,8 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
         }
     }
 
+    // Dodaje każdą z warstw rankingowych do QStackedBarSeries
+    // Każda z warst zawiera wartość dla poszczególnych dni
     for (QBarSet* set : setySlotow) series->append(set);
 
     QChart *chart = new QChart();
@@ -218,7 +231,9 @@ void StatisticsWidget::odswiezWykresAktywnosci() {
     // tekstyDymkow jest przechwycone przez wartość, bo lambda żyje dłużej niż ta funkcja
     connect(series, &QStackedBarSeries::hovered, this, [this, tekstyDymkow](bool status, int index, QBarSet *barset) {
         if (status && index >= 0) {
+            //barset to najechana warstwa, label to jej nazwa np. 1. miejsce
             QString nazwa = barset->label();
+            //dla warstwy o danej nazwie pobierana jest jej zawartość (tekst wstawony podczas budowania)
             QString tekst = tekstyDymkow.value(nazwa).value(index);
             if (!tekst.isEmpty()) {
                 etykietaDymka->setText(tekst);
@@ -272,6 +287,7 @@ void StatisticsWidget::odswiezDane() {
     else if (index == 4) odswiezUlubione();
 }
 
+//Tutuły które nie mają żadnego podejścia ukończonego, ale mają porzucone
 void StatisticsWidget::odswiezNigdyNieukonczone() {
     wyczyscLayout(ui->siatkaPorzucone);
     ui->siatkaPorzucone->setAlignment(Qt::AlignTop);
@@ -461,6 +477,7 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
     }
 
     int nTagow = topTagi.size();
+    //Wykres radarowy
     auto* axisAngular = new QCategoryAxis();
     axisAngular->setLabelsColor(Qt::white);
     // Wymusza etykiety na wierzchołkach
@@ -470,6 +487,7 @@ void StatisticsWidget::odswiezPodsumowanieOgolne() {
     // Radar (wielokąt) ma sens dopiero od 3 wierzchołków
     if (nTagow > 2) {
         for (int i = 0; i < nTagow; ++i) {
+            //Przeliczenie czasu na procent, względem maksymalnego czasu
             const qreal norm = (static_cast<qreal>(topTagi[i].value("czasSekundy").toLongLong()) / static_cast<qreal>(maxCzasTagu)) * 100.0;
             radarSeries->append(i, norm);
             axisAngular->append(topTagi[i].value("tag").toString(), i);

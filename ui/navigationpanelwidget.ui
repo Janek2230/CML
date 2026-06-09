@@ -60,18 +60,42 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
-         <item><property name="text"><string>Kategoria</string></property></item>
-         <item><property name="text"><string>Status</string></property></item>
-         <item><property name="text"><string>Platforma</string></property></item>
-         <item><property name="text"><string>Data dodania</string></property></item>
-         <item><property name="text"><string>Tagi</string></property></item>
-         <item><property name="text"><string>Typ nośnika</string></property></item>
+         <item>
+          <property name="text">
+           <string>Kategoria</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Status</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Platforma</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Data dodania</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Tagi</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Typ nośnika</string>
+          </property>
+         </item>
         </widget>
        </item>
       </layout>
      </item>
      <item>
-      <widget class="QTreeWidget" name="kategorie">
+      <widget class="QTreeWidget" name="drzewoMedow">
        <property name="headerHidden">
         <bool>true</bool>
        </property>
